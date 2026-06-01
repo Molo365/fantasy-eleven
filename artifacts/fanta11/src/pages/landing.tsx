@@ -150,8 +150,8 @@ function HeroContent({ onLogin, onSignup }: { onLogin: () => void; onSignup: () 
   return (
     <div className="flex flex-col items-center text-center max-w-2xl mx-auto px-6">
       {/* Logo */}
-      <div style={{ filter: "drop-shadow(0 0 40px rgba(59,130,246,0.7))" }} className="mb-4">
-        <img src={logoSrc} alt="FANTA11" style={{ width: "220px", height: "220px" }} className="object-contain" />
+      <div style={{ filter: "drop-shadow(0 0 40px rgba(59,130,246,0.7))" }} className="mb-2">
+        <img src={logoSrc} alt="FANTA11" style={{ width: "260px", height: "260px" }} className="object-contain" />
       </div>
 
       {/* Headline */}
@@ -245,8 +245,8 @@ export function LandingPage() {
           )}
         </header>
 
-        {/* Main content — centred in remaining space */}
-        <main className="flex-1 flex items-center justify-center">
+        {/* Main content — slightly above true center so logo feels grounded */}
+        <main className="flex-1 flex items-center justify-center pb-8">
           {view === "landing" && (
             <HeroContent onLogin={() => setView("login")} onSignup={() => setView("signup")} />
           )}
