@@ -211,7 +211,7 @@ export function LandingPage() {
     <div
       className="min-h-screen flex flex-col dark"
       style={{
-        background: "radial-gradient(ellipse 100% 80% at 50% -10%, rgba(29,78,216,0.3) 0%, transparent 70%), linear-gradient(180deg, #030712 0%, #060f24 40%, #030712 100%)",
+        background: "radial-gradient(ellipse 100% 80% at 50% -10%, rgba(29,78,216,0.4) 0%, transparent 70%), linear-gradient(180deg, #0a1628 0%, #0e1f3d 40%, #0a1628 100%)",
       }}
     >
       {/* Top nav bar */}

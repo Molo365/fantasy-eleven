@@ -19,7 +19,7 @@ function AppRoutes() {
 
   if (authState.status === "loading") {
     return (
-      <div className="min-h-screen flex items-center justify-center dark" style={{ background: "#030712" }}>
+      <div className="min-h-screen flex items-center justify-center dark" style={{ background: "#0a1628" }}>
         <div className="flex flex-col items-center gap-4">
           <div className="w-10 h-10 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
           <p className="text-blue-300/50 text-sm font-medium tracking-wider uppercase">Loading</p>

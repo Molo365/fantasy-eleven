@@ -55,7 +55,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
       {/* ── Desktop Sidebar ── */}
       <aside
-        style={{ background: "linear-gradient(180deg, #050d1f 0%, #0a1535 60%, #0d1e45 100%)" }}
+        style={{ background: "linear-gradient(180deg, #0e1f3d 0%, #162848 60%, #1a2f57 100%)" }}
         className="hidden md:flex w-72 flex-col border-r border-white/8 fixed inset-y-0 left-0 z-40"
       >
         {/* Logo block */}
@@ -127,7 +127,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
       {/* ── Mobile Header ── */}
       <header
-        style={{ background: "linear-gradient(90deg, #050d1f 0%, #0d1e45 100%)" }}
+        style={{ background: "linear-gradient(90deg, #0e1f3d 0%, #1a2f57 100%)" }}
         className="md:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-2 border-b border-white/10 h-16"
       >
         <div className="flex items-center gap-3">
@@ -151,7 +151,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <div className="md:hidden fixed inset-0 z-40 flex" onClick={() => setMobileOpen(false)}>
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
           <aside
-            style={{ background: "linear-gradient(180deg, #050d1f 0%, #0a1535 100%)" }}
+            style={{ background: "linear-gradient(180deg, #0e1f3d 0%, #162848 100%)" }}
             className="relative w-72 flex flex-col border-r border-white/10 h-full"
             onClick={(e) => e.stopPropagation()}
           >
