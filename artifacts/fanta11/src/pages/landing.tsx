@@ -142,7 +142,7 @@ function SignupForm({ onBack }: { onBack: () => void }) {
 
 function HeroContent({ onLogin, onSignup }: { onLogin: () => void; onSignup: () => void }) {
   const stats = [
-    { value: "2.4M+", label: "Managers" },
+    { value: "5", label: "Leagues" },
     { value: "38", label: "Gameweeks" },
     { value: "500+", label: "Players" },
   ];
@@ -151,7 +151,7 @@ function HeroContent({ onLogin, onSignup }: { onLogin: () => void; onSignup: () 
     <div className="flex flex-col items-center text-center max-w-2xl mx-auto px-6">
       {/* Logo */}
       <div style={{ filter: "drop-shadow(0 0 40px rgba(59,130,246,0.7))" }} className="mb-4">
-        <img src={logoSrc} alt="FANTA11" style={{ width: "180px", height: "180px" }} className="object-contain" />
+        <img src={logoSrc} alt="FANTA11" style={{ width: "220px", height: "220px" }} className="object-contain" />
       </div>
 
       {/* Headline */}
@@ -226,7 +226,7 @@ export function LandingPage() {
       {/* All content above backdrop */}
       <div className="relative z-10 flex flex-col h-full">
         {/* Nav */}
-        <header className="flex items-center justify-between px-6 md:px-10 py-4 flex-shrink-0">
+        <header className="flex items-center px-6 md:px-10 py-4 flex-shrink-0 gap-5">
           <div className="flex items-center gap-2.5">
             <img src={logoSrc} alt="FANTA11" className="w-8 h-8 object-contain" />
             <span
