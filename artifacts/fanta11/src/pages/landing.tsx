@@ -328,21 +328,21 @@ export function LandingPage() {
           ))}
         </div>
 
-        {/* Invisible clickable zones over the image buttons */}
-        <div className="absolute inset-0 top-14 bottom-20">
+        {/* Invisible clickable zones — positioned as % of full viewport */}
+        <div className="absolute inset-0 pointer-events-none">
           <button
             data-testid="button-get-started"
             onClick={() => setView("signup")}
             aria-label="Get Started Free"
-            className="absolute cursor-pointer rounded-full opacity-0 hover:opacity-20 hover:bg-blue-400 transition-opacity"
-            style={{ left: "36%", top: "78%", width: "14%", height: "10%" }}
+            className="absolute cursor-pointer rounded-xl pointer-events-auto opacity-0 hover:opacity-20 hover:bg-blue-400 transition-opacity"
+            style={{ left: "34%", top: "79%", width: "12%", height: "7%" }}
           />
           <button
             data-testid="button-login"
             onClick={() => setView("login")}
             aria-label="Sign In"
-            className="absolute cursor-pointer rounded-full opacity-0 hover:opacity-20 hover:bg-white transition-opacity"
-            style={{ left: "51%", top: "78%", width: "11%", height: "10%" }}
+            className="absolute cursor-pointer rounded-xl pointer-events-auto opacity-0 hover:opacity-20 hover:bg-white transition-opacity"
+            style={{ left: "50%", top: "79%", width: "9%", height: "7%" }}
           />
         </div>
       </div>
