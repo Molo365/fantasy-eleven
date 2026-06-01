@@ -7,9 +7,12 @@ import {
   ShieldHalf,
   Menu,
   X,
+  LogOut,
+  User,
 } from "lucide-react";
 import { useState } from "react";
 import logoSrc from "../assets/logo.png";
+import { useAuth } from "@/contexts/auth";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -41,6 +44,8 @@ function NavLink({ href, label, icon: Icon, active }: { href: string; label: str
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { authState, logout } = useAuth();
+  const user = authState.status === "authenticated" ? authState.user : null;
 
   const isActive = (href: string) =>
     href === "/" ? location === "/" : location.startsWith(href);
@@ -88,12 +93,31 @@ export function Layout({ children }: { children: React.ReactNode }) {
           ))}
         </nav>
 
-        {/* Bottom badge */}
-        <div className="px-6 py-5 border-t border-white/8">
-          <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg bg-blue-500/10 border border-blue-500/20">
+        {/* Bottom: GW status + user */}
+        <div className="px-4 py-4 border-t border-white/8 space-y-3">
+          <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-blue-500/10 border border-blue-500/20">
             <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
             <span className="text-xs text-blue-300/70 font-medium">Gameweek 3 — Active</span>
           </div>
+          {user && (
+            <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-white/5 border border-white/8">
+              <div className="w-7 h-7 rounded-full bg-blue-600/40 border border-blue-500/30 flex items-center justify-center flex-shrink-0">
+                <User size={13} className="text-blue-300" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-white truncate">{user.displayName}</p>
+                <p className="text-[10px] text-blue-300/50 truncate">@{user.username}</p>
+              </div>
+              <button
+                data-testid="button-logout"
+                onClick={logout}
+                title="Sign out"
+                className="p-1.5 rounded-md text-blue-300/40 hover:text-red-400 hover:bg-red-500/10 transition-colors flex-shrink-0"
+              >
+                <LogOut size={13} />
+              </button>
+            </div>
+          )}
         </div>
       </aside>
 

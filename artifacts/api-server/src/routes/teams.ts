@@ -10,6 +10,7 @@ import {
   AddPlayerToTeamParams,
   AddPlayerToTeamBody,
   RemovePlayerFromTeamParams,
+  GetTeamPlayersResponseItem,
   ListTeamsResponse,
   GetTeamResponse,
   GetTeamPlayersResponse,
@@ -17,9 +18,13 @@ import {
 
 const router: IRouter = Router();
 
+function serializeTeam(team: { createdAt: Date; [key: string]: unknown }) {
+  return { ...team, createdAt: team.createdAt.toISOString() };
+}
+
 router.get("/teams", async (_req, res): Promise<void> => {
   const teams = await db.select().from(teamsTable).orderBy(teamsTable.totalPoints);
-  res.json(ListTeamsResponse.parse(teams));
+  res.json(ListTeamsResponse.parse(teams.map(serializeTeam)));
 });
 
 router.post("/teams", async (req, res): Promise<void> => {
@@ -32,7 +37,7 @@ router.post("/teams", async (req, res): Promise<void> => {
     name: parsed.data.name,
     managerName: parsed.data.managerName,
   }).returning();
-  res.status(201).json(GetTeamResponse.parse(team));
+  res.status(201).json(GetTeamResponse.parse(serializeTeam(team)));
 });
 
 router.get("/teams/:id", async (req, res): Promise<void> => {
@@ -46,7 +51,7 @@ router.get("/teams/:id", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Team not found" });
     return;
   }
-  res.json(GetTeamResponse.parse(team));
+  res.json(GetTeamResponse.parse(serializeTeam(team)));
 });
 
 router.patch("/teams/:id", async (req, res): Promise<void> => {
@@ -74,7 +79,7 @@ router.patch("/teams/:id", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Team not found" });
     return;
   }
-  res.json(GetTeamResponse.parse(team));
+  res.json(GetTeamResponse.parse(serializeTeam(team)));
 });
 
 router.get("/teams/:id/players", async (req, res): Promise<void> => {
@@ -138,9 +143,7 @@ router.post("/teams/:id/players", async (req, res): Promise<void> => {
     isViceCaptain: parsed.data.isViceCaptain ?? false,
   }).returning();
 
-  const result = { ...tp, player };
-  const { GetTeamPlayersResponseItem } = await import("@workspace/api-zod");
-  res.status(201).json(GetTeamPlayersResponseItem.parse(result));
+  res.status(201).json(GetTeamPlayersResponseItem.parse({ ...tp, player }));
 });
 
 router.delete("/teams/:id/players/:playerId", async (req, res): Promise<void> => {
@@ -151,9 +154,7 @@ router.delete("/teams/:id/players/:playerId", async (req, res): Promise<void> =>
   }
   await db
     .delete(teamPlayersTable)
-    .where(
-      eq(teamPlayersTable.teamId, params.data.id)
-    );
+    .where(eq(teamPlayersTable.teamId, params.data.id));
   res.sendStatus(204);
 });
 
