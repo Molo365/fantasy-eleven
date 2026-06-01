@@ -1,22 +1,30 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: FANTA11 Fantasy Soccer API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: players
+    description: Soccer player operations
+  - name: teams
+    description: Fantasy team operations
+  - name: leagues
+    description: League operations
+  - name: gameweeks
+    description: Gameweek and fixture operations
+  - name: dashboard
+    description: Dashboard summary operations
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +32,424 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /players:
+    get:
+      operationId: listPlayers
+      tags: [players]
+      summary: List all available players
+      parameters:
+        - name: position
+          in: query
+          schema:
+            type: string
+            enum: [GK, DEF, MID, FWD]
+        - name: club
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: List of players
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Player"
+
+  /players/{id}:
+    get:
+      operationId: getPlayer
+      tags: [players]
+      summary: Get a single player
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Player details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Player"
+        "404":
+          description: Not found
+
+  /players/top:
+    get:
+      operationId: getTopPlayers
+      tags: [players]
+      summary: Get top performing players
+      parameters:
+        - name: position
+          in: query
+          schema:
+            type: string
+            enum: [GK, DEF, MID, FWD]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        "200":
+          description: Top players by points
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Player"
+
+  /teams:
+    get:
+      operationId: listTeams
+      tags: [teams]
+      summary: List all fantasy teams
+      responses:
+        "200":
+          description: All teams
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Team"
+    post:
+      operationId: createTeam
+      tags: [teams]
+      summary: Create a new fantasy team
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TeamInput"
+      responses:
+        "201":
+          description: Created team
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Team"
+
+  /teams/{id}:
+    get:
+      operationId: getTeam
+      tags: [teams]
+      summary: Get a fantasy team
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Team details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Team"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateTeam
+      tags: [teams]
+      summary: Update team name or captain
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TeamUpdate"
+      responses:
+        "200":
+          description: Updated team
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Team"
+
+  /teams/{id}/players:
+    get:
+      operationId: getTeamPlayers
+      tags: [teams]
+      summary: Get players in a team
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Team player selections
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TeamPlayer"
+    post:
+      operationId: addPlayerToTeam
+      tags: [teams]
+      summary: Add a player to the team
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TeamPlayerInput"
+      responses:
+        "201":
+          description: Player added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamPlayer"
+
+  /teams/{id}/players/{playerId}:
+    delete:
+      operationId: removePlayerFromTeam
+      tags: [teams]
+      summary: Remove a player from the team
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: playerId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Removed
+
+  /leagues:
+    get:
+      operationId: listLeagues
+      tags: [leagues]
+      summary: List all leagues
+      responses:
+        "200":
+          description: All leagues
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/League"
+    post:
+      operationId: createLeague
+      tags: [leagues]
+      summary: Create a league
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LeagueInput"
+      responses:
+        "201":
+          description: Created league
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/League"
+
+  /leagues/{id}:
+    get:
+      operationId: getLeague
+      tags: [leagues]
+      summary: Get a league
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: League details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/League"
+        "404":
+          description: Not found
+
+  /leagues/{id}/leaderboard:
+    get:
+      operationId: getLeagueLeaderboard
+      tags: [leagues]
+      summary: Get league leaderboard
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Ranked teams in the league
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LeaderboardEntry"
+
+  /leagues/{id}/join:
+    post:
+      operationId: joinLeague
+      tags: [leagues]
+      summary: Join a league with a team
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JoinLeagueInput"
+      responses:
+        "200":
+          description: Joined
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/League"
+
+  /gameweeks:
+    get:
+      operationId: listGameweeks
+      tags: [gameweeks]
+      summary: List all gameweeks
+      responses:
+        "200":
+          description: All gameweeks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Gameweek"
+
+  /gameweeks/current:
+    get:
+      operationId: getCurrentGameweek
+      tags: [gameweeks]
+      summary: Get the current active gameweek
+      responses:
+        "200":
+          description: Current gameweek with fixtures
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameweekDetail"
+
+  /gameweeks/{id}/fixtures:
+    get:
+      operationId: getGameweekFixtures
+      tags: [gameweeks]
+      summary: Get fixtures for a gameweek
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Fixtures
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Fixture"
+
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Get dashboard summary for a team
+      parameters:
+        - name: teamId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Dashboard stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
+  /dashboard/activity:
+    get:
+      operationId: getRecentActivity
+      tags: [dashboard]
+      summary: Get recent scoring activity
+      parameters:
+        - name: teamId
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        "200":
+          description: Recent activity
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityItem"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +460,271 @@ components:
       required:
         - status
 
+    Player:
+      type: object
+      required: [id, name, position, club, totalPoints, price]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        position:
+          type: string
+          enum: [GK, DEF, MID, FWD]
+        club:
+          type: string
+        clubShortName:
+          type: string
+        totalPoints:
+          type: integer
+        price:
+          type: number
+        form:
+          type: number
+        selected:
+          type: number
+          description: Percentage of teams who have this player
+        goalsScored:
+          type: integer
+        assists:
+          type: integer
+        cleanSheets:
+          type: integer
+        imageUrl:
+          type: ["string", "null"]
+
+    Team:
+      type: object
+      required: [id, name, totalPoints, budget, managerName]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        managerName:
+          type: string
+        totalPoints:
+          type: integer
+        budget:
+          type: number
+        captainId:
+          type: ["integer", "null"]
+        viceCaptainId:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+
+    TeamInput:
+      type: object
+      required: [name, managerName]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        managerName:
+          type: string
+          minLength: 1
+
+    TeamUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        captainId:
+          type: ["integer", "null"]
+        viceCaptainId:
+          type: ["integer", "null"]
+
+    TeamPlayer:
+      type: object
+      required: [id, teamId, playerId, player, slot]
+      properties:
+        id:
+          type: integer
+        teamId:
+          type: integer
+        playerId:
+          type: integer
+        slot:
+          type: integer
+        isCaptain:
+          type: boolean
+        isViceCaptain:
+          type: boolean
+        player:
+          $ref: "#/components/schemas/Player"
+
+    TeamPlayerInput:
+      type: object
+      required: [playerId, slot]
+      properties:
+        playerId:
+          type: integer
+        slot:
+          type: integer
+        isCaptain:
+          type: boolean
+        isViceCaptain:
+          type: boolean
+
+    League:
+      type: object
+      required: [id, name, teamCount]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        code:
+          type: string
+        teamCount:
+          type: integer
+        createdAt:
+          type: string
+
+    LeagueInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        description:
+          type: string
+
+    JoinLeagueInput:
+      type: object
+      required: [teamId]
+      properties:
+        teamId:
+          type: integer
+        code:
+          type: string
+
+    LeaderboardEntry:
+      type: object
+      required: [rank, teamId, teamName, managerName, totalPoints]
+      properties:
+        rank:
+          type: integer
+        teamId:
+          type: integer
+        teamName:
+          type: string
+        managerName:
+          type: string
+        totalPoints:
+          type: integer
+        gameweekPoints:
+          type: integer
+
+    Gameweek:
+      type: object
+      required: [id, number, status]
+      properties:
+        id:
+          type: integer
+        number:
+          type: integer
+        status:
+          type: string
+          enum: [upcoming, active, finished]
+        startDate:
+          type: string
+        endDate:
+          type: string
+        averagePoints:
+          type: ["integer", "null"]
+        highestPoints:
+          type: ["integer", "null"]
+
+    GameweekDetail:
+      type: object
+      required: [id, number, status, fixtures]
+      properties:
+        id:
+          type: integer
+        number:
+          type: integer
+        status:
+          type: string
+          enum: [upcoming, active, finished]
+        startDate:
+          type: string
+        endDate:
+          type: string
+        averagePoints:
+          type: ["integer", "null"]
+        highestPoints:
+          type: ["integer", "null"]
+        fixtures:
+          type: array
+          items:
+            $ref: "#/components/schemas/Fixture"
+
+    Fixture:
+      type: object
+      required: [id, homeTeam, awayTeam, kickoff, status]
+      properties:
+        id:
+          type: integer
+        gameweekId:
+          type: integer
+        homeTeam:
+          type: string
+        awayTeam:
+          type: string
+        homeScore:
+          type: ["integer", "null"]
+        awayScore:
+          type: ["integer", "null"]
+        kickoff:
+          type: string
+        status:
+          type: string
+          enum: [scheduled, live, finished]
+
+    DashboardSummary:
+      type: object
+      required: [teamPoints, gameweekPoints, globalRank, leagueCount, playerCount, budgetRemaining]
+      properties:
+        teamPoints:
+          type: integer
+        gameweekPoints:
+          type: integer
+        globalRank:
+          type: integer
+        leagueCount:
+          type: integer
+        playerCount:
+          type: integer
+        budgetRemaining:
+          type: number
+        captainName:
+          type: ["string", "null"]
+        captainPoints:
+          type: ["integer", "null"]
+        topScorerName:
+          type: ["string", "null"]
+        topScorerPoints:
+          type: ["integer", "null"]
+
+    ActivityItem:
+      type: object
+      required: [id, type, description, points, timestamp]
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum: [goal, assist, cleanSheet, bonus, yellowCard, redCard]
+        description:
+          type: string
+        playerName:
+          type: string
+        points:
+          type: integer
+        timestamp:
+          type: string

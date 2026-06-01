@@ -1,0 +1,125 @@
+import { Router, type IRouter } from "express";
+import { eq, count } from "drizzle-orm";
+import { db, leaguesTable, leagueTeamsTable, teamsTable } from "@workspace/db";
+import {
+  CreateLeagueBody,
+  GetLeagueParams,
+  GetLeagueLeaderboardParams,
+  JoinLeagueParams,
+  JoinLeagueBody,
+  ListLeaguesResponse,
+  GetLeagueResponse,
+  GetLeagueLeaderboardResponse,
+  JoinLeagueResponse,
+} from "@workspace/api-zod";
+
+const router: IRouter = Router();
+
+function randomCode(len = 6) {
+  return Math.random().toString(36).toUpperCase().slice(2, 2 + len);
+}
+
+router.get("/leagues", async (_req, res): Promise<void> => {
+  const leagues = await db.select().from(leaguesTable);
+  const result = await Promise.all(
+    leagues.map(async (l) => {
+      const [{ value: teamCount }] = await db
+        .select({ value: count() })
+        .from(leagueTeamsTable)
+        .where(eq(leagueTeamsTable.leagueId, l.id));
+      return { ...l, teamCount: Number(teamCount) };
+    })
+  );
+  res.json(ListLeaguesResponse.parse(result));
+});
+
+router.post("/leagues", async (req, res): Promise<void> => {
+  const parsed = CreateLeagueBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const [league] = await db.insert(leaguesTable).values({
+    name: parsed.data.name,
+    description: parsed.data.description ?? null,
+    code: randomCode(),
+  }).returning();
+  res.status(201).json(GetLeagueResponse.parse({ ...league, teamCount: 0 }));
+});
+
+router.get("/leagues/:id", async (req, res): Promise<void> => {
+  const params = GetLeagueParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const [league] = await db.select().from(leaguesTable).where(eq(leaguesTable.id, params.data.id));
+  if (!league) {
+    res.status(404).json({ error: "League not found" });
+    return;
+  }
+  const [{ value: teamCount }] = await db
+    .select({ value: count() })
+    .from(leagueTeamsTable)
+    .where(eq(leagueTeamsTable.leagueId, league.id));
+  res.json(GetLeagueResponse.parse({ ...league, teamCount: Number(teamCount) }));
+});
+
+router.get("/leagues/:id/leaderboard", async (req, res): Promise<void> => {
+  const params = GetLeagueLeaderboardParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const members = await db
+    .select({ teamId: leagueTeamsTable.teamId })
+    .from(leagueTeamsTable)
+    .where(eq(leagueTeamsTable.leagueId, params.data.id));
+  const teamIds = members.map((m) => m.teamId);
+  if (!teamIds.length) {
+    res.json([]);
+    return;
+  }
+  const teams = await db.select().from(teamsTable);
+  const ranked = teams
+    .filter((t) => teamIds.includes(t.id))
+    .sort((a, b) => b.totalPoints - a.totalPoints)
+    .map((t, i) => ({
+      rank: i + 1,
+      teamId: t.id,
+      teamName: t.name,
+      managerName: t.managerName,
+      totalPoints: t.totalPoints,
+      gameweekPoints: 0,
+    }));
+  res.json(GetLeagueLeaderboardResponse.parse(ranked));
+});
+
+router.post("/leagues/:id/join", async (req, res): Promise<void> => {
+  const params = JoinLeagueParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const parsed = JoinLeagueBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const [league] = await db.select().from(leaguesTable).where(eq(leaguesTable.id, params.data.id));
+  if (!league) {
+    res.status(404).json({ error: "League not found" });
+    return;
+  }
+  await db.insert(leagueTeamsTable).values({
+    leagueId: params.data.id,
+    teamId: parsed.data.teamId,
+  }).onConflictDoNothing();
+  const [{ value: teamCount }] = await db
+    .select({ value: count() })
+    .from(leagueTeamsTable)
+    .where(eq(leagueTeamsTable.leagueId, league.id));
+  res.json(JoinLeagueResponse.parse({ ...league, teamCount: Number(teamCount) }));
+});
+
+export default router;
