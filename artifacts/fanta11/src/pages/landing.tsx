@@ -83,7 +83,7 @@ function LoginPage({ onBack, onGoSignup }: { onBack: () => void; onGoSignup: () 
 /* ─── Sign Up page ───────────────────────────────────────────────────── */
 function SignupPage({ onBack, onGoLogin }: { onBack: () => void; onGoLogin: () => void }) {
   const { register } = useAuth();
-  const [form, setForm] = useState({ displayName: "", username: "", email: "", password: "" });
+  const [form, setForm] = useState({ displayName: "", username: "", email: "", password: "", confirmPassword: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -93,6 +93,14 @@ function SignupPage({ onBack, onGoLogin }: { onBack: () => void; onGoLogin: () =
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    if (form.password !== form.confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+    if (form.password.length < 6) {
+      setError("Password must be at least 6 characters.");
+      return;
+    }
     setLoading(true);
     try { await register(form.displayName, form.username, form.email, form.password); }
     catch (err) { setError(err instanceof Error ? err.message : "Registration failed"); }
@@ -111,18 +119,19 @@ function SignupPage({ onBack, onGoLogin }: { onBack: () => void; onGoLogin: () =
 
   return (
     <AuthCard>
-      <div style={{ textAlign: "center", marginBottom: 24 }}>
+      <div style={{ textAlign: "center", marginBottom: 20 }}>
         <h1 style={{ margin: 0, color: "#fff", fontSize: 22, fontWeight: 900 }}>Create your account</h1>
         <p style={{ margin: "6px 0 0", color: "rgba(147,197,253,0.5)", fontSize: 13 }}>Join thousands of FANTA11 managers</p>
       </div>
       <form onSubmit={handleSubmit}>
         {[
-          { label: "Full Name", field: "displayName" as const, type: "text",     placeholder: "Pep Guardiola",         testid: "input-display-name", ac: "name" },
-          { label: "Username",  field: "username"    as const, type: "text",     placeholder: "pepguardiola",          testid: "input-username",     ac: "username" },
-          { label: "Email",     field: "email"       as const, type: "email",    placeholder: "you@example.com",       testid: "input-email",        ac: "email" },
-          { label: "Password",  field: "password"    as const, type: "password", placeholder: "At least 6 characters", testid: "input-password",     ac: "new-password" },
+          { label: "Full Name",        field: "displayName"     as const, type: "text",     placeholder: "Pep Guardiola",         testid: "input-display-name",      ac: "name" },
+          { label: "Username",         field: "username"        as const, type: "text",     placeholder: "pepguardiola",          testid: "input-username",          ac: "username" },
+          { label: "Email",            field: "email"           as const, type: "email",    placeholder: "you@example.com",       testid: "input-email",             ac: "email" },
+          { label: "Password",         field: "password"        as const, type: "password", placeholder: "At least 6 characters", testid: "input-password",          ac: "new-password" },
+          { label: "Confirm Password", field: "confirmPassword" as const, type: "password", placeholder: "Repeat your password",  testid: "input-confirm-password",  ac: "new-password" },
         ].map(({ label, field, type, placeholder, testid, ac }) => (
-          <div key={field} style={{ marginBottom: 14 }}>
+          <div key={field} style={{ marginBottom: 12 }}>
             <label style={labelStyle}>{label}</label>
             <input data-testid={testid} type={type} value={form[field]} onChange={set(field)} required placeholder={placeholder} autoComplete={ac} style={inputStyle} />
           </div>
@@ -133,7 +142,7 @@ function SignupPage({ onBack, onGoLogin }: { onBack: () => void; onGoLogin: () =
           {loading ? "Creating account…" : "Get Started Free"}
         </button>
       </form>
-      <p style={{ textAlign: "center", fontSize: 13, color: "rgba(147,197,253,0.5)", marginTop: 20 }}>
+      <p style={{ textAlign: "center", fontSize: 13, color: "rgba(147,197,253,0.5)", marginTop: 18 }}>
         Already have an account?{" "}
         <button onClick={onGoLogin} style={{ background: "none", border: "none", color: "#60a5fa", fontWeight: 700, cursor: "pointer", fontSize: 13 }}>Sign in</button>
       </p>
