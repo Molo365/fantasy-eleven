@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "@/contexts/auth";
 import logoSrc from "../assets/logo.png";
-import stadiumSrc from "../assets/stadium.jpg";
+import heroBg from "../assets/hero-bg.jpg";
 
 type View = "landing" | "login" | "signup";
 
@@ -43,7 +43,7 @@ function LoginForm({ onBack }: { onBack: () => void }) {
             onChange={(e) => setEmail(e.target.value)}
             required
             placeholder="you@example.com"
-            className="w-full px-3 py-2.5 rounded-xl bg-white/6 border border-white/12 text-white text-sm placeholder-blue-300/30 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+            className="w-full px-3 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white text-sm placeholder-blue-300/30 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
           />
         </div>
         <div>
@@ -55,7 +55,7 @@ function LoginForm({ onBack }: { onBack: () => void }) {
             onChange={(e) => setPassword(e.target.value)}
             required
             placeholder="••••••••"
-            className="w-full px-3 py-2.5 rounded-xl bg-white/6 border border-white/12 text-white text-sm placeholder-blue-300/30 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+            className="w-full px-3 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white text-sm placeholder-blue-300/30 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
           />
         </div>
         {error && (
@@ -120,7 +120,7 @@ function SignupForm({ onBack }: { onBack: () => void }) {
               onChange={set(field)}
               required
               placeholder={placeholder}
-              className="w-full px-3 py-2.5 rounded-xl bg-white/6 border border-white/12 text-white text-sm placeholder-blue-300/30 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+              className="w-full px-3 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white text-sm placeholder-blue-300/30 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
             />
           </div>
         ))}
@@ -140,92 +140,23 @@ function SignupForm({ onBack }: { onBack: () => void }) {
   );
 }
 
-function HeroContent({ onLogin, onSignup }: { onLogin: () => void; onSignup: () => void }) {
-  const stats = [
-    { value: "5", label: "Leagues" },
-    { value: "38", label: "Gameweeks" },
-    { value: "500+", label: "Players" },
-  ];
-
-  return (
-    <div className="flex flex-col items-center text-center max-w-2xl mx-auto px-6">
-      {/* Logo */}
-      <div style={{ filter: "drop-shadow(0 0 40px rgba(59,130,246,0.7))" }} className="mb-2">
-        <img src={logoSrc} alt="FANTA11" style={{ width: "300px", height: "300px" }} className="object-contain" />
-      </div>
-
-      {/* Headline */}
-      <h1
-        className="text-4xl md:text-5xl font-black leading-tight tracking-tight mb-3"
-        style={{
-          background: "linear-gradient(135deg, #ffffff 0%, #93c5fd 50%, #3b82f6 100%)",
-          WebkitBackgroundClip: "text",
-          WebkitTextFillColor: "transparent",
-        }}
-      >
-        Build Your Dream Team.<br />Dominate Every Gameweek.
-      </h1>
-
-      {/* Sub-heading */}
-      <p className="text-base text-blue-200/60 max-w-lg leading-relaxed mb-7">
-        The ultimate fantasy soccer platform. Pick your squad, outsmart the competition, and rise to the top.
-      </p>
-
-      {/* CTA buttons */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-8">
-        <button
-          data-testid="button-get-started"
-          onClick={onSignup}
-          className="px-8 py-3 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-base transition-all shadow-xl shadow-blue-600/40 hover:scale-105 active:scale-95"
-        >
-          Get Started Free
-        </button>
-        <button
-          data-testid="button-login"
-          onClick={onLogin}
-          className="px-8 py-3 rounded-2xl border border-white/20 hover:border-blue-400/50 bg-white/5 hover:bg-white/10 text-white font-bold text-base transition-all hover:scale-105 active:scale-95"
-        >
-          Sign In
-        </button>
-      </div>
-
-      {/* Stats */}
-      <div className="flex items-center gap-10">
-        {stats.map(({ value, label }, i) => (
-          <div key={label} className="flex items-center gap-10">
-            <div className="text-center">
-              <div className="text-xl font-black text-white">{value}</div>
-              <div className="text-[11px] text-blue-300/50 font-medium uppercase tracking-wider">{label}</div>
-            </div>
-            {i < stats.length - 1 && <div className="w-px h-8 bg-white/10" />}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 export function LandingPage() {
   const [view, setView] = useState<View>("landing");
 
   return (
-    <div className="h-screen overflow-hidden flex flex-col dark relative" style={{ background: "#0a1628" }}>
-      {/* Stadium backdrop */}
-      <div
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: `url(${stadiumSrc})` }}
-      />
-      {/* Dark overlay */}
-      <div
-        className="absolute inset-0"
-        style={{
-          background: "linear-gradient(180deg, rgba(10,22,40,0.85) 0%, rgba(14,31,61,0.72) 50%, rgba(10,22,40,0.95) 100%)",
-        }}
+    <div className="h-screen overflow-hidden flex flex-col dark relative">
+      {/* Full-screen hero image */}
+      <img
+        src={heroBg}
+        alt=""
+        className="absolute inset-0 w-full h-full object-cover object-center"
+        aria-hidden
       />
 
-      {/* All content above backdrop */}
+      {/* Content layer */}
       <div className="relative z-10 flex flex-col h-full">
-        {/* Nav */}
+
+        {/* Navbar — replaces the one baked into the image */}
         <header className="flex items-center px-6 md:px-10 py-4 flex-shrink-0 gap-5">
           <div className="flex items-center gap-2.5">
             <img src={logoSrc} alt="FANTA11" className="w-8 h-8 object-contain" />
@@ -238,26 +169,45 @@ export function LandingPage() {
             <button
               data-testid="button-nav-login"
               onClick={() => setView("login")}
-              className="text-sm font-semibold text-blue-300/70 hover:text-white transition-colors"
+              className="text-sm font-semibold text-white/80 hover:text-white transition-colors"
             >
               Sign In
             </button>
           )}
         </header>
 
-        {/* Main content — slightly above true center so logo feels grounded */}
-        <main className="flex-1 flex items-center justify-center pb-8">
-          {view === "landing" && (
-            <HeroContent onLogin={() => setView("login")} onSignup={() => setView("signup")} />
-          )}
-          {view === "login" && <LoginForm onBack={() => setView("landing")} />}
-          {view === "signup" && <SignupForm onBack={() => setView("landing")} />}
-        </main>
+        {/* Form overlay — shown when login/signup is active */}
+        {view !== "landing" && (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="bg-black/60 backdrop-blur-md rounded-2xl p-8 border border-white/10 w-full max-w-sm mx-6">
+              {view === "login" && <LoginForm onBack={() => setView("landing")} />}
+              {view === "signup" && <SignupForm onBack={() => setView("landing")} />}
+            </div>
+          </div>
+        )}
 
-        {/* Footer */}
-        <footer className="text-center py-3 text-blue-300/25 text-xs flex-shrink-0">
-          FANTA11 &copy; {new Date().getFullYear()} — Fantasy Soccer Platform
-        </footer>
+        {/* Invisible clickable zones over the image buttons (landing view only) */}
+        {view === "landing" && (
+          <div className="flex-1 relative">
+            {/* "Get Started Free" button zone — positioned over the blue button in the image */}
+            <button
+              data-testid="button-get-started"
+              onClick={() => setView("signup")}
+              aria-label="Get Started Free"
+              className="absolute cursor-pointer rounded-full opacity-0 hover:opacity-20 hover:bg-blue-400 transition-opacity"
+              style={{ left: "36%", top: "74%", width: "14%", height: "9%" }}
+            />
+            {/* "Sign In" button zone — positioned over the Sign In button in the image */}
+            <button
+              data-testid="button-login"
+              onClick={() => setView("login")}
+              aria-label="Sign In"
+              className="absolute cursor-pointer rounded-full opacity-0 hover:opacity-20 hover:bg-white transition-opacity"
+              style={{ left: "51%", top: "74%", width: "11%", height: "9%" }}
+            />
+          </div>
+        )}
+
       </div>
     </div>
   );
