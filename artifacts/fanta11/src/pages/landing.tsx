@@ -151,9 +151,9 @@ function HeroContent({ onLogin, onSignup }: { onLogin: () => void; onSignup: () 
       {/* Logo */}
       <div
         className="relative mb-8"
-        style={{ filter: "drop-shadow(0 0 40px rgba(59,130,246,0.55))" }}
+        style={{ filter: "drop-shadow(0 0 60px rgba(59,130,246,0.7))" }}
       >
-        <img src={logoSrc} alt="FANTA11" className="w-40 h-40 object-contain" />
+        <img src={logoSrc} alt="FANTA11" style={{ width: "360px", height: "360px" }} className="object-contain" />
       </div>
 
       {/* Headline */}
