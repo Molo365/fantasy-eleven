@@ -169,7 +169,7 @@ export function LandingPage() {
         <button
           data-testid="button-nav-login"
           onClick={() => setView("login")}
-          style={{ padding: "8px 22px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.3)", background: "rgba(0,0,0,0.35)", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer" }}
+          style={{ padding: "8px 22px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.55)", background: "rgba(255,255,255,0.12)", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer" }}
         >
           Sign In
         </button>
@@ -202,21 +202,21 @@ export function LandingPage() {
         </div>
 
         {/* Stats */}
-        <div style={{ display: "flex", alignItems: "center" }}>
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "center", gap: "8px 0", width: "100%", padding: "0 12px", boxSizing: "border-box" }}>
           {[
             { icon: "🏆", value: "5",    label: "Leagues" },
             { icon: "📅", value: "38",   label: "Gameweeks" },
             { icon: "⚽", value: "500+", label: "Players" },
           ].map(({ icon, value, label }, i, arr) => (
             <div key={label} style={{ display: "flex", alignItems: "center" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "0 36px" }}>
-                <span style={{ fontSize: 30, filter: "sepia(1) saturate(5) hue-rotate(5deg)" }}>{icon}</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 20px" }}>
+                <span style={{ fontSize: 26, filter: "sepia(1) saturate(5) hue-rotate(5deg)" }}>{icon}</span>
                 <div>
-                  <div style={{ fontSize: 24, fontWeight: 900, color: "#fff", lineHeight: 1, textShadow: shadow }}>{value}</div>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: "#d4a843", letterSpacing: "0.12em", textTransform: "uppercase", marginTop: 3 }}>{label}</div>
+                  <div style={{ fontSize: 22, fontWeight: 900, color: "#fff", lineHeight: 1, textShadow: shadow }}>{value}</div>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: "#d4a843", letterSpacing: "0.12em", textTransform: "uppercase", marginTop: 3 }}>{label}</div>
                 </div>
               </div>
-              {i < arr.length - 1 && <div style={{ width: 1, height: 40, background: "rgba(255,255,255,0.2)" }} />}
+              {i < arr.length - 1 && <div style={{ width: 1, height: 36, background: "rgba(255,255,255,0.2)" }} />}
             </div>
           ))}
         </div>
