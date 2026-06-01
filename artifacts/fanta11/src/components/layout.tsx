@@ -7,6 +7,7 @@ import {
   ShieldHalf,
   Activity
 } from "lucide-react";
+import logoSrc from "@assets/Gemini_Generated_Image_643evw643evw643e_1780277713085.png";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
@@ -23,11 +24,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-background text-foreground flex flex-col md:flex-row dark">
       {/* Sidebar */}
       <aside className="w-full md:w-64 border-r border-border bg-card flex flex-col hidden md:flex">
-        <div className="p-6 flex items-center gap-3">
-          <div className="w-8 h-8 rounded bg-primary flex items-center justify-center text-primary-foreground font-bold">
-            F11
-          </div>
-          <span className="font-bold text-xl tracking-tight uppercase">FANTA11</span>
+        <div className="p-4 flex items-center">
+          <img src={logoSrc} alt="FANTA11" className="h-16 w-auto" />
         </div>
         
         <nav className="flex-1 px-4 space-y-2 mt-4">
@@ -46,11 +44,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
       {/* Mobile Header */}
       <header className="md:hidden border-b border-border bg-card p-4 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded bg-primary flex items-center justify-center text-primary-foreground font-bold text-xs">
-            F11
-          </div>
-          <span className="font-bold tracking-tight uppercase">FANTA11</span>
+        <div className="flex items-center">
+          <img src={logoSrc} alt="FANTA11" className="h-10 w-auto" />
         </div>
         <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
           {navItems.map((item) => (
