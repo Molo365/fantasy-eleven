@@ -178,6 +178,11 @@ export function LandingPage() {
       {/* ── Bottom section: buttons + stats ── */}
       <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, display: "flex", flexDirection: "column", alignItems: "center", paddingBottom: 36, gap: 28, zIndex: 10 }}>
 
+        {/* Slogan */}
+        <p style={{ margin: 0, fontSize: 28, fontWeight: 900, color: "#fff", textAlign: "center", textShadow: "0 2px 12px rgba(0,0,0,0.95), 0 1px 4px rgba(0,0,0,1)", letterSpacing: "0.01em" }}>
+          Build Your Dream Team. Dominate Gameweek.
+        </p>
+
         {/* CTA buttons */}
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <button
