@@ -8,15 +8,22 @@ type View = "landing" | "login" | "signup";
 function Backdrop() {
   return (
     <>
+      {/* background image */}
       <div
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
         style={{ backgroundImage: "url('/hero.jpg')" }}
       />
+      {/* blur layer: blurs the image behind it, erasing baked-in text */}
+      <div
+        className="absolute inset-0"
+        style={{ backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)" }}
+      />
+      {/* dark colour tint on top of blur */}
       <div
         className="absolute inset-0"
         style={{
           background:
-            "linear-gradient(180deg, rgba(6,12,30,0.55) 0%, rgba(6,12,30,0.45) 50%, rgba(6,12,30,0.80) 100%)",
+            "linear-gradient(170deg, rgba(6,12,30,0.55) 0%, rgba(6,12,30,0.50) 40%, rgba(6,12,30,0.80) 100%)",
         }}
       />
     </>
