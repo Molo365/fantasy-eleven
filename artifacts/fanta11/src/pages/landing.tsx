@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "@/contexts/auth";
 import logoSrc from "../assets/logo.png";
+import stadiumSrc from "../assets/stadium.jpg";
 
 type View = "landing" | "login" | "signup";
 
@@ -209,11 +210,23 @@ export function LandingPage() {
 
   return (
     <div
-      className="min-h-screen flex flex-col dark"
-      style={{
-        background: "radial-gradient(ellipse 100% 80% at 50% -10%, rgba(29,78,216,0.4) 0%, transparent 70%), linear-gradient(180deg, #0a1628 0%, #0e1f3d 40%, #0a1628 100%)",
-      }}
+      className="min-h-screen flex flex-col dark relative"
+      style={{ background: "#0a1628" }}
     >
+      {/* Stadium backdrop */}
+      <div
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: `url(${stadiumSrc})` }}
+      />
+      {/* Dark overlay: navy gradient so content stays readable */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background: "linear-gradient(180deg, rgba(10,22,40,0.82) 0%, rgba(14,31,61,0.75) 40%, rgba(10,22,40,0.92) 100%)",
+        }}
+      />
+      {/* Content sits above the backdrop */}
+      <div className="relative z-10 flex flex-col min-h-screen">
       {/* Top nav bar */}
       <header className="flex items-center justify-between px-6 md:px-12 py-5">
         <div className="flex items-center gap-3">
@@ -256,9 +269,10 @@ export function LandingPage() {
       </main>
 
       {/* Footer */}
-      <footer className="text-center py-6 text-blue-300/30 text-xs relative z-10">
+      <footer className="text-center py-6 text-blue-300/30 text-xs">
         FANTA11 &copy; {new Date().getFullYear()} — Fantasy Soccer Platform
       </footer>
+      </div>
     </div>
   );
 }
