@@ -26,16 +26,16 @@ function LoginForm({ onBack }: { onBack: () => void }) {
   };
 
   return (
-    <div className="w-full max-w-md mx-auto">
-      <button onClick={onBack} className="flex items-center gap-2 text-blue-400/70 hover:text-blue-300 text-sm mb-8 transition-colors">
-        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
+    <div className="w-full max-w-sm mx-auto">
+      <button onClick={onBack} className="flex items-center gap-2 text-blue-400/70 hover:text-blue-300 text-sm mb-5 transition-colors">
+        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
         Back
       </button>
-      <h2 className="text-3xl font-black text-white mb-2 tracking-tight">Welcome back</h2>
-      <p className="text-blue-300/60 mb-8">Sign in to your FANTA11 account</p>
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <h2 className="text-2xl font-black text-white mb-1 tracking-tight">Welcome back</h2>
+      <p className="text-blue-300/60 text-sm mb-5">Sign in to your FANTA11 account</p>
+      <form onSubmit={handleSubmit} className="space-y-3">
         <div>
-          <label className="block text-sm font-medium text-blue-200/70 mb-1.5">Email</label>
+          <label className="block text-xs font-medium text-blue-200/70 mb-1">Email</label>
           <input
             data-testid="input-email"
             type="email"
@@ -43,11 +43,11 @@ function LoginForm({ onBack }: { onBack: () => void }) {
             onChange={(e) => setEmail(e.target.value)}
             required
             placeholder="you@example.com"
-            className="w-full px-4 py-3 rounded-xl bg-white/6 border border-white/12 text-white placeholder-blue-300/30 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+            className="w-full px-3 py-2.5 rounded-xl bg-white/6 border border-white/12 text-white text-sm placeholder-blue-300/30 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-blue-200/70 mb-1.5">Password</label>
+          <label className="block text-xs font-medium text-blue-200/70 mb-1">Password</label>
           <input
             data-testid="input-password"
             type="password"
@@ -55,17 +55,17 @@ function LoginForm({ onBack }: { onBack: () => void }) {
             onChange={(e) => setPassword(e.target.value)}
             required
             placeholder="••••••••"
-            className="w-full px-4 py-3 rounded-xl bg-white/6 border border-white/12 text-white placeholder-blue-300/30 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+            className="w-full px-3 py-2.5 rounded-xl bg-white/6 border border-white/12 text-white text-sm placeholder-blue-300/30 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
           />
         </div>
         {error && (
-          <p className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-2.5">{error}</p>
+          <p className="text-red-400 text-xs bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{error}</p>
         )}
         <button
           data-testid="button-login"
           type="submit"
           disabled={loading}
-          className="w-full py-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-base transition-all shadow-lg shadow-blue-600/30 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm transition-all shadow-lg shadow-blue-600/30 disabled:opacity-50 disabled:cursor-not-allowed mt-1"
         >
           {loading ? "Signing in..." : "Sign In"}
         </button>
@@ -97,14 +97,14 @@ function SignupForm({ onBack }: { onBack: () => void }) {
   };
 
   return (
-    <div className="w-full max-w-md mx-auto">
-      <button onClick={onBack} className="flex items-center gap-2 text-blue-400/70 hover:text-blue-300 text-sm mb-8 transition-colors">
-        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
+    <div className="w-full max-w-sm mx-auto">
+      <button onClick={onBack} className="flex items-center gap-2 text-blue-400/70 hover:text-blue-300 text-sm mb-5 transition-colors">
+        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
         Back
       </button>
-      <h2 className="text-3xl font-black text-white mb-2 tracking-tight">Create account</h2>
-      <p className="text-blue-300/60 mb-8">Join thousands of managers on FANTA11</p>
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <h2 className="text-2xl font-black text-white mb-1 tracking-tight">Create account</h2>
+      <p className="text-blue-300/60 text-sm mb-5">Join thousands of managers on FANTA11</p>
+      <form onSubmit={handleSubmit} className="space-y-3">
         {[
           { label: "Full Name", field: "displayName" as const, type: "text", placeholder: "Pep Guardiola", testid: "input-display-name" },
           { label: "Username", field: "username" as const, type: "text", placeholder: "pepguardiola", testid: "input-username" },
@@ -112,7 +112,7 @@ function SignupForm({ onBack }: { onBack: () => void }) {
           { label: "Password", field: "password" as const, type: "password", placeholder: "At least 6 characters", testid: "input-password" },
         ].map(({ label, field, type, placeholder, testid }) => (
           <div key={field}>
-            <label className="block text-sm font-medium text-blue-200/70 mb-1.5">{label}</label>
+            <label className="block text-xs font-medium text-blue-200/70 mb-1">{label}</label>
             <input
               data-testid={testid}
               type={type}
@@ -120,18 +120,18 @@ function SignupForm({ onBack }: { onBack: () => void }) {
               onChange={set(field)}
               required
               placeholder={placeholder}
-              className="w-full px-4 py-3 rounded-xl bg-white/6 border border-white/12 text-white placeholder-blue-300/30 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+              className="w-full px-3 py-2.5 rounded-xl bg-white/6 border border-white/12 text-white text-sm placeholder-blue-300/30 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
             />
           </div>
         ))}
         {error && (
-          <p className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-2.5">{error}</p>
+          <p className="text-red-400 text-xs bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{error}</p>
         )}
         <button
           data-testid="button-signup"
           type="submit"
           disabled={loading}
-          className="w-full py-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-base transition-all shadow-lg shadow-blue-600/30 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm transition-all shadow-lg shadow-blue-600/30 disabled:opacity-50 disabled:cursor-not-allowed mt-1"
         >
           {loading ? "Creating account..." : "Create Account"}
         </button>
@@ -142,24 +142,21 @@ function SignupForm({ onBack }: { onBack: () => void }) {
 
 function HeroContent({ onLogin, onSignup }: { onLogin: () => void; onSignup: () => void }) {
   const stats = [
-    { value: "2.4M+", label: "Active Managers" },
+    { value: "2.4M+", label: "Managers" },
     { value: "38", label: "Gameweeks" },
     { value: "500+", label: "Players" },
   ];
 
   return (
-    <div className="flex flex-col items-center text-center max-w-3xl mx-auto px-6">
+    <div className="flex flex-col items-center text-center max-w-2xl mx-auto px-6">
       {/* Logo */}
-      <div
-        className="relative mb-8"
-        style={{ filter: "drop-shadow(0 0 60px rgba(59,130,246,0.7))" }}
-      >
-        <img src={logoSrc} alt="FANTA11" style={{ width: "360px", height: "360px" }} className="object-contain" />
+      <div style={{ filter: "drop-shadow(0 0 40px rgba(59,130,246,0.7))" }} className="mb-4">
+        <img src={logoSrc} alt="FANTA11" style={{ width: "180px", height: "180px" }} className="object-contain" />
       </div>
 
       {/* Headline */}
       <h1
-        className="text-5xl md:text-6xl lg:text-7xl font-black leading-none tracking-tight mb-6"
+        className="text-4xl md:text-5xl font-black leading-tight tracking-tight mb-3"
         style={{
           background: "linear-gradient(135deg, #ffffff 0%, #93c5fd 50%, #3b82f6 100%)",
           WebkitBackgroundClip: "text",
@@ -170,34 +167,37 @@ function HeroContent({ onLogin, onSignup }: { onLogin: () => void; onSignup: () 
       </h1>
 
       {/* Sub-heading */}
-      <p className="text-lg md:text-xl text-blue-200/60 max-w-xl leading-relaxed mb-10">
-        The ultimate fantasy soccer platform. Pick your squad, outsmart the competition, and rise to the top of every league.
+      <p className="text-base text-blue-200/60 max-w-lg leading-relaxed mb-7">
+        The ultimate fantasy soccer platform. Pick your squad, outsmart the competition, and rise to the top.
       </p>
 
       {/* CTA buttons */}
-      <div className="flex flex-col sm:flex-row gap-4 mb-14">
+      <div className="flex flex-col sm:flex-row gap-3 mb-8">
         <button
           data-testid="button-get-started"
           onClick={onSignup}
-          className="px-10 py-4 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-lg transition-all shadow-2xl shadow-blue-600/40 hover:shadow-blue-500/50 hover:scale-105 active:scale-95"
+          className="px-8 py-3 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-base transition-all shadow-xl shadow-blue-600/40 hover:scale-105 active:scale-95"
         >
           Get Started Free
         </button>
         <button
           data-testid="button-login"
           onClick={onLogin}
-          className="px-10 py-4 rounded-2xl border border-white/20 hover:border-blue-400/50 bg-white/5 hover:bg-white/10 text-white font-bold text-lg transition-all hover:scale-105 active:scale-95"
+          className="px-8 py-3 rounded-2xl border border-white/20 hover:border-blue-400/50 bg-white/5 hover:bg-white/10 text-white font-bold text-base transition-all hover:scale-105 active:scale-95"
         >
           Sign In
         </button>
       </div>
 
       {/* Stats */}
-      <div className="flex items-center gap-8 sm:gap-14">
-        {stats.map(({ value, label }) => (
-          <div key={label} className="text-center">
-            <div className="text-2xl sm:text-3xl font-black text-white">{value}</div>
-            <div className="text-xs text-blue-300/50 font-medium uppercase tracking-wider mt-0.5">{label}</div>
+      <div className="flex items-center gap-10">
+        {stats.map(({ value, label }, i) => (
+          <div key={label} className="flex items-center gap-10">
+            <div className="text-center">
+              <div className="text-xl font-black text-white">{value}</div>
+              <div className="text-[11px] text-blue-300/50 font-medium uppercase tracking-wider">{label}</div>
+            </div>
+            {i < stats.length - 1 && <div className="w-px h-8 bg-white/10" />}
           </div>
         ))}
       </div>
@@ -209,69 +209,55 @@ export function LandingPage() {
   const [view, setView] = useState<View>("landing");
 
   return (
-    <div
-      className="min-h-screen flex flex-col dark relative"
-      style={{ background: "#0a1628" }}
-    >
+    <div className="h-screen overflow-hidden flex flex-col dark relative" style={{ background: "#0a1628" }}>
       {/* Stadium backdrop */}
       <div
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
         style={{ backgroundImage: `url(${stadiumSrc})` }}
       />
-      {/* Dark overlay: navy gradient so content stays readable */}
+      {/* Dark overlay */}
       <div
         className="absolute inset-0"
         style={{
-          background: "linear-gradient(180deg, rgba(10,22,40,0.82) 0%, rgba(14,31,61,0.75) 40%, rgba(10,22,40,0.92) 100%)",
+          background: "linear-gradient(180deg, rgba(10,22,40,0.85) 0%, rgba(14,31,61,0.72) 50%, rgba(10,22,40,0.95) 100%)",
         }}
       />
-      {/* Content sits above the backdrop */}
-      <div className="relative z-10 flex flex-col min-h-screen">
-      {/* Top nav bar */}
-      <header className="flex items-center justify-between px-6 md:px-12 py-5">
-        <div className="flex items-center gap-3">
-          <img src={logoSrc} alt="FANTA11" className="w-9 h-9 object-contain" />
-          <span
-            className="font-black text-white tracking-[0.15em] text-lg uppercase"
-            style={{ textShadow: "-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000" }}
-          >FANTA11</span>
-        </div>
-        {view === "landing" && (
-          <button
-            data-testid="button-nav-login"
-            onClick={() => setView("login")}
-            className="text-sm font-semibold text-blue-300/70 hover:text-white transition-colors"
-          >
-            Sign In
-          </button>
-        )}
-      </header>
 
-      {/* Pitch lines decorative background */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden>
-        <div className="absolute inset-0" style={{
-          backgroundImage: `
-            repeating-linear-gradient(0deg, transparent, transparent 79px, rgba(59,130,246,0.03) 80px),
-            repeating-linear-gradient(90deg, transparent, transparent 79px, rgba(59,130,246,0.03) 80px)
-          `
-        }} />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full border border-blue-500/6" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 rounded-full border border-blue-500/8" />
-      </div>
+      {/* All content above backdrop */}
+      <div className="relative z-10 flex flex-col h-full">
+        {/* Nav */}
+        <header className="flex items-center justify-between px-6 md:px-10 py-4 flex-shrink-0">
+          <div className="flex items-center gap-2.5">
+            <img src={logoSrc} alt="FANTA11" className="w-8 h-8 object-contain" />
+            <span
+              className="font-black text-white tracking-[0.15em] text-base uppercase"
+              style={{ textShadow: "-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000" }}
+            >FANTA11</span>
+          </div>
+          {view === "landing" && (
+            <button
+              data-testid="button-nav-login"
+              onClick={() => setView("login")}
+              className="text-sm font-semibold text-blue-300/70 hover:text-white transition-colors"
+            >
+              Sign In
+            </button>
+          )}
+        </header>
 
-      {/* Main content */}
-      <main className="flex-1 flex items-center justify-center relative z-10 py-12">
-        {view === "landing" && (
-          <HeroContent onLogin={() => setView("login")} onSignup={() => setView("signup")} />
-        )}
-        {view === "login" && <LoginForm onBack={() => setView("landing")} />}
-        {view === "signup" && <SignupForm onBack={() => setView("landing")} />}
-      </main>
+        {/* Main content — centred in remaining space */}
+        <main className="flex-1 flex items-center justify-center">
+          {view === "landing" && (
+            <HeroContent onLogin={() => setView("login")} onSignup={() => setView("signup")} />
+          )}
+          {view === "login" && <LoginForm onBack={() => setView("landing")} />}
+          {view === "signup" && <SignupForm onBack={() => setView("landing")} />}
+        </main>
 
-      {/* Footer */}
-      <footer className="text-center py-6 text-blue-300/30 text-xs">
-        FANTA11 &copy; {new Date().getFullYear()} — Fantasy Soccer Platform
-      </footer>
+        {/* Footer */}
+        <footer className="text-center py-3 text-blue-300/25 text-xs flex-shrink-0">
+          FANTA11 &copy; {new Date().getFullYear()} — Fantasy Soccer Platform
+        </footer>
       </div>
     </div>
   );
