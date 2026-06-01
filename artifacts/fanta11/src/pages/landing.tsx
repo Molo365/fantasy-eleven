@@ -152,6 +152,14 @@ export function LandingPage() {
         className="absolute inset-0 w-full h-full object-cover object-center"
         aria-hidden
       />
+      {/* Bottom gradient — covers the stats baked into the image */}
+      <div
+        className="absolute bottom-0 left-0 right-0"
+        style={{
+          height: "30%",
+          background: "linear-gradient(to bottom, transparent 0%, rgba(8,16,35,0.9) 55%, rgba(8,16,35,1) 100%)",
+        }}
+      />
 
       {/* Content layer */}
       <div className="relative z-10 flex flex-col h-full">
@@ -186,24 +194,46 @@ export function LandingPage() {
           </div>
         )}
 
+        {/* Stats bar — pinned to the bottom via mt-auto */}
+        {view === "landing" && (
+          <div className="mt-auto flex-shrink-0 flex items-center justify-center gap-10 pb-6 pt-3">
+            {[
+              { icon: "🏆", value: "5", label: "Leagues" },
+              { icon: "📅", value: "38", label: "Gameweeks" },
+              { icon: "⚽", value: "500+", label: "Players" },
+            ].map(({ icon, value, label }, i, arr) => (
+              <div key={label} className="flex items-center gap-10">
+                <div className="flex items-center gap-2.5">
+                  <span className="text-2xl" style={{ filter: "sepia(1) saturate(3) hue-rotate(5deg)" }}>{icon}</span>
+                  <div>
+                    <div className="text-xl font-black text-white leading-none">{value}</div>
+                    <div className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "#d4a843" }}>{label}</div>
+                  </div>
+                </div>
+                {i < arr.length - 1 && <div className="w-px h-8 bg-white/15" />}
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Invisible clickable zones over the image buttons (landing view only) */}
         {view === "landing" && (
-          <div className="flex-1 relative">
-            {/* "Get Started Free" button zone — positioned over the blue button in the image */}
+          <div className="absolute inset-0 top-14 bottom-20">
+            {/* "Get Started Free" button zone */}
             <button
               data-testid="button-get-started"
               onClick={() => setView("signup")}
               aria-label="Get Started Free"
               className="absolute cursor-pointer rounded-full opacity-0 hover:opacity-20 hover:bg-blue-400 transition-opacity"
-              style={{ left: "36%", top: "74%", width: "14%", height: "9%" }}
+              style={{ left: "36%", top: "78%", width: "14%", height: "10%" }}
             />
-            {/* "Sign In" button zone — positioned over the Sign In button in the image */}
+            {/* "Sign In" button zone */}
             <button
               data-testid="button-login"
               onClick={() => setView("login")}
               aria-label="Sign In"
               className="absolute cursor-pointer rounded-full opacity-0 hover:opacity-20 hover:bg-white transition-opacity"
-              style={{ left: "51%", top: "74%", width: "11%", height: "9%" }}
+              style={{ left: "51%", top: "78%", width: "11%", height: "10%" }}
             />
           </div>
         )}
