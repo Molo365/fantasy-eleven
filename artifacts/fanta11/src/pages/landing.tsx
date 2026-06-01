@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@/contexts/auth";
-
-const logoSrc = "/logo.png";
+import logoSrc from "../assets/logo.png";
 
 type View = "landing" | "login" | "signup";
 
