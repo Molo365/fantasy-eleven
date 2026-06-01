@@ -1,67 +1,156 @@
 import { Link, useLocation } from "wouter";
-import { 
-  Trophy, 
-  Users, 
-  CalendarDays, 
+import {
+  Trophy,
+  Users,
+  CalendarDays,
   LayoutDashboard,
   ShieldHalf,
-  Activity
+  Menu,
+  X,
 } from "lucide-react";
-import logoSrc from "@assets/Gemini_Generated_Image_643evw643evw643e_1780277713085.png";
+import { useState } from "react";
+import logoSrc from "../assets/logo.png";
+
+const navItems = [
+  { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/squad", label: "Squad Builder", icon: ShieldHalf },
+  { href: "/players", label: "Player Pool", icon: Users },
+  { href: "/leagues", label: "Leagues", icon: Trophy },
+  { href: "/fixtures", label: "Fixtures", icon: CalendarDays },
+];
+
+function NavLink({ href, label, icon: Icon, active }: { href: string; label: string; icon: typeof LayoutDashboard; active: boolean }) {
+  return (
+    <Link
+      href={href}
+      data-testid={`nav-link-${label.toLowerCase().replace(/\s+/g, "-")}`}
+      className={`
+        flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-150
+        ${active
+          ? "bg-primary text-white shadow-lg shadow-primary/30"
+          : "text-blue-200/70 hover:text-white hover:bg-white/8"
+        }
+      `}
+    >
+      <Icon size={18} className={active ? "text-white" : "text-blue-300/60"} />
+      {label}
+    </Link>
+  );
+}
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
-  const navItems = [
-    { href: "/", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/squad", label: "Squad Builder", icon: ShieldHalf },
-    { href: "/players", label: "Player Pool", icon: Users },
-    { href: "/leagues", label: "Leagues", icon: Trophy },
-    { href: "/fixtures", label: "Fixtures", icon: CalendarDays },
-  ];
+  const isActive = (href: string) =>
+    href === "/" ? location === "/" : location.startsWith(href);
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col md:flex-row dark">
-      {/* Sidebar */}
-      <aside className="w-full md:w-64 border-r border-border bg-card flex flex-col hidden md:flex">
-        <div className="p-4 flex items-center">
-          <img src={logoSrc} alt="FANTA11" className="h-16 w-auto" />
+    <div className="min-h-screen bg-background text-foreground flex dark">
+
+      {/* ── Desktop Sidebar ── */}
+      <aside
+        style={{ background: "linear-gradient(180deg, #050d1f 0%, #0a1535 60%, #0d1e45 100%)" }}
+        className="hidden md:flex w-72 flex-col border-r border-white/8 fixed inset-y-0 left-0 z-40"
+      >
+        {/* Logo block */}
+        <div className="flex flex-col items-center pt-8 pb-6 px-6 border-b border-white/8">
+          <div
+            className="relative p-3 rounded-2xl mb-3"
+            style={{ background: "radial-gradient(circle, rgba(59,130,246,0.18) 0%, transparent 70%)" }}
+          >
+            <img
+              src={logoSrc}
+              alt="FANTA11"
+              className="w-28 h-28 object-contain drop-shadow-[0_0_20px_rgba(59,130,246,0.5)]"
+            />
+          </div>
+          <div className="text-center">
+            <span
+              className="block text-xl font-black tracking-widest uppercase"
+              style={{ color: "#fff", letterSpacing: "0.2em", textShadow: "0 0 30px rgba(59,130,246,0.8)" }}
+            >
+              FANTA11
+            </span>
+            <span className="block text-xs text-blue-400/60 font-medium tracking-wider uppercase mt-0.5">
+              Fantasy Soccer
+            </span>
+          </div>
         </div>
-        
-        <nav className="flex-1 px-4 space-y-2 mt-4">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href));
-            return (
-              <Link key={item.href} href={item.href} className={`flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors ${isActive ? 'bg-primary/10 text-primary font-medium' : 'text-muted-foreground hover:text-foreground hover:bg-secondary'}`}>
-                <Icon size={18} />
-                {item.label}
-              </Link>
-            );
-          })}
+
+        {/* Navigation */}
+        <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
+          <p className="text-xs font-semibold text-blue-400/40 uppercase tracking-widest px-4 mb-3">
+            Menu
+          </p>
+          {navItems.map((item) => (
+            <NavLink key={item.href} {...item} active={isActive(item.href)} />
+          ))}
         </nav>
+
+        {/* Bottom badge */}
+        <div className="px-6 py-5 border-t border-white/8">
+          <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg bg-blue-500/10 border border-blue-500/20">
+            <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+            <span className="text-xs text-blue-300/70 font-medium">Gameweek 3 — Active</span>
+          </div>
+        </div>
       </aside>
 
-      {/* Mobile Header */}
-      <header className="md:hidden border-b border-border bg-card p-4 flex items-center justify-between">
-        <div className="flex items-center">
-          <img src={logoSrc} alt="FANTA11" className="h-10 w-auto" />
+      {/* ── Mobile Header ── */}
+      <header
+        style={{ background: "linear-gradient(90deg, #050d1f 0%, #0d1e45 100%)" }}
+        className="md:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-2 border-b border-white/10 h-16"
+      >
+        <div className="flex items-center gap-3">
+          <img src={logoSrc} alt="FANTA11" className="h-10 w-10 object-contain drop-shadow-[0_0_8px_rgba(59,130,246,0.6)]" />
+          <span className="font-black text-white tracking-[0.15em] text-base uppercase">FANTA11</span>
         </div>
-        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-          {navItems.map((item) => (
-             <Link key={item.href} href={item.href} className={`text-xs whitespace-nowrap px-3 py-1.5 rounded-full ${location === item.href ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'}`}>
-               {item.label}
-             </Link>
-          ))}
-        </div>
+        <button
+          data-testid="mobile-menu-toggle"
+          onClick={() => setMobileOpen(!mobileOpen)}
+          className="p-2 rounded-lg text-blue-200/70 hover:text-white hover:bg-white/10 transition-colors"
+        >
+          {mobileOpen ? <X size={22} /> : <Menu size={22} />}
+        </button>
       </header>
 
-      {/* Main Content */}
-      <main className="flex-1 p-4 md:p-8 overflow-y-auto h-screen">
-        <div className="max-w-7xl mx-auto h-full">
-          {children}
+      {/* ── Mobile Drawer ── */}
+      {mobileOpen && (
+        <div className="md:hidden fixed inset-0 z-40 flex" onClick={() => setMobileOpen(false)}>
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+          <aside
+            style={{ background: "linear-gradient(180deg, #050d1f 0%, #0a1535 100%)" }}
+            className="relative w-72 flex flex-col border-r border-white/10 h-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex flex-col items-center pt-10 pb-6 px-6 border-b border-white/8">
+              <img src={logoSrc} alt="FANTA11" className="w-24 h-24 object-contain drop-shadow-[0_0_16px_rgba(59,130,246,0.5)]" />
+              <span className="mt-3 text-lg font-black tracking-widest uppercase text-white">FANTA11</span>
+              <span className="text-xs text-blue-400/60 tracking-wider uppercase">Fantasy Soccer</span>
+            </div>
+            <nav className="flex-1 px-4 py-6 space-y-1">
+              {navItems.map((item) => (
+                <NavLink
+                  key={item.href}
+                  {...item}
+                  active={isActive(item.href)}
+                />
+              ))}
+            </nav>
+          </aside>
         </div>
-      </main>
+      )}
+
+      {/* ── Main Content ── */}
+      <div className="flex-1 md:ml-72 flex flex-col min-h-screen">
+        <main className="flex-1 p-4 md:p-8 pt-20 md:pt-8 overflow-y-auto">
+          <div className="max-w-7xl mx-auto">
+            {children}
+          </div>
+        </main>
+      </div>
+
     </div>
   );
 }
