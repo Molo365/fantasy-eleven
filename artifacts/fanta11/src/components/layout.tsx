@@ -73,7 +73,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <div className="text-center">
             <span
               className="block text-xl font-black tracking-widest uppercase"
-              style={{ color: "#fff", letterSpacing: "0.2em", textShadow: "0 0 30px rgba(59,130,246,0.8)" }}
+              style={{
+                color: "#fff",
+                letterSpacing: "0.2em",
+                textShadow: "-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 30px rgba(59,130,246,0.8)",
+              }}
             >
               FANTA11
             </span>
@@ -128,7 +132,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
       >
         <div className="flex items-center gap-3">
           <img src={logoSrc} alt="FANTA11" className="h-10 w-10 object-contain drop-shadow-[0_0_8px_rgba(59,130,246,0.6)]" />
-          <span className="font-black text-white tracking-[0.15em] text-base uppercase">FANTA11</span>
+          <span
+            className="font-black text-white tracking-[0.15em] text-base uppercase"
+            style={{ textShadow: "-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000" }}
+          >FANTA11</span>
         </div>
         <button
           data-testid="mobile-menu-toggle"
@@ -150,7 +157,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
           >
             <div className="flex flex-col items-center pt-10 pb-6 px-6 border-b border-white/8">
               <img src={logoSrc} alt="FANTA11" className="w-24 h-24 object-contain drop-shadow-[0_0_16px_rgba(59,130,246,0.5)]" />
-              <span className="mt-3 text-lg font-black tracking-widest uppercase text-white">FANTA11</span>
+              <span
+                className="mt-3 text-lg font-black tracking-widest uppercase text-white"
+                style={{ textShadow: "-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000" }}
+              >FANTA11</span>
               <span className="text-xs text-blue-400/60 tracking-wider uppercase">Fantasy Soccer</span>
             </div>
             <nav className="flex-1 px-4 py-6 space-y-1">

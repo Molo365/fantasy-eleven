@@ -218,7 +218,10 @@ export function LandingPage() {
       <header className="flex items-center justify-between px-6 md:px-12 py-5">
         <div className="flex items-center gap-3">
           <img src={logoSrc} alt="FANTA11" className="w-9 h-9 object-contain" />
-          <span className="font-black text-white tracking-[0.15em] text-lg uppercase">FANTA11</span>
+          <span
+            className="font-black text-white tracking-[0.15em] text-lg uppercase"
+            style={{ textShadow: "-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000" }}
+          >FANTA11</span>
         </div>
         {view === "landing" && (
           <button
