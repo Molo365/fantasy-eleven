@@ -1,5 +1,5 @@
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
-import { eq, count, sql } from "drizzle-orm";
+import { eq, count, sql, isNotNull } from "drizzle-orm";
 import {
   db, usersTable, playersTable, gameweeksTable, fixturesTable,
   teamsTable, teamPlayersTable,
@@ -49,18 +49,30 @@ router.get("/admin/users", requireAdmin, async (_req, res): Promise<void> => {
     .from(usersTable)
     .orderBy(usersTable.id);
 
-  // Count squads per user via teams
-  const teamCounts = await db
-    .select({ userId: sql<number>`${teamsTable.id}`, count: count() })
+  // Get teams linked to user accounts
+  const teams = await db
+    .select({ userId: teamsTable.userId, totalPoints: teamsTable.totalPoints })
     .from(teamsTable)
-    .groupBy(teamsTable.id);
+    .where(isNotNull(teamsTable.userId));
 
-  const tcMap = new Map(teamCounts.map(t => [t.userId, t.count]));
+  const userTeams = new Map<number, { squadSubmitted: boolean; totalPoints: number }>();
+  for (const t of teams) {
+    if (t.userId == null) continue;
+    const prev = userTeams.get(t.userId);
+    userTeams.set(t.userId, {
+      squadSubmitted: true,
+      totalPoints: (prev?.totalPoints ?? 0) + t.totalPoints,
+    });
+  }
 
   const result = users.map(u => ({
-    ...u,
+    id: u.id,
+    username: u.username,
+    email: u.email,
+    displayName: u.displayName,
     createdAt: u.createdAt instanceof Date ? u.createdAt.toISOString() : u.createdAt,
-    squadCount: tcMap.get(u.id) ?? 0,
+    squadSubmitted: userTeams.get(u.id)?.squadSubmitted ?? false,
+    totalPoints: userTeams.get(u.id)?.totalPoints ?? 0,
   }));
   res.json(result);
 });

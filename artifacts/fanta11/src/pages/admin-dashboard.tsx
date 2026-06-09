@@ -7,7 +7,7 @@ const ADMIN_EMAIL = "domenicg@gmx.com";
 const API = "/api/admin";
 
 type Stats = { userCount: number; teamCount: number; processedCount: number };
-type AdminUser = { id: number; username: string; email: string; displayName: string; createdAt: string; squadCount: number };
+type AdminUser = { id: number; username: string; email: string; displayName: string; createdAt: string; squadSubmitted: boolean; totalPoints: number };
 type AdminPlayer = { id: number; name: string; club: string; clubShortName: string; position: string; price: number; totalPoints: number };
 type AdminGameweek = { id: number; number: number; name: string; round: string; status: string; startDate: string; endDate: string };
 
@@ -473,7 +473,7 @@ export function AdminDashboard() {
               <table style={S.table}>
                 <thead>
                   <tr style={{ background: "#0a1628" }}>
-                    {["ID", "Username", "Email", "Display Name", "Squads", "Joined", "Delete"].map(h => (
+                    {["ID", "Username", "Email", "Squad Submitted", "Total Points", "Joined", "Delete"].map(h => (
                       <th key={h} style={S.th}>{h}</th>
                     ))}
                   </tr>
@@ -484,8 +484,16 @@ export function AdminDashboard() {
                       <td style={{ ...S.td, color: "#475569", fontFamily: "monospace" }}>{u.id}</td>
                       <td style={{ ...S.td, fontWeight: 600 }}>{u.username}</td>
                       <td style={{ ...S.td, color: "#94a3b8" }}>{u.email}</td>
-                      <td style={{ ...S.td, color: "#94a3b8" }}>{u.displayName}</td>
-                      <td style={{ ...S.td, color: "#94a3b8", textAlign: "center" }}>{u.squadCount}</td>
+                      <td style={S.td}>
+                        {u.squadSubmitted ? (
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 700, color: "#22c55e" }}>
+                            <Check size={13} />Yes
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: 11, fontWeight: 600, color: "#475569" }}>No</span>
+                        )}
+                      </td>
+                      <td style={{ ...S.td, fontFamily: "monospace", color: "#06b6d4", fontWeight: 600 }}>{u.totalPoints}</td>
                       <td style={{ ...S.td, color: "#64748b", fontSize: 12 }}>
                         {new Date(u.createdAt).toLocaleDateString("en-US", { month: "numeric", day: "numeric", year: "numeric" })}
                       </td>
@@ -563,7 +571,7 @@ export function AdminDashboard() {
               <table style={S.table}>
                 <thead>
                   <tr style={{ background: "#0a1628" }}>
-                    {["#", "Name", "Round", "Status", "Start Date", "End Date", "Activate", "Process"].map(h => (
+                    {["ID", "Name", "Status", "Activate", "Process Results"].map(h => (
                       <th key={h} style={S.th}>{h}</th>
                     ))}
                   </tr>
@@ -573,22 +581,11 @@ export function AdminDashboard() {
                     <tr key={g.id}>
                       <td style={{ ...S.td, color: "#475569", fontFamily: "monospace" }}>{g.number}</td>
                       <td style={{ ...S.td, fontWeight: 600 }}>{g.name}</td>
-                      <td style={{ ...S.td }}>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                          {g.round}
-                        </span>
-                      </td>
                       <td style={S.td}>
                         <span style={S.badge(g.status)}>{g.status}</span>
                       </td>
-                      <td style={{ ...S.td, color: "#64748b", fontSize: 12 }}>
-                        {new Date(g.startDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                      </td>
-                      <td style={{ ...S.td, color: "#64748b", fontSize: 12 }}>
-                        {new Date(g.endDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                      </td>
                       <td style={S.td}>
-                        {g.status !== "active" && (
+                        {g.status !== "active" && g.status !== "finished" && (
                           <button style={S.actionBtn("teal")} onClick={() => activateGameweek(g.id, g.name)}>
                             <ChevronRight size={11} style={{ marginRight: 3 }} />Activate
                           </button>
@@ -596,11 +593,14 @@ export function AdminDashboard() {
                         {g.status === "active" && (
                           <span style={{ fontSize: 11, color: "#22c55e", fontWeight: 600 }}>● Active</span>
                         )}
+                        {g.status === "finished" && (
+                          <span style={{ fontSize: 11, color: "#475569" }}>—</span>
+                        )}
                       </td>
                       <td style={S.td}>
                         {g.status !== "finished" && (
                           <button style={S.actionBtn("gray")} onClick={() => processGameweek(g.id, g.name)}>
-                            Process
+                            Process Results
                           </button>
                         )}
                         {g.status === "finished" && (

@@ -33,9 +33,11 @@ router.post("/teams", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  const userId = req.session.userId ?? null;
   const [team] = await db.insert(teamsTable).values({
     name: parsed.data.name,
     managerName: parsed.data.managerName,
+    userId,
   }).returning();
   res.status(201).json(GetTeamResponse.parse(serializeTeam(team)));
 });
