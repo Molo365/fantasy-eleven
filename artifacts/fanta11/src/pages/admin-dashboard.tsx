@@ -246,6 +246,8 @@ export function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [confirm, setConfirm] = useState<ConfirmDialog>(CLOSED_CONFIRM);
   const [editPlayer, setEditPlayer] = useState<EditPlayer | null>(null);
+  const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<string | null>(null);
 
   // ── Auth guard ──────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -360,6 +362,21 @@ export function AdminDashboard() {
     });
   };
 
+  const syncWCPlayers = async () => {
+    setSyncing(true);
+    setSyncResult(null);
+    try {
+      const res = await apiFetch("/sync-players", { method: "POST" });
+      const json = await res.json() as { ok: boolean; cleared: number; inserted: number; skipped: number; nations: number };
+      setSyncResult(`✓ Synced ${json.inserted} players from ${json.nations} nations (cleared ${json.cleared} old)`);
+      await loadAll();
+    } catch (e) {
+      setSyncResult(`✗ Sync failed: ${String(e)}`);
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const fullReset = () => {
     setConfirm({
       open: true, danger: true,
@@ -437,6 +454,28 @@ export function AdminDashboard() {
               </div>
             </div>
           ))}
+        </div>
+
+        {/* Sync Players */}
+        <div style={{ ...S.dangerLabel, color: "#06b6d4", borderColor: "#0e4c5e" }}>
+          <span style={{ fontSize: 14 }}>⚽</span>
+          WC Players
+        </div>
+        <div style={{ ...S.dangerSection, borderColor: "#0e4c5e" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+            <button
+              style={{ ...S.btnSolidDanger, background: "#0891b2", borderColor: "#06b6d4", opacity: syncing ? 0.7 : 1, cursor: syncing ? "not-allowed" : "pointer", minWidth: 180 }}
+              onClick={syncWCPlayers}
+              disabled={syncing}
+            >
+              {syncing ? "⟳ Syncing from API…" : "⟳ Sync WC Players"}
+            </button>
+            {syncResult && (
+              <span style={{ fontSize: 12, color: syncResult.startsWith("✓") ? "#4ade80" : "#f87171" }}>
+                {syncResult}
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Danger Zone */}

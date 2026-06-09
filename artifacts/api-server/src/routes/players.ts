@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { ilike, eq, desc, and } from "drizzle-orm";
+import { ilike, eq, desc, and, asc } from "drizzle-orm";
 import { db, playersTable } from "@workspace/db";
 import {
   ListPlayersQueryParams,
@@ -62,6 +62,14 @@ router.get("/players", async (req, res): Promise<void> => {
     .limit(limit)
     .offset(offset);
   res.json(ListPlayersResponse.parse(rows));
+});
+
+router.get("/players/nations", async (_req, res): Promise<void> => {
+  const rows = await db
+    .selectDistinct({ club: playersTable.club })
+    .from(playersTable)
+    .orderBy(asc(playersTable.club));
+  res.json(rows.map(r => r.club));
 });
 
 router.get("/players/:id", async (req, res): Promise<void> => {

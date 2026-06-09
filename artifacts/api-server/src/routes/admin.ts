@@ -5,6 +5,7 @@ import {
   teamsTable, teamPlayersTable,
 } from "@workspace/db";
 import { logger } from "../lib/logger";
+import { clearAndSyncWorldCupPlayers } from "../lib/apiSports";
 
 const ADMIN_EMAIL = "domenicg@gmx.com";
 
@@ -159,6 +160,13 @@ router.post("/admin/gameweeks/:id/process", requireAdmin, async (req, res): Prom
 });
 
 // ── Danger Zone ───────────────────────────────────────────────────────────────
+
+router.post("/admin/sync-players", requireAdmin, async (req, res): Promise<void> => {
+  req.log.info("Admin triggered WC player sync");
+  const result = await clearAndSyncWorldCupPlayers();
+  req.log.info(result, "WC player sync complete via admin");
+  res.json({ ok: true, ...result });
+});
 
 router.post("/admin/wipe-test-data", requireAdmin, async (req, res): Promise<void> => {
   // Remove all team_players and reset team budgets; keep users + core data

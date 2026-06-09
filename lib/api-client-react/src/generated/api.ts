@@ -376,6 +376,83 @@ export function useGetTopPlayers<TData = Awaited<ReturnType<typeof getTopPlayers
 
 
 
+export const getGetPlayerNationsUrl = () => {
+
+
+
+
+  return `/api/players/nations`
+}
+
+/**
+ * @summary Get distinct nations represented in the player pool
+ */
+export const getPlayerNations = async ( options?: RequestInit): Promise<string[]> => {
+
+  return customFetch<string[]>(getGetPlayerNationsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPlayerNationsQueryKey = () => {
+    return [
+    `/api/players/nations`
+    ] as const;
+    }
+
+
+export const getGetPlayerNationsQueryOptions = <TData = Awaited<ReturnType<typeof getPlayerNations>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPlayerNations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPlayerNationsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPlayerNations>>> = ({ signal }) => getPlayerNations({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPlayerNations>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPlayerNationsQueryResult = NonNullable<Awaited<ReturnType<typeof getPlayerNations>>>
+export type GetPlayerNationsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get distinct nations represented in the player pool
+ */
+
+export function useGetPlayerNations<TData = Awaited<ReturnType<typeof getPlayerNations>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPlayerNations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPlayerNationsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
 export const getListTeamsUrl = () => {
 
 

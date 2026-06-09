@@ -101,6 +101,13 @@ export const GetTopPlayersResponse = zod.array(GetTopPlayersResponseItem)
 
 
 /**
+ * @summary Get distinct nations represented in the player pool
+ */
+export const GetPlayerNationsResponseItem = zod.string()
+export const GetPlayerNationsResponse = zod.array(GetPlayerNationsResponseItem)
+
+
+/**
  * @summary List all fantasy teams
  */
 export const ListTeamsResponseItem = zod.object({

@@ -1,21 +1,25 @@
 import { useState } from "react";
-import { useListPlayers, useGetTopPlayers } from "@workspace/api-client-react";
+import { useListPlayers, useGetTopPlayers, useGetPlayerNations } from "@workspace/api-client-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Search, TrendingUp, Star } from "lucide-react";
-import { ListPlayersPosition, GetTopPlayersPosition } from "@workspace/api-zod";
+import { ListPlayersPosition } from "@workspace/api-zod";
 
 export function Players() {
   const [search, setSearch] = useState("");
   const [position, setPosition] = useState<string>("ALL");
+  const [nation, setNation] = useState<string>("ALL");
+
+  const { data: nations } = useGetPlayerNations();
 
   const { data: players, isLoading } = useListPlayers({ 
     search: search || undefined,
     position: position !== "ALL" ? (position as ListPlayersPosition) : undefined,
-    limit: 50 
+    club: nation !== "ALL" ? nation : undefined,
+    limit: 100,
   });
 
   const { data: topPlayers, isLoading: isLoadingTop } = useGetTopPlayers({ limit: 3 });
@@ -65,8 +69,19 @@ export function Players() {
               className="pl-9 bg-secondary border-none focus-visible:ring-1 focus-visible:ring-primary"
             />
           </div>
-          <Select value={position} onValueChange={setPosition}>
+          <Select value={nation} onValueChange={setNation}>
             <SelectTrigger className="w-[180px] bg-secondary border-none">
+              <SelectValue placeholder="Nation" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All Nations</SelectItem>
+              {nations?.map(n => (
+                <SelectItem key={n} value={n}>{n}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={position} onValueChange={setPosition}>
+            <SelectTrigger className="w-[160px] bg-secondary border-none">
               <SelectValue placeholder="Position" />
             </SelectTrigger>
             <SelectContent>
