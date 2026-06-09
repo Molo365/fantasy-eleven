@@ -61,7 +61,7 @@ function kitColors(club: string): [string, string] {
 
 /* ─── Jersey SVG ─────────────────────────────────────────────────── */
 function Jersey({
-  primary, secondary, label, size = 54,
+  primary, secondary, label, size = 62,
 }: {
   primary: string; secondary: string; label: string; size?: number;
 }) {
@@ -69,7 +69,7 @@ function Jersey({
   return (
     <svg
       width={size} height={h} viewBox="0 0 100 115"
-      style={{ display: "block", filter: "drop-shadow(0 4px 10px rgba(0,0,0,0.55))" }}
+      style={{ display: "block", filter: "drop-shadow(0 5px 12px rgba(0,0,0,0.6))" }}
     >
       {/* Left sleeve */}
       <path d="M4,20 L26,9 L30,38 L10,44 Z" fill={primary} />
@@ -240,7 +240,7 @@ export function SquadBuilder() {
   const displayRows = [...rows].reverse();
 
   return (
-    <div className="h-full flex flex-col gap-2">
+    <div className="flex flex-col gap-2" style={{ height: "calc(100vh - 60px)" }}>
 
       {/* ── Header bar ── */}
       <div className="shrink-0 flex justify-between items-center">
@@ -260,9 +260,10 @@ export function SquadBuilder() {
       <div
         className="flex-1 min-h-0 rounded-xl overflow-hidden relative"
         style={{
+          minHeight: 500,
           backgroundImage: "url('/pitch.png')",
           backgroundSize: "cover",
-          backgroundPosition: "center",
+          backgroundPosition: "center top",
           boxShadow: "0 0 0 1px rgba(255,255,255,0.05), 0 8px 40px rgba(0,0,0,0.5)",
         }}
       >
@@ -272,11 +273,11 @@ export function SquadBuilder() {
         }} />
 
         {/* Player rows — FWD at top, GK at bottom */}
-        <div className="relative z-10 h-full flex flex-col justify-between py-3 px-1">
+        <div className="relative z-10 h-full flex flex-col justify-between py-4 px-1">
           {displayRows.map((row) => {
             const pc = POS_COLOR[row.position] ?? "#94a3b8";
             return (
-              <div key={row.position} className="flex justify-center items-start gap-0.5 sm:gap-2">
+              <div key={row.position} className="flex justify-center items-start gap-2 sm:gap-4">
                 {Array.from({ length: row.count }, (_, i) => {
                   const slot      = row.startSlot + i;
                   const rec       = teamPlayers?.find((p) => p.slot === slot) ?? null;
