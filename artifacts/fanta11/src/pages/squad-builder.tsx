@@ -236,8 +236,7 @@ export function SquadBuilder() {
     ...row,
     startSlot: pitchLayout.slice(0, ri).reduce((acc, r) => acc + r.count, 0) + 1,
   }));
-  /* Reverse for portrait display — FWD at top, GK at bottom */
-  const displayRows = [...rows].reverse();
+  const displayRows = rows;
 
   return (
     <div className="flex flex-col gap-2" style={{ height: "calc(100vh - 60px)" }}>
