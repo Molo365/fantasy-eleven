@@ -622,12 +622,19 @@ components:
 
     Gameweek:
       type: object
-      required: [id, number, status]
+      required: [id, number, name, round, status]
       properties:
         id:
           type: integer
         number:
           type: integer
+        name:
+          type: string
+          description: Human-readable label, e.g. "Group Stage — Week 1"
+        round:
+          type: string
+          enum: [group, r16, qf, sf, final]
+          description: Machine-readable round identifier
         status:
           type: string
           enum: [upcoming, active, finished]
@@ -642,12 +649,17 @@ components:
 
     GameweekDetail:
       type: object
-      required: [id, number, status, fixtures]
+      required: [id, number, name, round, status, fixtures]
       properties:
         id:
           type: integer
         number:
           type: integer
+        name:
+          type: string
+        round:
+          type: string
+          enum: [group, r16, qf, sf, final]
         status:
           type: string
           enum: [upcoming, active, finished]

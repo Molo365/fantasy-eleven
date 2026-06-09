@@ -5,6 +5,8 @@ import { z } from "zod/v4";
 export const gameweeksTable = pgTable("gameweeks", {
   id: serial("id").primaryKey(),
   number: integer("number").notNull().unique(),
+  name: text("name").notNull().default(""),        // e.g. "Group Stage 1", "Round of 16"
+  round: text("round").notNull().default("group"), // group | r16 | qf | sf | final
   status: text("status").notNull().default("upcoming"), // upcoming, active, finished
   startDate: timestamp("start_date", { withTimezone: true }).notNull(),
   endDate: timestamp("end_date", { withTimezone: true }).notNull(),

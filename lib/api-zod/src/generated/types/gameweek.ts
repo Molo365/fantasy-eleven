@@ -5,11 +5,16 @@
  * FANTA11 Fantasy Soccer API
  * OpenAPI spec version: 0.1.0
  */
+import type { GameweekRound } from './gameweekRound';
 import type { GameweekStatus } from './gameweekStatus';
 
 export interface Gameweek {
   id: number;
   number: number;
+  /** Human-readable label, e.g. "Group Stage — Week 1" */
+  name: string;
+  /** Machine-readable round identifier */
+  round: GameweekRound;
   status: GameweekStatus;
   startDate?: string;
   endDate?: string;

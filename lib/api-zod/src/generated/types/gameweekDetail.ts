@@ -6,11 +6,14 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { Fixture } from './fixture';
+import type { GameweekDetailRound } from './gameweekDetailRound';
 import type { GameweekDetailStatus } from './gameweekDetailStatus';
 
 export interface GameweekDetail {
   id: number;
   number: number;
+  name: string;
+  round: GameweekDetailRound;
   status: GameweekDetailStatus;
   startDate?: string;
   endDate?: string;

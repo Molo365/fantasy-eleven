@@ -112,6 +112,20 @@ export interface LeaderboardEntry {
   gameweekPoints?: number;
 }
 
+/**
+ * Machine-readable round identifier
+ */
+export type GameweekRound = typeof GameweekRound[keyof typeof GameweekRound];
+
+
+export const GameweekRound = {
+  group: 'group',
+  r16: 'r16',
+  qf: 'qf',
+  sf: 'sf',
+  final: 'final',
+} as const;
+
 export type GameweekStatus = typeof GameweekStatus[keyof typeof GameweekStatus];
 
 
@@ -124,6 +138,10 @@ export const GameweekStatus = {
 export interface Gameweek {
   id: number;
   number: number;
+  /** Human-readable label, e.g. "Group Stage — Week 1" */
+  name: string;
+  /** Machine-readable round identifier */
+  round: GameweekRound;
   status: GameweekStatus;
   startDate?: string;
   endDate?: string;
@@ -132,6 +150,17 @@ export interface Gameweek {
   /** @nullable */
   highestPoints?: number | null;
 }
+
+export type GameweekDetailRound = typeof GameweekDetailRound[keyof typeof GameweekDetailRound];
+
+
+export const GameweekDetailRound = {
+  group: 'group',
+  r16: 'r16',
+  qf: 'qf',
+  sf: 'sf',
+  final: 'final',
+} as const;
 
 export type GameweekDetailStatus = typeof GameweekDetailStatus[keyof typeof GameweekDetailStatus];
 
@@ -167,6 +196,8 @@ export interface Fixture {
 export interface GameweekDetail {
   id: number;
   number: number;
+  name: string;
+  round: GameweekDetailRound;
   status: GameweekDetailStatus;
   startDate?: string;
   endDate?: string;

@@ -319,6 +319,8 @@ export const JoinLeagueResponse = zod.object({
 export const ListGameweeksResponseItem = zod.object({
   "id": zod.number(),
   "number": zod.number(),
+  "name": zod.string().describe('Human-readable label, e.g. \"Group Stage — Week 1\"'),
+  "round": zod.enum(['group', 'r16', 'qf', 'sf', 'final']).describe('Machine-readable round identifier'),
   "status": zod.enum(['upcoming', 'active', 'finished']),
   "startDate": zod.string().optional(),
   "endDate": zod.string().optional(),
@@ -334,6 +336,8 @@ export const ListGameweeksResponse = zod.array(ListGameweeksResponseItem)
 export const GetCurrentGameweekResponse = zod.object({
   "id": zod.number(),
   "number": zod.number(),
+  "name": zod.string(),
+  "round": zod.enum(['group', 'r16', 'qf', 'sf', 'final']),
   "status": zod.enum(['upcoming', 'active', 'finished']),
   "startDate": zod.string().optional(),
   "endDate": zod.string().optional(),
