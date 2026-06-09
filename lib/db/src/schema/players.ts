@@ -1,13 +1,15 @@
-import { pgTable, text, serial, integer, real, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, real, timestamp, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
 export const playersTable = pgTable("players", {
   id: serial("id").primaryKey(),
+  externalId: integer("external_id"),
   name: text("name").notNull(),
   position: text("position").notNull(), // GK, DEF, MID, FWD
   club: text("club").notNull(),
   clubShortName: text("club_short_name").notNull(),
+  nationality: text("nationality"),
   totalPoints: integer("total_points").notNull().default(0),
   price: real("price").notNull(),
   form: real("form").notNull().default(0),
@@ -16,6 +18,8 @@ export const playersTable = pgTable("players", {
   assists: integer("assists").notNull().default(0),
   cleanSheets: integer("clean_sheets").notNull().default(0),
   imageUrl: text("image_url"),
+  cachedFromApi: boolean("cached_from_api").notNull().default(false),
+  cachedAt: timestamp("cached_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

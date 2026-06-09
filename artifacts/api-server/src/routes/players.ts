@@ -9,17 +9,18 @@ import {
   GetPlayerResponse,
   GetTopPlayersResponse,
 } from "@workspace/api-zod";
+import { syncWorldCupPlayers, ensurePlayersSeeded } from "../lib/apiSports";
 
 const router: IRouter = Router();
 
 router.get("/players/top", async (req, res): Promise<void> => {
+  await ensurePlayersSeeded();
   const parsed = GetTopPlayersQueryParams.safeParse(req.query);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
   const { position, limit = 10 } = parsed.data;
-  let query = db.select().from(playersTable).orderBy(desc(playersTable.totalPoints));
   const conditions = position ? [eq(playersTable.position, position)] : [];
   const rows = await db
     .select()
@@ -30,7 +31,18 @@ router.get("/players/top", async (req, res): Promise<void> => {
   res.json(GetTopPlayersResponse.parse(rows));
 });
 
+router.get("/players/sync", async (req, res): Promise<void> => {
+  try {
+    const result = await syncWorldCupPlayers();
+    res.json({ ok: true, ...result });
+  } catch (err) {
+    req.log.error({ err }, "Player sync failed");
+    res.status(500).json({ error: String(err) });
+  }
+});
+
 router.get("/players", async (req, res): Promise<void> => {
+  await ensurePlayersSeeded();
   const parsed = ListPlayersQueryParams.safeParse(req.query);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
