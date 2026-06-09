@@ -10,7 +10,10 @@ import { Players } from "@/pages/players";
 import { Leagues } from "@/pages/leagues";
 import { Fixtures } from "@/pages/fixtures";
 import { LandingPage } from "@/pages/landing";
+import { AdminDashboard } from "@/pages/admin-dashboard";
 import { AuthProvider, useAuth } from "@/contexts/auth";
+
+const ADMIN_EMAIL = "domenicg@gmx.com";
 
 const queryClient = new QueryClient();
 
@@ -32,17 +35,29 @@ function AppRoutes() {
     return <LandingPage />;
   }
 
+  const isAdmin = authState.user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+
   return (
-    <Layout>
-      <Switch>
-        <Route path="/" component={Dashboard} />
-        <Route path="/squad" component={SquadBuilder} />
-        <Route path="/players" component={Players} />
-        <Route path="/leagues" component={Leagues} />
-        <Route path="/fixtures" component={Fixtures} />
-        <Route component={NotFound} />
-      </Switch>
-    </Layout>
+    <Switch>
+      {/* Admin route — bypasses Layout, has its own top bar */}
+      <Route path="/admin/dashboard">
+        {isAdmin ? <AdminDashboard /> : <Redirect to="/" />}
+      </Route>
+
+      {/* Standard authenticated routes inside the app shell */}
+      <Route>
+        <Layout>
+          <Switch>
+            <Route path="/" component={Dashboard} />
+            <Route path="/squad" component={SquadBuilder} />
+            <Route path="/players" component={Players} />
+            <Route path="/leagues" component={Leagues} />
+            <Route path="/fixtures" component={Fixtures} />
+            <Route component={NotFound} />
+          </Switch>
+        </Layout>
+      </Route>
+    </Switch>
   );
 }
 

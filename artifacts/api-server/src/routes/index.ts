@@ -6,6 +6,7 @@ import teamsRouter from "./teams";
 import leaguesRouter from "./leagues";
 import gameweeksRouter from "./gameweeks";
 import dashboardRouter from "./dashboard";
+import adminRouter from "./admin";
 
 const router: IRouter = Router();
 
@@ -16,5 +17,6 @@ router.use(teamsRouter);
 router.use(leaguesRouter);
 router.use(gameweeksRouter);
 router.use(dashboardRouter);
+router.use(adminRouter);
 
 export default router;
