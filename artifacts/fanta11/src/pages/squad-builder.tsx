@@ -226,6 +226,7 @@ export function SquadBuilder() {
     {
       position: picker?.position as ListPlayersPosition,
       search: search || undefined,
+      limit: 2000,
     },
     {
       query: {
@@ -233,6 +234,7 @@ export function SquadBuilder() {
         queryKey: getListPlayersQueryKey({
           position: picker?.position as ListPlayersPosition,
           search: search || undefined,
+          limit: 2000,
         }),
       },
     },
