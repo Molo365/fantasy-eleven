@@ -213,18 +213,18 @@ export function LandingPage() {
         {/* League logos */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 28, flexWrap: "wrap", padding: "0 20px" }}>
           {[
-            { src: "https://upload.wikimedia.org/wikipedia/en/f/f2/Premier_League_Logo.svg",      alt: "Premier League" },
-            { src: "https://upload.wikimedia.org/wikipedia/commons/0/0f/LaLiga_logo_2023.svg",    alt: "La Liga" },
-            { src: "https://upload.wikimedia.org/wikipedia/commons/e/e9/Serie_A_logo_2022.svg",   alt: "Serie A" },
-            { src: "https://upload.wikimedia.org/wikipedia/en/d/df/Bundesliga_logo_%282017%29.svg", alt: "Bundesliga" },
-            { src: "https://upload.wikimedia.org/wikipedia/commons/5/5e/Ligue1_logo_2024.svg",    alt: "Ligue 1" },
+            { src: "/league-premier.png",    alt: "Premier League" },
+            { src: "/league-laliga.png",     alt: "La Liga" },
+            { src: "/league-seriea.png",     alt: "Serie A" },
+            { src: "/league-bundesliga.png", alt: "Bundesliga" },
+            { src: "/league-ligue1.png",     alt: "Ligue 1" },
           ].map(({ src, alt }) => (
             <img
               key={alt}
               src={src}
               alt={alt}
               title={alt}
-              style={{ height: 48, width: "auto", objectFit: "contain", filter: "brightness(0) invert(1)", opacity: 0.75 }}
+              style={{ height: 52, width: "auto", objectFit: "contain", mixBlendMode: "screen", opacity: 0.9 }}
             />
           ))}
         </div>
