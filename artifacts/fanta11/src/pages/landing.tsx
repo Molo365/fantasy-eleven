@@ -210,23 +210,22 @@ export function LandingPage() {
           </button>
         </div>
 
-        {/* Stats */}
-        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "center", gap: "8px 0", width: "100%", padding: "0 12px", boxSizing: "border-box" }}>
+        {/* League logos */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 28, flexWrap: "wrap", padding: "0 20px" }}>
           {[
-            { icon: "🏆", value: "5",    label: "Leagues" },
-            { icon: "📅", value: "38",   label: "Gameweeks" },
-            { icon: "⚽", value: "500+", label: "Players" },
-          ].map(({ icon, value, label }, i, arr) => (
-            <div key={label} style={{ display: "flex", alignItems: "center" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 20px" }}>
-                <span style={{ fontSize: 26, filter: "sepia(1) saturate(5) hue-rotate(5deg)" }}>{icon}</span>
-                <div>
-                  <div style={{ fontSize: 22, fontWeight: 900, color: "#fff", lineHeight: 1, textShadow: shadow }}>{value}</div>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: "#d4a843", letterSpacing: "0.12em", textTransform: "uppercase", marginTop: 3 }}>{label}</div>
-                </div>
-              </div>
-              {i < arr.length - 1 && <div style={{ width: 1, height: 36, background: "rgba(255,255,255,0.2)" }} />}
-            </div>
+            { src: "https://upload.wikimedia.org/wikipedia/en/f/f2/Premier_League_Logo.svg",      alt: "Premier League" },
+            { src: "https://upload.wikimedia.org/wikipedia/commons/0/0f/LaLiga_logo_2023.svg",    alt: "La Liga" },
+            { src: "https://upload.wikimedia.org/wikipedia/commons/e/e9/Serie_A_logo_2022.svg",   alt: "Serie A" },
+            { src: "https://upload.wikimedia.org/wikipedia/en/d/df/Bundesliga_logo_%282017%29.svg", alt: "Bundesliga" },
+            { src: "https://upload.wikimedia.org/wikipedia/commons/5/5e/Ligue1_logo_2024.svg",    alt: "Ligue 1" },
+          ].map(({ src, alt }) => (
+            <img
+              key={alt}
+              src={src}
+              alt={alt}
+              title={alt}
+              style={{ height: 48, width: "auto", objectFit: "contain", filter: "brightness(0) invert(1)", opacity: 0.75 }}
+            />
           ))}
         </div>
 
