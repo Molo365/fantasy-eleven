@@ -1,5 +1,5 @@
-import { useGetDashboardSummary, useGetRecentActivity } from "@workspace/api-client-react";
-import { Trophy, TrendingUp, Users, Wallet, Activity as ActivityIcon, Zap, ShieldHalf } from "lucide-react";
+import { useGetDashboardSummary } from "@workspace/api-client-react";
+import { Trophy, TrendingUp, Users, Wallet, Zap, ShieldHalf, CalendarClock } from "lucide-react";
 import { useAuth } from "@/contexts/auth";
 import { Link } from "wouter";
 
@@ -61,12 +61,8 @@ export function Dashboard() {
     { teamId },
     { query: { enabled: authState.status === "authenticated" } }
   );
-  const { data: activity, isLoading: isLoadingActivity } = useGetRecentActivity(
-    { teamId, limit: 10 },
-    { query: { enabled: authState.status === "authenticated" } }
-  );
 
-  if (isLoadingSummary || isLoadingActivity || authState.status === "loading") {
+  if (isLoadingSummary || authState.status === "loading") {
     return (
       <div className="space-y-6 animate-pulse">
         <div
@@ -219,49 +215,29 @@ export function Dashboard() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-          {/* Activity Feed */}
+          {/* Activity — empty state until tournament starts */}
           <div className="lg:col-span-2 space-y-4">
-            <h2 className="text-lg font-bold flex items-center gap-2">
-              <ActivityIcon className="text-primary h-5 w-5" style={{ filter: "drop-shadow(0 0 6px #06b6d4)" }} />
-              Live Activity Feed
-            </h2>
+            <h2 className="text-lg font-bold">Match Activity</h2>
             <div
-              className="rounded-xl overflow-hidden"
+              className="rounded-xl flex flex-col items-center justify-center py-14 px-6 text-center"
               style={{
                 background: "rgba(8,17,40,0.6)",
                 border: "1px solid rgba(255,255,255,0.06)",
                 backdropFilter: "blur(8px)",
               }}
             >
-              {activity && activity.length > 0 ? (
-                activity.map((item, idx) => (
-                  <div
-                    key={item.id}
-                    className="flex items-center justify-between px-5 py-4 transition-colors hover:bg-white/[0.03]"
-                    style={{ borderBottom: idx < activity.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none" }}
-                  >
-                    <div>
-                      <div className="font-bold text-sm text-foreground">{item.playerName}</div>
-                      <div className="text-xs text-muted-foreground mt-0.5">{item.description}</div>
-                    </div>
-                    <div
-                      className="font-mono font-bold text-sm px-3 py-1 rounded-lg"
-                      style={{
-                        color: "#06b6d4",
-                        background: "rgba(6,182,212,0.1)",
-                        border: "1px solid rgba(6,182,212,0.2)",
-                        textShadow: "0 0 8px rgba(6,182,212,0.5)",
-                      }}
-                    >
-                      +{item.points}
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="p-10 text-center" style={{ color: "#475569" }}>
-                  No recent activity to display.
-                </div>
-              )}
+              <div
+                className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4"
+                style={{ background: "rgba(6,182,212,0.08)", border: "1px solid rgba(6,182,212,0.18)" }}
+              >
+                <CalendarClock size={26} style={{ color: "#06b6d4" }} />
+              </div>
+              <p className="font-semibold text-sm" style={{ color: "#94a3b8" }}>
+                No match activity yet
+              </p>
+              <p className="text-xs mt-1.5 max-w-xs" style={{ color: "#475569" }}>
+                Player scores, assists, and bonus points will appear here once the World Cup 2026 kicks off.
+              </p>
             </div>
           </div>
 
