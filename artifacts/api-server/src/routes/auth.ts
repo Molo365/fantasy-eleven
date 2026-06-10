@@ -44,11 +44,13 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     .returning();
   req.session.userId = user.id;
   req.log.info({ userId: user.id }, "User registered");
+  const [newTeam] = await db.select({ id: teamsTable.id }).from(teamsTable).where(eq(teamsTable.userId, user.id));
   res.status(201).json({
     id: user.id,
     username: user.username,
     email: user.email,
     displayName: user.displayName,
+    teamId: newTeam?.id ?? null,
   });
 });
 
@@ -73,11 +75,13 @@ router.post("/auth/login", async (req, res): Promise<void> => {
   }
   req.session.userId = user.id;
   req.log.info({ userId: user.id }, "User logged in");
+  const [loginTeam] = await db.select({ id: teamsTable.id }).from(teamsTable).where(eq(teamsTable.userId, user.id));
   res.json({
     id: user.id,
     username: user.username,
     email: user.email,
     displayName: user.displayName,
+    teamId: loginTeam?.id ?? null,
   });
 });
 
