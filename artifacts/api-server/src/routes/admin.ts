@@ -2,7 +2,7 @@ import { Router, type IRouter, type Request, type Response, type NextFunction } 
 import { eq, count, sql, isNotNull } from "drizzle-orm";
 import {
   db, usersTable, playersTable, gameweeksTable, fixturesTable,
-  teamsTable, teamPlayersTable,
+  teamsTable, teamPlayersTable, leaguesTable, leagueTeamsTable, activityTable,
 } from "@workspace/db";
 import { logger } from "../lib/logger";
 import { clearAndSyncWorldCupPlayers } from "../lib/apiSports";
@@ -169,10 +169,24 @@ router.post("/admin/sync-players", requireAdmin, async (req, res): Promise<void>
 });
 
 router.post("/admin/wipe-test-data", requireAdmin, async (req, res): Promise<void> => {
-  // Remove all team_players and reset team budgets; keep users + core data
+  // 1. Clear activity log
+  await db.delete(activityTable);
+  // 2. Remove all league memberships, then all leagues
+  await db.delete(leagueTeamsTable);
+  await db.delete(leaguesTable);
+  // 3. Remove all squad selections
   await db.delete(teamPlayersTable);
-  await db.execute(sql`UPDATE teams SET budget = 100, captain_id = NULL, vice_captain_id = NULL, total_points = 0`);
-  req.log.warn("Admin wiped test data");
+  // 4. Reset team points, budget, captain, and name back to defaults
+  await db.execute(sql`
+    UPDATE teams
+    SET budget           = 100,
+        total_points     = 0,
+        captain_id       = NULL,
+        vice_captain_id  = NULL,
+        name             = 'My Team',
+        manager_name     = 'Manager'
+  `);
+  req.log.warn("Admin wiped test data: leagues, squad selections, points, and team names reset");
   res.json({ ok: true });
 });
 
