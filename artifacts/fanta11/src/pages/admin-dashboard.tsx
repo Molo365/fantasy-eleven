@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/auth";
-import { Loader2, Shield, Users, LayoutGrid, BarChart2, Trash2, AlertTriangle, ChevronRight, Pencil, Check, X, LogOut } from "lucide-react";
+import { Loader2, Shield, Users, LayoutGrid, BarChart2, Trash2, AlertTriangle, ChevronRight, Pencil, Check, X, LogOut, Trophy } from "lucide-react";
 
 const ADMIN_EMAIL = "domenicg@gmx.com";
 const API = "/api/admin";
@@ -10,8 +10,9 @@ type Stats = { userCount: number; teamCount: number; processedCount: number };
 type AdminUser = { id: number; username: string; email: string; displayName: string; createdAt: string; squadSubmitted: boolean; totalPoints: number };
 type AdminPlayer = { id: number; name: string; club: string; clubShortName: string; position: string; price: number; totalPoints: number };
 type AdminGameweek = { id: number; number: number; name: string; round: string; status: string; startDate: string; endDate: string };
+type AdminLeague = { id: number; name: string; code: string; memberCount: number; createdAt: string };
 
-type Tab = "users" | "players" | "gameweeks";
+type Tab = "users" | "players" | "gameweeks" | "leagues";
 
 type ConfirmDialog = {
   open: boolean;
@@ -242,6 +243,7 @@ export function AdminDashboard() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [players, setPlayers] = useState<AdminPlayer[]>([]);
   const [gameweeks, setGameweeks] = useState<AdminGameweek[]>([]);
+  const [leagues, setLeagues] = useState<AdminLeague[]>([]);
   const [tab, setTab] = useState<Tab>("users");
   const [loading, setLoading] = useState(true);
   const [confirm, setConfirm] = useState<ConfirmDialog>(CLOSED_CONFIRM);
@@ -267,16 +269,18 @@ export function AdminDashboard() {
   const loadAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [s, u, p, g] = await Promise.all([
+      const [s, u, p, g, l] = await Promise.all([
         apiFetch("/stats") as Promise<Stats>,
         apiFetch("/users") as Promise<AdminUser[]>,
         apiFetch("/players") as Promise<AdminPlayer[]>,
         apiFetch("/gameweeks") as Promise<AdminGameweek[]>,
+        apiFetch("/leagues") as Promise<AdminLeague[]>,
       ]);
       setStats(s);
       setUsers(u);
       setPlayers(p);
       setGameweeks(g);
+      setLeagues(l);
     } catch (err) {
       console.error("Admin load error", err);
     } finally {
@@ -346,6 +350,18 @@ export function AdminDashboard() {
         await apiFetch(`/gameweeks/${id}/process`, { method: "POST" });
         setGameweeks(gs => gs.map(g => g.id === id ? { ...g, status: "finished" } : g));
         setStats(s => s ? { ...s, processedCount: s.processedCount + 1 } : s);
+      },
+    });
+  };
+
+  const deleteLeague = (id: number, name: string) => {
+    setConfirm({
+      open: true, danger: true,
+      title: "Delete League",
+      message: `Delete "${name}" and remove all its members? This cannot be undone.`,
+      onConfirm: async () => {
+        await apiFetch(`/leagues/${id}`, { method: "DELETE" });
+        setLeagues(ls => ls.filter(x => x.id !== id));
       },
     });
   };
@@ -492,8 +508,8 @@ export function AdminDashboard() {
 
         {/* Tabs */}
         <div style={S.tabsRow}>
-          {(["users", "players", "gameweeks"] as Tab[]).map(t => {
-            const counts: Record<Tab, number> = { users: users.length, players: players.length, gameweeks: gameweeks.length };
+          {(["users", "players", "gameweeks", "leagues"] as Tab[]).map(t => {
+            const counts: Record<Tab, number> = { users: users.length, players: players.length, gameweeks: gameweeks.length, leagues: leagues.length };
             return (
               <button key={t} style={S.tab(tab === t)} onClick={() => setTab(t)}>
                 {t}&nbsp;
@@ -648,6 +664,56 @@ export function AdminDashboard() {
                       </td>
                     </tr>
                   ))}
+                </tbody>
+              </table>
+            )}
+
+            {/* ── LEAGUES ── */}
+            {tab === "leagues" && (
+              <table style={S.table}>
+                <thead>
+                  <tr style={{ background: "#0a1628" }}>
+                    {["ID", "League Name", "Invite Code", "Members", "Created", "Delete"].map(h => (
+                      <th key={h} style={S.th}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {leagues.map(l => (
+                    <tr key={l.id}>
+                      <td style={{ ...S.td, color: "#475569", fontFamily: "monospace" }}>{l.id}</td>
+                      <td style={{ ...S.td, fontWeight: 600 }}>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
+                          <Trophy size={13} color="#06b6d4" style={{ flexShrink: 0 }} />
+                          {l.name}
+                        </span>
+                      </td>
+                      <td style={S.td}>
+                        <span style={{
+                          fontFamily: "monospace", fontSize: 12, fontWeight: 700,
+                          letterSpacing: "0.1em", background: "#0a1628",
+                          border: "1px solid #1e3550", padding: "2px 8px", borderRadius: 4,
+                          color: "#94a3b8",
+                        }}>
+                          {l.code}
+                        </span>
+                      </td>
+                      <td style={{ ...S.td, fontFamily: "monospace", color: "#06b6d4", fontWeight: 600 }}>
+                        {l.memberCount}
+                      </td>
+                      <td style={{ ...S.td, color: "#64748b", fontSize: 12 }}>
+                        {new Date(l.createdAt).toLocaleDateString("en-US", { month: "numeric", day: "numeric", year: "numeric" })}
+                      </td>
+                      <td style={S.td}>
+                        <button style={S.trashBtn} onClick={() => deleteLeague(l.id, l.name)} title="Delete league">
+                          <Trash2 size={15} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {leagues.length === 0 && (
+                    <tr><td colSpan={6} style={{ ...S.td, textAlign: "center", color: "#475569", padding: 32 }}>No leagues found</td></tr>
+                  )}
                 </tbody>
               </table>
             )}

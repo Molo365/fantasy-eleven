@@ -86,6 +86,38 @@ router.delete("/admin/users/:id", requireAdmin, async (req, res): Promise<void> 
   res.json({ ok: true });
 });
 
+// ── Leagues ───────────────────────────────────────────────────────────────────
+
+router.get("/admin/leagues", requireAdmin, async (_req, res): Promise<void> => {
+  const rows = await db
+    .select({
+      id:        leaguesTable.id,
+      name:      leaguesTable.name,
+      code:      leaguesTable.code,
+      createdAt: leaguesTable.createdAt,
+      memberCount: count(leagueTeamsTable.teamId),
+    })
+    .from(leaguesTable)
+    .leftJoin(leagueTeamsTable, eq(leaguesTable.id, leagueTeamsTable.leagueId))
+    .groupBy(leaguesTable.id)
+    .orderBy(leaguesTable.id);
+
+  res.json(rows.map(l => ({
+    ...l,
+    memberCount: Number(l.memberCount),
+    createdAt: l.createdAt instanceof Date ? l.createdAt.toISOString() : l.createdAt,
+  })));
+});
+
+router.delete("/admin/leagues/:id", requireAdmin, async (req, res): Promise<void> => {
+  const id = parseInt(req.params["id"] as string);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  await db.delete(leagueTeamsTable).where(eq(leagueTeamsTable.leagueId, id));
+  await db.delete(leaguesTable).where(eq(leaguesTable.id, id));
+  req.log.info({ leagueId: id }, "Admin deleted league");
+  res.json({ ok: true });
+});
+
 // ── Players ───────────────────────────────────────────────────────────────────
 
 router.get("/admin/players", requireAdmin, async (_req, res): Promise<void> => {
