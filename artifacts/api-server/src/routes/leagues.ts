@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { eq, count } from "drizzle-orm";
-import { db, leaguesTable, leagueTeamsTable, teamsTable } from "@workspace/db";
+import { eq, count, inArray } from "drizzle-orm";
+import { db, leaguesTable, leagueTeamsTable, teamsTable, usersTable } from "@workspace/db";
 import {
   CreateLeagueBody,
   GetLeagueParams,
@@ -96,16 +96,27 @@ router.get("/leagues/:id/leaderboard", async (req, res): Promise<void> => {
     res.json([]);
     return;
   }
-  const teams = await db.select().from(teamsTable);
-  const ranked = teams
-    .filter((t) => teamIds.includes(t.id))
+  const rows = await db
+    .select({
+      id:              teamsTable.id,
+      totalPoints:     teamsTable.totalPoints,
+      teamName:        teamsTable.name,
+      managerName:     teamsTable.managerName,
+      userDisplayName: usersTable.displayName,
+      username:        usersTable.username,
+    })
+    .from(teamsTable)
+    .leftJoin(usersTable, eq(teamsTable.userId, usersTable.id))
+    .where(inArray(teamsTable.id, teamIds));
+
+  const ranked = rows
     .sort((a, b) => b.totalPoints - a.totalPoints)
     .map((t, i) => ({
-      rank: i + 1,
-      teamId: t.id,
-      teamName: t.name,
-      managerName: t.managerName,
-      totalPoints: t.totalPoints,
+      rank:          i + 1,
+      teamId:        t.id,
+      teamName:      t.userDisplayName ?? t.teamName,
+      managerName:   t.username        ?? t.managerName,
+      totalPoints:   t.totalPoints,
       gameweekPoints: 0,
     }));
   res.json(GetLeagueLeaderboardResponse.parse(ranked));
