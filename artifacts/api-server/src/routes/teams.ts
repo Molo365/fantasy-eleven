@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { db, teamsTable, teamPlayersTable, playersTable } from "@workspace/db";
 import {
   CreateTeamBody,
@@ -137,6 +137,16 @@ router.post("/teams/:id/players", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Player not found" });
     return;
   }
+  const [team] = await db.select().from(teamsTable).where(eq(teamsTable.id, params.data.id));
+  if (!team) {
+    res.status(404).json({ error: "Team not found" });
+    return;
+  }
+  if (team.budget < player.price) {
+    res.status(400).json({ error: "Insufficient budget" });
+    return;
+  }
+
   const [tp] = await db.insert(teamPlayersTable).values({
     teamId: params.data.id,
     playerId: parsed.data.playerId,
@@ -144,6 +154,11 @@ router.post("/teams/:id/players", async (req, res): Promise<void> => {
     isCaptain: parsed.data.isCaptain ?? false,
     isViceCaptain: parsed.data.isViceCaptain ?? false,
   }).returning();
+
+  await db
+    .update(teamsTable)
+    .set({ budget: team.budget - player.price })
+    .where(eq(teamsTable.id, params.data.id));
 
   res.status(201).json(GetTeamPlayersResponseItem.parse({ ...tp, player }));
 });
@@ -154,9 +169,30 @@ router.delete("/teams/:id/players/:playerId", async (req, res): Promise<void> =>
     res.status(400).json({ error: params.error.message });
     return;
   }
+
+  const [tp] = await db
+    .select({ playerId: teamPlayersTable.playerId })
+    .from(teamPlayersTable)
+    .where(and(
+      eq(teamPlayersTable.teamId, params.data.id),
+      eq(teamPlayersTable.playerId, params.data.playerId),
+    ));
+
+  if (tp) {
+    const [player] = await db.select({ price: playersTable.price }).from(playersTable).where(eq(playersTable.id, tp.playerId));
+    const [team]   = await db.select({ budget: teamsTable.budget }).from(teamsTable).where(eq(teamsTable.id, params.data.id));
+    if (player && team) {
+      await db.update(teamsTable).set({ budget: team.budget + player.price }).where(eq(teamsTable.id, params.data.id));
+    }
+  }
+
   await db
     .delete(teamPlayersTable)
-    .where(eq(teamPlayersTable.teamId, params.data.id));
+    .where(and(
+      eq(teamPlayersTable.teamId, params.data.id),
+      eq(teamPlayersTable.playerId, params.data.playerId),
+    ));
+
   res.sendStatus(204);
 });
 

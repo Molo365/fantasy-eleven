@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useAuth } from "@/contexts/auth";
 import {
   useGetTeam, useGetTeamPlayers, useRemovePlayerFromTeam,
   getGetTeamPlayersQueryKey, useUpdateTeam, getGetTeamQueryKey,
@@ -184,11 +185,12 @@ function StatRow({ label, value, accent }: { label: string; value: string; accen
 
 /* ─── Squad Builder page ─────────────────────────────────────────── */
 export function SquadBuilder() {
-  const TEAM_ID = 1;
+  const { authState } = useAuth();
+  const TEAM_ID = authState.status === "authenticated" ? (authState.user.teamId ?? 0) : 0;
   const qc = useQueryClient();
 
-  const { data: team,        isLoading: loadingTeam }    = useGetTeam(TEAM_ID,    { query: { queryKey: getGetTeamQueryKey(TEAM_ID) } });
-  const { data: teamPlayers, isLoading: loadingPlayers } = useGetTeamPlayers(TEAM_ID, { query: { queryKey: getGetTeamPlayersQueryKey(TEAM_ID) } });
+  const { data: team,        isLoading: loadingTeam }    = useGetTeam(TEAM_ID,    { query: { enabled: TEAM_ID > 0, queryKey: getGetTeamQueryKey(TEAM_ID) } });
+  const { data: teamPlayers, isLoading: loadingPlayers } = useGetTeamPlayers(TEAM_ID, { query: { enabled: TEAM_ID > 0, queryKey: getGetTeamPlayersQueryKey(TEAM_ID) } });
 
   const removeMut  = useRemovePlayerFromTeam();
   const updateMut  = useUpdateTeam();
@@ -214,8 +216,11 @@ export function SquadBuilder() {
     },
   );
 
-  const refreshPlayers = () => qc.invalidateQueries({ queryKey: getGetTeamPlayersQueryKey(TEAM_ID) });
-  const refreshTeam    = () => qc.invalidateQueries({ queryKey: getGetTeamQueryKey(TEAM_ID) });
+  const refreshPlayers = () => {
+    qc.invalidateQueries({ queryKey: getGetTeamPlayersQueryKey(TEAM_ID) });
+    qc.invalidateQueries({ queryKey: getGetTeamQueryKey(TEAM_ID) });
+  };
+  const refreshTeam = () => qc.invalidateQueries({ queryKey: getGetTeamQueryKey(TEAM_ID) });
 
   if (loadingTeam || loadingPlayers) {
     return (
