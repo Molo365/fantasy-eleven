@@ -9,6 +9,7 @@
     "seed-espn-players": "tsx ./src/seed-espn-players.ts",
     "seed-espn-fixtures": "tsx ./src/seed-espn-fixtures.ts",
     "seed-wc-players": "tsx ./seed-wc-players.ts",
+    "sync-wc-2026": "tsx ./src/sync-wc-2026.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

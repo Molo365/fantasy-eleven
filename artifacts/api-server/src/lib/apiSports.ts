@@ -79,21 +79,53 @@ async function apiFetch<T>(path: string): Promise<T> {
   return json.response;
 }
 
-type ApiTeam = { team: { id: number; name: string } };
-type SquadPlayer = { id: number; name: string; position: string; photo: string };
-type ApiSquad = { team: { id: number; name: string }; players: SquadPlayer[] };
+async function apiFetchPaged<T>(path: string): Promise<{ response: T[]; paging: { current: number; total: number } }> {
+  const key = process.env.API_SPORTS_KEY;
+  if (!key) throw new Error("API_SPORTS_KEY not set");
+  const res = await fetch(`${API_BASE}${path}`, { headers: { "x-apisports-key": key } });
+  if (!res.ok) throw new Error(`HTTP ${res.status} for ${path}`);
+  const json = await res.json() as {
+    response: T[];
+    paging: { current: number; total: number };
+    errors: unknown;
+  };
+  if (json.errors && typeof json.errors === "object" && Object.keys(json.errors as object).length > 0) {
+    throw new Error(`API errors: ${JSON.stringify(json.errors)}`);
+  }
+  return { response: json.response ?? [], paging: json.paging ?? { current: 1, total: 1 } };
+}
+
+type ApiWCPlayer = {
+  player: { id: number; name: string; photo: string };
+  statistics: Array<{
+    team: { id: number; name: string };
+    games: { position: string | null };
+  }>;
+};
 
 const POS_MAP: Record<string, Pos> = {
   Goalkeeper: "GK", Defender: "DEF", Midfielder: "MID", Attacker: "FWD",
 };
 
-async function fetchWCTeams(season: number): Promise<ApiTeam[]> {
-  return apiFetch<ApiTeam[]>(`/teams?league=${WC_LEAGUE_ID}&season=${season}`);
-}
+/** Fetch all pages of /players?league=WC_LEAGUE_ID&season=SEASON */
+export async function getWorldCupSquads(season: number): Promise<ApiWCPlayer[]> {
+  const all: ApiWCPlayer[] = [];
+  let page = 1;
+  let totalPages = 1;
 
-async function fetchSquad(teamId: number): Promise<ApiSquad | null> {
-  const squads = await apiFetch<ApiSquad[]>(`/players/squads?team=${teamId}`);
-  return squads?.[0] ?? null;
+  do {
+    if (page > 1) await new Promise(r => setTimeout(r, 350)); // respect rate limit between pages
+    logger.info({ season, page, totalPages }, "Fetching WC players page");
+    const { response, paging } = await apiFetchPaged<ApiWCPlayer>(
+      `/players?league=${WC_LEAGUE_ID}&season=${season}&page=${page}`
+    );
+    all.push(...response);
+    totalPages = paging.total;
+    page++;
+  } while (page <= totalPages);
+
+  logger.info({ season, total: all.length }, "getWorldCupSquads complete");
+  return all;
 }
 
 // ─── Public sync functions ────────────────────────────────────────────────────
@@ -109,54 +141,52 @@ export async function clearAndSyncWorldCupPlayers(): Promise<{
 }
 
 export async function syncWorldCupPlayers(): Promise<{ inserted: number; skipped: number; nations: number }> {
-  let apiInserted = 0, apiSkipped = 0, apiNations = 0;
+  let apiInserted = 0, apiSkipped = 0;
+  const nationsSeen = new Set<string>();
 
   for (const season of [2026, 2022]) {
     try {
-      logger.info({ season }, "Fetching WC teams from API-Sports");
-      const teams = await fetchWCTeams(season);
-      if (!teams?.length) { logger.warn({ season }, "No teams returned"); continue; }
-      logger.info({ teamCount: teams.length, season }, "Got WC teams — fetching squads");
+      logger.info({ season }, "Fetching WC players via league/season endpoint");
+      const players = await getWorldCupSquads(season);
+      if (!players?.length) { logger.warn({ season }, "No players returned"); continue; }
+      logger.info({ count: players.length, season }, "Got WC players — inserting into DB");
 
       const now = new Date();
 
-      for (const { team } of teams) {
-        await new Promise(r => setTimeout(r, 250)); // stay within rate limit
+      for (const entry of players) {
+        const stat = entry.statistics?.[0];
+        if (!stat) { apiSkipped++; continue; }
+
+        const rawPos = stat.games?.position ?? "";
+        const pos = POS_MAP[rawPos];
+        if (!pos) { apiSkipped++; continue; }
+
+        const nationName = stat.team.name;
+        const nationCode = toCode(nationName);
+        nationsSeen.add(nationName);
+
+        const photoUrl = entry.player.photo || null;
+
         try {
-          const squad = await fetchSquad(team.id);
-          if (!squad?.players?.length) { logger.warn({ teamId: team.id }, "Empty squad"); apiSkipped++; continue; }
-
-          const nationName = squad.team.name;
-          const nationCode = toCode(nationName);
-          apiNations++;
-
-          for (const p of squad.players) {
-            const pos = POS_MAP[p.position];
-            if (!pos) { apiSkipped++; continue; }
-            try {
-              await db.insert(playersTable).values({
-                externalId: p.id,
-                name: p.name,
-                position: pos,
-                club: nationName,
-                clubShortName: nationCode,
-                nationality: nationName,
-                price: assignPrice(p.name, pos, nationName),
-                totalPoints: 0,
-                imageUrl: p.photo || null,
-                cachedFromApi: true,
-                cachedAt: now,
-              }).onConflictDoNothing();
-              apiInserted++;
-            } catch { apiSkipped++; }
-          }
-        } catch (err) {
-          logger.warn({ err, teamId: team.id, teamName: team.name }, "Squad fetch failed");
-          apiSkipped++;
-        }
+          await db.insert(playersTable).values({
+            externalId: entry.player.id,
+            name: entry.player.name,
+            position: pos,
+            club: nationName,
+            clubShortName: nationCode,
+            nationality: nationName,
+            price: assignPrice(entry.player.name, pos, nationName),
+            totalPoints: 0,
+            imageUrl: photoUrl,
+            cachedFromApi: true,
+            cachedAt: now,
+          }).onConflictDoNothing();
+          apiInserted++;
+        } catch { apiSkipped++; }
       }
-      logger.info({ apiInserted, apiSkipped, apiNations }, "API-Sports squads done");
-      break; // don't try the next season if we got some results
+
+      logger.info({ apiInserted, apiSkipped, nations: nationsSeen.size }, "API-Sports WC players done");
+      break; // success — don't fall back to older season
     } catch (err) {
       logger.warn({ err, season }, "Season fetch failed, trying next");
     }
@@ -168,7 +198,11 @@ export async function syncWorldCupPlayers(): Promise<{ inserted: number; skipped
   const { inserted: fbInserted, skipped: fbSkipped, nations: fbNations } =
     await seedFallbackMissing(existingNations);
 
-  const total = { inserted: apiInserted + fbInserted, skipped: apiSkipped + fbSkipped, nations: apiNations + fbNations };
+  const total = {
+    inserted: apiInserted + fbInserted,
+    skipped: apiSkipped + fbSkipped,
+    nations: nationsSeen.size + fbNations,
+  };
   logger.info(total, "WC player sync complete (API + fallback gap-fill)");
   return total;
 }
