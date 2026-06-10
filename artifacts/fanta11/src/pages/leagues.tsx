@@ -147,7 +147,23 @@ export function Leagues() {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 h-full flex flex-col">
+    <div className="space-y-6 animate-in fade-in duration-500 h-full flex flex-col" style={{ position: "relative", zIndex: 0 }}>
+      {/* Full-viewport background — fixed so it covers behind the sidebar & padding */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: -1,
+          backgroundImage: "url('/old-trafford.jpg')",
+          backgroundSize: "cover",
+          backgroundPosition: "center center",
+          backgroundRepeat: "no-repeat",
+        }}
+      >
+        {/* 85% dark overlay */}
+        <div style={{ position: "absolute", inset: 0, background: "rgba(5,10,20,0.85)" }} />
+      </div>
       {/* ── Header ─────────────────────────────────────────────────── */}
       <div className="flex justify-between items-end">
         <div>
