@@ -126,7 +126,7 @@ export function Dashboard() {
           backgroundImage: "url('/stadium.png')",
           backgroundSize: "cover",
           backgroundPosition: "center 30%",
-          minHeight: 260,
+          minHeight: 160,
         }}
       >
         <div
@@ -142,7 +142,7 @@ export function Dashboard() {
           }}
         />
 
-        <div className="relative z-10 px-6 pt-8 pb-0">
+        <div className="relative z-10 px-4 sm:px-6 pt-5 sm:pt-8 pb-0">
           <div className="mb-6">
             <div className="flex items-center gap-2 mb-1">
               <Zap size={14} color="#06b6d4" style={{ filter: "drop-shadow(0 0 6px #06b6d4)" }} />
@@ -151,7 +151,7 @@ export function Dashboard() {
               </span>
             </div>
             <h1
-              className="text-4xl font-black tracking-tight"
+              className="text-2xl sm:text-4xl font-black tracking-tight"
               style={{ textShadow: "0 2px 20px rgba(0,0,0,0.6)", color: "#f1f5f9" }}
             >
               Command Center
@@ -160,7 +160,7 @@ export function Dashboard() {
           </div>
 
           {/* Stat cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pb-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 pb-6">
             {statCards.map(({ label, value, sub, Icon, accent, smallValue }) => (
               <div
                 key={label}
@@ -181,22 +181,23 @@ export function Dashboard() {
                   className="absolute -top-6 -right-6 w-20 h-20 rounded-full opacity-20 transition-opacity group-hover:opacity-30"
                   style={{ background: accent, filter: "blur(20px)" }}
                 />
-                <div className="p-5 relative z-10">
-                  <div className="flex items-center justify-between mb-3">
-                    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#475569" }}>
+                <div className="p-3 sm:p-5 relative z-10">
+                  <div className="flex items-center justify-between mb-2 sm:mb-3">
+                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#475569" }}>
                       {label}
                     </span>
                     <div
-                      className="w-8 h-8 rounded-lg flex items-center justify-center"
+                      className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center"
                       style={{ background: `${accent}18`, border: `1px solid ${accent}33` }}
                     >
-                      <Icon size={16} style={{ color: accent, filter: `drop-shadow(0 0 4px ${accent})` }} />
+                      <Icon size={13} className="sm:hidden" style={{ color: accent }} />
+                      <Icon size={16} className="hidden sm:block" style={{ color: accent, filter: `drop-shadow(0 0 4px ${accent})` }} />
                     </div>
                   </div>
                   <div
                     className="font-black leading-none tracking-tight"
                     style={{
-                      fontSize: smallValue ? 22 : 32,
+                      fontSize: smallValue ? 16 : 24,
                       fontFamily: smallValue ? "inherit" : "monospace",
                       color: "#f1f5f9",
                       textShadow: "0 1px 8px rgba(0,0,0,0.4)",
@@ -204,7 +205,7 @@ export function Dashboard() {
                   >
                     {value}
                   </div>
-                  <div style={{ fontSize: 11, color: accent, marginTop: 6, fontWeight: 600 }}>{sub}</div>
+                  <div style={{ fontSize: 10, color: accent, marginTop: 4, fontWeight: 600 }}>{sub}</div>
                 </div>
               </div>
             ))}

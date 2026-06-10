@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/auth";
 import {
   useGetTeam, useGetTeamPlayers, useRemovePlayerFromTeam,
@@ -142,7 +142,7 @@ function PlayerLabel({
         backdropFilter: "blur(6px)",
         borderRadius: 4,
         padding: "2px 6px",
-        maxWidth: 76,
+        maxWidth: "100%",
         overflow: "hidden",
         textOverflow: "ellipsis",
         whiteSpace: "nowrap",
@@ -222,6 +222,16 @@ export function SquadBuilder() {
   };
   const refreshTeam = () => qc.invalidateQueries({ queryKey: getGetTeamQueryKey(TEAM_ID) });
 
+  /* Viewport-aware jersey sizing — fits 5-player rows without horizontal scroll */
+  const [vw, setVw] = useState(() => typeof window !== "undefined" ? window.innerWidth : 1024);
+  useEffect(() => {
+    const h = () => setVw(window.innerWidth);
+    window.addEventListener("resize", h);
+    return () => window.removeEventListener("resize", h);
+  }, []);
+  // Available pitch width = vw − (layout p-4 × 2 = 32) − (pitch px-1 × 2 = 8) − (4 gaps × 4px = 16) = vw − 56
+  const jerseySize = Math.min(62, Math.max(38, Math.floor((vw - 56) / 5)));
+
   /* Nation counts from current squad (club field = nation) */
   const nationCounts: Record<string, number> = {};
   for (const tp of teamPlayers ?? []) {
@@ -252,7 +262,7 @@ export function SquadBuilder() {
   const BENCH_GK_SLOT = 15;
 
   return (
-    <div className="flex flex-col gap-2" style={{ height: "calc(100vh - 60px)" }}>
+    <div className="flex flex-col gap-2 pb-4 sm:pb-0 sm:h-[calc(100vh-60px)]">
 
       {/* ── Header bar ── */}
       <div className="shrink-0 flex justify-between items-center">
@@ -272,7 +282,7 @@ export function SquadBuilder() {
       <div
         className="flex-1 min-h-0 rounded-xl overflow-hidden relative"
         style={{
-          minHeight: 500,
+          minHeight: 280,
           backgroundImage: "url('/pitch.png')",
           backgroundSize: "cover",
           backgroundPosition: "center top",
@@ -289,7 +299,7 @@ export function SquadBuilder() {
           {rows.map((row) => {
             const pc = POS_COLOR[row.position] ?? "#94a3b8";
             return (
-              <div key={row.position} className="flex justify-center items-start gap-2 sm:gap-4">
+              <div key={row.position} className="flex justify-center items-start gap-1 sm:gap-3">
                 {Array.from({ length: row.count }, (_, i) => {
                   const slot      = row.startSlot + i;
                   const rec       = teamPlayers?.find((p) => p.slot === slot) ?? null;
@@ -298,7 +308,7 @@ export function SquadBuilder() {
                   const [kPri, kSec] = rec ? kitColors(rec.player.club) : ["#1e293b", "#334155"];
 
                   return (
-                    <div key={slot} style={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: 56, maxWidth: 78 }}>
+                    <div key={slot} style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0, width: jerseySize }}>
                       {rec ? (
                         /* Filled slot */
                         <div
@@ -328,7 +338,7 @@ export function SquadBuilder() {
                             className="cursor-pointer transition-transform group-hover:scale-110"
                             onClick={() => setInfoPlayer(rec)}
                           >
-                            <Jersey primary={kPri} secondary={kSec} label={rec.player.clubShortName ?? ""} />
+                            <Jersey primary={kPri} secondary={kSec} label={rec.player.clubShortName ?? ""} size={jerseySize} />
                           </div>
 
                           {/* Name + price */}
@@ -346,7 +356,7 @@ export function SquadBuilder() {
                           className="transition-transform hover:scale-105"
                           style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", flexDirection: "column", alignItems: "center" }}
                         >
-                          <EmptyJersey posColor={pc} />
+                          <EmptyJersey posColor={pc} size={jerseySize} />
                           <div style={{
                             marginTop: 4,
                             background: `${pc}22`,
@@ -482,7 +492,7 @@ export function SquadBuilder() {
               autoFocus
             />
           </div>
-          <ScrollArea className="h-[360px] mt-3 pr-3">
+          <ScrollArea className="h-[min(360px,45vh)] mt-3 pr-3">
             {loadingAvail ? (
               <div className="flex justify-center p-8"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
             ) : (available?.length ?? 0) === 0 ? (
