@@ -715,20 +715,22 @@ components:
 
     DashboardSummary:
       type: object
-      required: [teamPoints, gameweekPoints, globalRank, leagueCount, playerCount, budgetRemaining]
+      required: [teamPoints, gameweekPoints, globalRank, leagueCount, playerCount, budgetRemaining, hasSquad]
       properties:
         teamPoints:
           type: integer
         gameweekPoints:
           type: integer
         globalRank:
-          type: integer
+          type: ["integer", "null"]
         leagueCount:
           type: integer
         playerCount:
           type: integer
         budgetRemaining:
           type: number
+        hasSquad:
+          type: boolean
         captainName:
           type: ["string", "null"]
         captainPoints:

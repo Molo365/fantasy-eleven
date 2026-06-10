@@ -211,10 +211,12 @@ export interface GameweekDetail {
 export interface DashboardSummary {
   teamPoints: number;
   gameweekPoints: number;
-  globalRank: number;
+  /** @nullable */
+  globalRank: number | null;
   leagueCount: number;
   playerCount: number;
   budgetRemaining: number;
+  hasSquad: boolean;
   /** @nullable */
   captainName?: string | null;
   /** @nullable */

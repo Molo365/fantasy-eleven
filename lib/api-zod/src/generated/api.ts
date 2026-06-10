@@ -393,10 +393,11 @@ export const GetDashboardSummaryQueryParams = zod.object({
 export const GetDashboardSummaryResponse = zod.object({
   "teamPoints": zod.number(),
   "gameweekPoints": zod.number(),
-  "globalRank": zod.number(),
+  "globalRank": zod.number().nullable(),
   "leagueCount": zod.number(),
   "playerCount": zod.number(),
   "budgetRemaining": zod.number(),
+  "hasSquad": zod.boolean(),
   "captainName": zod.string().nullish(),
   "captainPoints": zod.number().nullish(),
   "topScorerName": zod.string().nullish(),

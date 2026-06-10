@@ -44,11 +44,12 @@ router.get("/dashboard/summary", async (req, res): Promise<void> => {
   res.json(
     GetDashboardSummaryResponse.parse({
       teamPoints: team?.totalPoints ?? 0,
-      gameweekPoints: 42,
-      globalRank: globalRank || 1,
+      gameweekPoints: 0,
+      globalRank: playerCount > 0 ? (globalRank || null) : null,
       leagueCount,
       playerCount,
       budgetRemaining: team?.budget ?? 100,
+      hasSquad: playerCount > 0,
       captainName: captain?.name ?? null,
       captainPoints: captain?.totalPoints ?? null,
       topScorerName: topPlayer[0]?.name ?? null,

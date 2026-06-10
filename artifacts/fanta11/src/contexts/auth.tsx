@@ -5,6 +5,7 @@ export type AuthUser = {
   username: string;
   email: string;
   displayName: string;
+  teamId: number | null;
 };
 
 type AuthState =

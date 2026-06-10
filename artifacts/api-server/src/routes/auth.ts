@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
-import { db, usersTable } from "@workspace/db";
+import { db, usersTable, teamsTable } from "@workspace/db";
 import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
@@ -104,11 +104,13 @@ router.get("/auth/me", async (req, res): Promise<void> => {
     res.status(401).json({ error: "User not found" });
     return;
   }
+  const [team] = await db.select({ id: teamsTable.id }).from(teamsTable).where(eq(teamsTable.userId, userId));
   res.json({
     id: user.id,
     username: user.username,
     email: user.email,
     displayName: user.displayName,
+    teamId: team?.id ?? null,
   });
 });
 
