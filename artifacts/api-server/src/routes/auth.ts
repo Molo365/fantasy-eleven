@@ -44,7 +44,12 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     .returning();
   req.session.userId = user.id;
   req.log.info({ userId: user.id }, "User registered");
-  const [newTeam] = await db.select({ id: teamsTable.id }).from(teamsTable).where(eq(teamsTable.userId, user.id));
+  // Auto-create a team for the new user so they start with £100m budget immediately
+  const [newTeam] = await db.insert(teamsTable).values({
+    userId: user.id,
+    name: `${displayName}'s Team`,
+    managerName: displayName,
+  }).returning({ id: teamsTable.id });
   res.status(201).json({
     id: user.id,
     username: user.username,
@@ -75,7 +80,16 @@ router.post("/auth/login", async (req, res): Promise<void> => {
   }
   req.session.userId = user.id;
   req.log.info({ userId: user.id }, "User logged in");
-  const [loginTeam] = await db.select({ id: teamsTable.id }).from(teamsTable).where(eq(teamsTable.userId, user.id));
+  let [loginTeam] = await db.select({ id: teamsTable.id }).from(teamsTable).where(eq(teamsTable.userId, user.id));
+  // Back-fill: create a team for users who registered before auto-creation was added
+  if (!loginTeam) {
+    [loginTeam] = await db.insert(teamsTable).values({
+      userId: user.id,
+      name: `${user.displayName}'s Team`,
+      managerName: user.displayName,
+    }).returning({ id: teamsTable.id });
+    req.log.info({ userId: user.id, teamId: loginTeam?.id }, "Auto-created missing team on login");
+  }
   res.json({
     id: user.id,
     username: user.username,
