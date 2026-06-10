@@ -230,18 +230,19 @@ export function SquadBuilder() {
     );
   }
 
-  /* Slot layout — slot numbers are positional (GK=1, DEF=2-5, MID=6-9, FWD=10-11) */
+  /* Slot layout — 14 on pitch + 1 bench GK = 15 total
+     Slots 1: GK, 2-6: DEF, 7-11: MID, 12-14: FWD, 15: bench GK */
   const pitchLayout = [
     { position: "GK",  count: 1 },
-    { position: "DEF", count: 4 },
-    { position: "MID", count: 4 },
-    { position: "FWD", count: 2 },
+    { position: "DEF", count: 5 },
+    { position: "MID", count: 5 },
+    { position: "FWD", count: 3 },
   ];
   const rows = pitchLayout.map((row, ri) => ({
     ...row,
     startSlot: pitchLayout.slice(0, ri).reduce((acc, r) => acc + r.count, 0) + 1,
   }));
-  const displayRows = rows;
+  const BENCH_GK_SLOT = 15;
 
   return (
     <div className="flex flex-col gap-2" style={{ height: "calc(100vh - 60px)" }}>
@@ -250,7 +251,7 @@ export function SquadBuilder() {
       <div className="shrink-0 flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-black tracking-tight">Squad Builder</h1>
-          <p className="text-xs text-muted-foreground">4-4-2 · World Cup 2026</p>
+          <p className="text-xs text-muted-foreground">2 GK · 5 DEF · 5 MID · 3 FWD · World Cup 2026</p>
         </div>
         <div className="text-right">
           <div className="text-[10px] font-semibold tracking-widest uppercase text-muted-foreground">Budget</div>
@@ -362,6 +363,73 @@ export function SquadBuilder() {
           })}
         </div>
       </div>
+
+      {/* ── Bench ── */}
+      {(() => {
+        const benchRec = teamPlayers?.find((p) => p.slot === BENCH_GK_SLOT) ?? null;
+        const isCaptain = team?.captainId === benchRec?.playerId;
+        const isVice    = team?.viceCaptainId === benchRec?.playerId && !isCaptain;
+        const [kPri, kSec] = benchRec ? kitColors(benchRec.player.club) : ["#1e293b", "#334155"];
+        const pc = POS_COLOR["GK"];
+        return (
+          <div className="shrink-0 rounded-xl overflow-hidden" style={{
+            background: "linear-gradient(135deg, rgba(15,23,42,0.92) 0%, rgba(5,15,30,0.96) 100%)",
+            border: "1px solid rgba(255,255,255,0.07)",
+            boxShadow: "0 4px 24px rgba(0,0,0,0.4)",
+          }}>
+            <div className="flex items-center gap-3 px-4 py-2">
+              <div style={{
+                fontSize: 8.5, fontWeight: 800, letterSpacing: "0.18em",
+                color: "#64748b", textTransform: "uppercase",
+                borderRight: "1px solid rgba(255,255,255,0.08)",
+                paddingRight: 12, whiteSpace: "nowrap",
+              }}>
+                Bench
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div style={{ fontSize: 8, color: "#64748b", fontWeight: 700 }}>GK 2</div>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                  {benchRec ? (
+                    <div className="relative group" style={{ display: "inline-flex", flexDirection: "column", alignItems: "center" }}>
+                      <button
+                        className="absolute -top-1 -right-1 z-20 w-[16px] h-[16px] rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        style={{ background: "#ef4444", boxShadow: "0 0 8px rgba(239,68,68,0.7)", border: "1.5px solid rgba(255,255,255,0.3)" }}
+                        onClick={() => removeMut.mutate({ id: TEAM_ID, playerId: benchRec.playerId }, { onSuccess: refreshPlayers })}
+                      >
+                        <X style={{ width: 8, height: 8, color: "white" }} />
+                      </button>
+                      <button
+                        className="absolute -top-1 -left-1 z-20 w-[16px] h-[16px] rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        style={{ background: "#0ea5e9", boxShadow: "0 0 8px rgba(14,165,233,0.7)", border: "1.5px solid rgba(255,255,255,0.3)" }}
+                        onClick={() => setInfoPlayer(benchRec)}
+                      >
+                        <Info style={{ width: 8, height: 8, color: "white" }} />
+                      </button>
+                      <div className="cursor-pointer transition-transform group-hover:scale-110" onClick={() => setInfoPlayer(benchRec)}>
+                        <Jersey primary={kPri} secondary={kSec} label={benchRec.player.clubShortName ?? ""} size={44} />
+                      </div>
+                      <PlayerLabel name={benchRec.player.name} price={benchRec.player.price} isCaptain={isCaptain} isVice={isVice} />
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => { setPicker({ position: "GK", slot: BENCH_GK_SLOT }); setSearch(""); }}
+                      className="transition-transform hover:scale-105"
+                      style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", flexDirection: "column", alignItems: "center" }}
+                    >
+                      <EmptyJersey posColor={pc} size={44} />
+                      <div style={{
+                        marginTop: 3, background: `${pc}22`, color: pc,
+                        border: `1px solid ${pc}44`, borderRadius: 4,
+                        padding: "1px 6px", fontSize: 8, fontWeight: 700, letterSpacing: "0.1em",
+                      }}>GK</div>
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── Captain quick-set strip ── */}
       {(teamPlayers?.length ?? 0) > 0 && (
