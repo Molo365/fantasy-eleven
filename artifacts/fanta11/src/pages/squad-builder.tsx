@@ -279,7 +279,7 @@ export function SquadBuilder() {
 
         {/* Player rows — FWD at top, GK at bottom */}
         <div className="relative z-10 h-full flex flex-col justify-between py-4 px-1">
-          {displayRows.map((row) => {
+          {rows.map((row) => {
             const pc = POS_COLOR[row.position] ?? "#94a3b8";
             return (
               <div key={row.position} className="flex justify-center items-start gap-2 sm:gap-4">
