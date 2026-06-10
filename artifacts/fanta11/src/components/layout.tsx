@@ -9,10 +9,13 @@ import {
   X,
   LogOut,
   User,
+  ShieldCheck,
 } from "lucide-react";
 import { useState } from "react";
 import logoSrc from "../assets/logo.png";
 import { useAuth } from "@/contexts/auth";
+
+const ADMIN_EMAIL = "domenicg@gmx.com";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -46,6 +49,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { authState, logout } = useAuth();
   const user = authState.status === "authenticated" ? authState.user : null;
+  const isAdmin = user?.email?.toLowerCase() === ADMIN_EMAIL;
 
   const isActive = (href: string) =>
     href === "/" ? location === "/" : location.startsWith(href);
@@ -95,6 +99,19 @@ export function Layout({ children }: { children: React.ReactNode }) {
           {navItems.map((item) => (
             <NavLink key={item.href} {...item} active={isActive(item.href)} />
           ))}
+          {isAdmin && (
+            <>
+              <p className="text-xs font-semibold text-amber-400/40 uppercase tracking-widest px-4 mt-5 mb-3">
+                Admin
+              </p>
+              <NavLink
+                href="/admin/dashboard"
+                label="Admin Panel"
+                icon={ShieldCheck}
+                active={isActive("/admin/dashboard")}
+              />
+            </>
+          )}
         </nav>
 
         {/* Bottom: GW status + user */}
@@ -171,6 +188,19 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   active={isActive(item.href)}
                 />
               ))}
+              {isAdmin && (
+                <>
+                  <p className="text-xs font-semibold text-amber-400/40 uppercase tracking-widest px-4 mt-5 mb-3">
+                    Admin
+                  </p>
+                  <NavLink
+                    href="/admin/dashboard"
+                    label="Admin Panel"
+                    icon={ShieldCheck}
+                    active={isActive("/admin/dashboard")}
+                  />
+                </>
+              )}
             </nav>
           </aside>
         </div>
