@@ -25,11 +25,12 @@ const navItems = [
   { href: "/fixtures", label: "Fixtures", icon: CalendarDays },
 ];
 
-function NavLink({ href, label, icon: Icon, active }: { href: string; label: string; icon: typeof LayoutDashboard; active: boolean }) {
+function NavLink({ href, label, icon: Icon, active, onClick }: { href: string; label: string; icon: typeof LayoutDashboard; active: boolean; onClick?: () => void }) {
   return (
     <Link
       href={href}
       data-testid={`nav-link-${label.toLowerCase().replace(/\s+/g, "-")}`}
+      onClick={onClick}
       className={`
         flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-150
         ${active
@@ -186,6 +187,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   key={item.href}
                   {...item}
                   active={isActive(item.href)}
+                  onClick={() => setMobileOpen(false)}
                 />
               ))}
               {isAdmin && (
@@ -198,6 +200,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                     label="Admin Panel"
                     icon={ShieldCheck}
                     active={isActive("/admin/dashboard")}
+                    onClick={() => setMobileOpen(false)}
                   />
                 </>
               )}
