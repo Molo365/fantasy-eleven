@@ -165,7 +165,9 @@ export async function syncWorldCupPlayers(): Promise<{ inserted: number; skipped
         const nationCode = toCode(nationName);
         nationsSeen.add(nationName);
 
-        const photoUrl = entry.player.photo || null;
+        const photoUrl = entry.player.id
+          ? `https://media.api-sports.io/football/players/${entry.player.id}.png`
+          : (entry.player.photo || null);
 
         try {
           await db.insert(playersTable).values({

@@ -10,7 +10,7 @@ import { sql, count } from "drizzle-orm";
 
 const API_BASE = "https://v3.football.api-sports.io";
 const WC_LEAGUE_ID = 1;
-const SEASON = 2026;
+const SEASONS = [2026, 2022]; // try 2026 first, fall back to 2022 like the server does
 
 const NATION_CODE: Record<string, string> = {
   "France":"FRA","Brazil":"BRA","Argentina":"ARG","England":"ENG",
@@ -71,10 +71,10 @@ type ApiPlayer = {
   statistics: Array<{ team:{ id:number; name:string }; games:{ position:string|null } }>;
 };
 
-async function fetchPage(page: number): Promise<{ players: ApiPlayer[]; totalPages: number }> {
+async function fetchPage(season: number, page: number): Promise<{ players: ApiPlayer[]; totalPages: number }> {
   const key = process.env.API_SPORTS_KEY;
   if (!key) throw new Error("API_SPORTS_KEY not set");
-  const url = `${API_BASE}/players?league=${WC_LEAGUE_ID}&season=${SEASON}&page=${page}`;
+  const url = `${API_BASE}/players?league=${WC_LEAGUE_ID}&season=${season}&page=${page}`;
   console.log(`  → GET ${url}`);
   const res = await fetch(url, { headers: { "x-apisports-key": key } });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -98,24 +98,46 @@ async function main() {
   console.log(`\n🗑  Clearing ${before} existing players…`);
   await db.execute(sql`TRUNCATE players RESTART IDENTITY CASCADE`);
 
-  // 2. Fetch all pages from API-Sports
-  console.log(`\n📡 Fetching WC ${SEASON} players (league=${WC_LEAGUE_ID})…`);
-  const all: ApiPlayer[] = [];
-  let page = 1;
-  let totalPages = 1;
+  // 2. Fetch from API-Sports — try 2026 first, fall back to 2022
+  let all: ApiPlayer[] = [];
+  let usedSeason = 0;
 
-  do {
-    if (page > 1) await new Promise(r => setTimeout(r, 350));
-    const result = await fetchPage(page);
-    all.push(...result.players);
-    totalPages = result.totalPages;
-    console.log(`  Page ${page}/${totalPages} — ${result.players.length} players`);
-    page++;
-  } while (page <= totalPages);
+  for (const season of SEASONS) {
+    try {
+      console.log(`\n📡 Fetching WC ${season} players (league=${WC_LEAGUE_ID})…`);
+      const seasonPlayers: ApiPlayer[] = [];
+      let page = 1;
+      let totalPages = 1;
 
-  console.log(`\n✅ Fetched ${all.length} total players from API`);
+      do {
+        if (page > 1) await new Promise(r => setTimeout(r, 350));
+        const result = await fetchPage(season, page);
+        seasonPlayers.push(...result.players);
+        totalPages = result.totalPages;
+        console.log(`  Page ${page}/${totalPages} — ${result.players.length} players`);
+        page++;
+      } while (page <= totalPages);
 
-  // 3. Insert into DB
+      if (seasonPlayers.length === 0) {
+        console.log(`  ⚠ No players returned for ${season}, trying next season…`);
+        continue;
+      }
+
+      all = seasonPlayers;
+      usedSeason = season;
+      console.log(`\n✅ Fetched ${all.length} players from season ${season}`);
+      break;
+    } catch (err) {
+      console.warn(`  ⚠ Season ${season} failed:`, err);
+    }
+  }
+
+  if (all.length === 0) {
+    console.log("\n⚠️  Zero players returned from all seasons — data may not be available yet.");
+    process.exit(0);
+  }
+
+  // 3. Insert into DB with photo URL constructed from API-Sports player ID
   let inserted = 0, skipped = 0;
   const nationsSeen = new Set<string>();
   const now = new Date();
@@ -142,7 +164,9 @@ async function main() {
         nationality: nationName,
         price: assignPrice(entry.player.name, pos, nationName),
         totalPoints: 0,
-        imageUrl: entry.player.photo || null,
+        imageUrl: entry.player.id
+          ? `https://media.api-sports.io/football/players/${entry.player.id}.png`
+          : (entry.player.photo || null),
         cachedFromApi: true,
         cachedAt: now,
       }).onConflictDoNothing();
@@ -153,16 +177,11 @@ async function main() {
     }
   }
 
-  console.log(`\n🎉 Done!`);
+  console.log(`\n🎉 Done! (season ${usedSeason})`);
   console.log(`   Inserted : ${inserted}`);
   console.log(`   Skipped  : ${skipped}`);
   console.log(`   Nations  : ${nationsSeen.size}`);
   console.log(`   Nations  : ${[...nationsSeen].sort().join(", ")}`);
-
-  if (all.length === 0) {
-    console.log("\n⚠️  Zero players returned — WC 2026 data may not be available yet on this API plan.");
-    console.log("   The API server will fall back to the curated 2026 squad data on next startup.");
-  }
 
   process.exit(0);
 }
