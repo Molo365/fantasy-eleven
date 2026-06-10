@@ -88,7 +88,7 @@ export function Dashboard() {
     {
       label: "GW Points",
       value: String(summary?.gameweekPoints ?? 0),
-      sub: `Total: ${summary?.teamPoints ?? 0} pts`,
+      sub: "",
       Icon: TrendingUp,
       accent: "#06b6d4",
     },
