@@ -127,7 +127,7 @@ function PlayerLabel({
           padding: "1px 5px", letterSpacing: "0.05em",
           boxShadow: isCaptain ? "0 0 8px rgba(245,158,11,0.7)" : "none",
         }}>
-          {isCaptain ? "©" : "V"}
+          {isCaptain ? "C" : "V"}
         </div>
       )}
       <div style={{
@@ -343,6 +343,17 @@ export function SquadBuilder() {
                         </div>
                         <button
                           className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center"
+                          title={isCaptain ? "Captain" : "Set as Captain"}
+                          style={{
+                            background: isCaptain ? "rgba(245,158,11,0.22)" : "rgba(245,158,11,0.07)",
+                            border: `1px solid ${isCaptain ? "rgba(245,158,11,0.55)" : "rgba(245,158,11,0.22)"}`,
+                          }}
+                          onClick={() => updateMut.mutate({ id: TEAM_ID, data: { captainId: rec.playerId } }, { onSuccess: refreshTeam })}
+                        >
+                          <span style={{ fontSize: 12, fontWeight: 900, color: "#f59e0b", lineHeight: 1 }}>C</span>
+                        </button>
+                        <button
+                          className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center"
                           style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)" }}
                           onClick={() => removeMut.mutate({ id: TEAM_ID, playerId: rec.playerId }, { onSuccess: refreshPlayers })}
                         >
@@ -538,6 +549,19 @@ export function SquadBuilder() {
                             >
                               <Info style={{ width: 9, height: 9, color: "white" }} />
                             </button>
+                            <button
+                              className="absolute -bottom-1 left-1/2 -translate-x-1/2 z-20 w-[18px] h-[18px] rounded-full flex items-center justify-center transition-opacity"
+                              title={isCaptain ? "Captain" : "Set as Captain"}
+                              style={{
+                                background: isCaptain ? "#f59e0b" : "rgba(245,158,11,0.18)",
+                                border: `1.5px solid ${isCaptain ? "#f59e0b" : "rgba(245,158,11,0.55)"}`,
+                                boxShadow: isCaptain ? "0 0 8px rgba(245,158,11,0.8)" : "none",
+                                opacity: isCaptain ? 1 : undefined,
+                              }}
+                              onClick={() => updateMut.mutate({ id: TEAM_ID, data: { captainId: rec.playerId } }, { onSuccess: refreshTeam })}
+                            >
+                              <span style={{ fontSize: 8, fontWeight: 900, color: isCaptain ? "#000" : "#f59e0b", lineHeight: 1 }}>C</span>
+                            </button>
                             <div className="cursor-pointer transition-transform group-hover:scale-110" onClick={() => setInfoPlayer(rec)}>
                               <Jersey primary={kPri} secondary={kSec} label={rec.player.clubShortName ?? ""} size={jerseySize} />
                             </div>
@@ -614,6 +638,19 @@ export function SquadBuilder() {
                           onClick={() => setInfoPlayer(benchRec)}
                         >
                           <Info style={{ width: 8, height: 8, color: "white" }} />
+                        </button>
+                        <button
+                          className="absolute -bottom-1 left-1/2 -translate-x-1/2 z-20 w-[16px] h-[16px] rounded-full flex items-center justify-center transition-opacity"
+                          title={isCaptain ? "Captain" : "Set as Captain"}
+                          style={{
+                            background: isCaptain ? "#f59e0b" : "rgba(245,158,11,0.18)",
+                            border: `1.5px solid ${isCaptain ? "#f59e0b" : "rgba(245,158,11,0.55)"}`,
+                            boxShadow: isCaptain ? "0 0 8px rgba(245,158,11,0.8)" : "none",
+                            opacity: isCaptain ? 1 : undefined,
+                          }}
+                          onClick={() => updateMut.mutate({ id: TEAM_ID, data: { captainId: benchRec.playerId } }, { onSuccess: refreshTeam })}
+                        >
+                          <span style={{ fontSize: 7, fontWeight: 900, color: isCaptain ? "#000" : "#f59e0b", lineHeight: 1 }}>C</span>
                         </button>
                         <div className="cursor-pointer transition-transform group-hover:scale-110" onClick={() => setInfoPlayer(benchRec)}>
                           <Jersey primary={kPri} secondary={kSec} label={benchRec.player.clubShortName ?? ""} size={44} />
@@ -776,13 +813,14 @@ export function SquadBuilder() {
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
-                  <Button size="sm" variant="outline"
+                  <Button size="sm" variant={isCap ? "default" : "outline"}
+                    style={isCap ? { background: "#f59e0b", color: "#000", border: "none", boxShadow: "0 0 12px rgba(245,158,11,0.5)" } : {}}
                     onClick={() => { updateMut.mutate({ id: TEAM_ID, data: { captainId: rec.playerId } }, { onSuccess: refreshTeam }); setInfoPlayer(null); }}>
-                    <Star className="w-3 h-3 mr-1" /> Captain
+                    <Star className="w-3 h-3 mr-1" />{isCap ? "Captain ✓" : "Set Captain"}
                   </Button>
-                  <Button size="sm" variant="outline"
+                  <Button size="sm" variant={isVice ? "secondary" : "outline"}
                     onClick={() => { updateMut.mutate({ id: TEAM_ID, data: { viceCaptainId: rec.playerId } }, { onSuccess: refreshTeam }); setInfoPlayer(null); }}>
-                    Vice
+                    {isVice ? "Vice ✓" : "Vice"}
                   </Button>
                   <Button size="sm" variant="destructive" style={{ marginLeft: "auto" }}
                     onClick={() => { removeMut.mutate({ id: TEAM_ID, playerId: rec.playerId }, { onSuccess: refreshPlayers }); setInfoPlayer(null); }}>
