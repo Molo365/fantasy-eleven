@@ -8,6 +8,7 @@ export const teamsTable = pgTable("teams", {
   name: text("name").notNull(),
   managerName: text("manager_name").notNull(),
   totalPoints: integer("total_points").notNull().default(0),
+  gameweekPoints: integer("gameweek_points").notNull().default(0),
   budget: real("budget").notNull().default(100),
   captainId: integer("captain_id"),
   viceCaptainId: integer("vice_captain_id"),

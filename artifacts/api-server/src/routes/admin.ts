@@ -6,6 +6,7 @@ import {
 } from "@workspace/db";
 import { logger } from "../lib/logger";
 import { clearAndSyncWorldCupPlayers } from "../lib/apiSports";
+import { processGameweekScoring } from "../lib/scoring";
 
 const ADMIN_EMAIL = "domenicg@gmx.com";
 
@@ -183,12 +184,18 @@ router.post("/admin/gameweeks/:id/activate", requireAdmin, async (req, res): Pro
 router.post("/admin/gameweeks/:id/process", requireAdmin, async (req, res): Promise<void> => {
   const id = parseInt(req.params["id"] as string);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  // Run the scoring engine first
+  const scoring = await processGameweekScoring(id);
+
+  // Mark the gameweek as finished
   const [updated] = await db.update(gameweeksTable)
     .set({ status: "finished" })
     .where(eq(gameweeksTable.id, id))
     .returning();
-  req.log.info({ gameweekId: id }, "Admin processed gameweek");
-  res.json(updated);
+
+  req.log.info({ gameweekId: id, ...scoring }, "Admin processed gameweek with scoring");
+  res.json({ gameweek: updated, scoring });
 });
 
 // ── Danger Zone ───────────────────────────────────────────────────────────────

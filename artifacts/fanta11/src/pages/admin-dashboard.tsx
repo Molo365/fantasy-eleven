@@ -250,6 +250,15 @@ export function AdminDashboard() {
   const [editPlayer, setEditPlayer] = useState<EditPlayer | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<string | null>(null);
+  const [scoringResult, setScoringResult] = useState<{
+    gwName: string;
+    fixturesProcessed: number;
+    playersUpdated: number;
+    teamsUpdated: number;
+    totalPointsAwarded: number;
+    warning?: string;
+  } | null>(null);
+  const [processingGwId, setProcessingGwId] = useState<number | null>(null);
 
   // ── Auth guard ──────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -344,12 +353,23 @@ export function AdminDashboard() {
   const processGameweek = (id: number, name: string) => {
     setConfirm({
       open: true,
-      title: "Process Results",
-      message: `Mark "${name}" as finished and process its results?`,
+      title: "Process Gameweek",
+      message: `Fetch live scores from API-Sports, award points to all players, and update every manager's score for "${name}"?`,
       onConfirm: async () => {
-        await apiFetch(`/gameweeks/${id}/process`, { method: "POST" });
-        setGameweeks(gs => gs.map(g => g.id === id ? { ...g, status: "finished" } : g));
-        setStats(s => s ? { ...s, processedCount: s.processedCount + 1 } : s);
+        setScoringResult(null);
+        setProcessingGwId(id);
+        try {
+          const result = await apiFetch(`/gameweeks/${id}/process`, { method: "POST" }) as {
+            gameweek: AdminGameweek;
+            scoring: { fixturesProcessed: number; playersUpdated: number; teamsUpdated: number; totalPointsAwarded: number; warning?: string };
+          };
+          setGameweeks(gs => gs.map(g => g.id === id ? { ...g, status: "finished" } : g));
+          setStats(s => s ? { ...s, processedCount: s.processedCount + 1 } : s);
+          setScoringResult({ gwName: name, ...result.scoring });
+          setTab("gameweeks");
+        } finally {
+          setProcessingGwId(null);
+        }
       },
     });
   };
@@ -382,8 +402,7 @@ export function AdminDashboard() {
     setSyncing(true);
     setSyncResult(null);
     try {
-      const res = await apiFetch("/sync-players", { method: "POST" });
-      const json = await res.json() as { ok: boolean; cleared: number; inserted: number; skipped: number; nations: number };
+      const json = await apiFetch("/sync-players", { method: "POST" }) as { ok: boolean; cleared: number; inserted: number; skipped: number; nations: number };
       setSyncResult(`✓ Synced ${json.inserted} players from ${json.nations} nations (cleared ${json.cleared} old)`);
       await loadAll();
     } catch (e) {
@@ -623,49 +642,112 @@ export function AdminDashboard() {
 
             {/* ── GAMEWEEKS ── */}
             {tab === "gameweeks" && (
-              <table style={S.table}>
-                <thead>
-                  <tr style={{ background: "#0a1628" }}>
-                    {["ID", "Name", "Status", "Activate", "Process Results"].map(h => (
-                      <th key={h} style={S.th}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {gameweeks.map(g => (
-                    <tr key={g.id}>
-                      <td style={{ ...S.td, color: "#475569", fontFamily: "monospace" }}>{g.number}</td>
-                      <td style={{ ...S.td, fontWeight: 600 }}>{g.name}</td>
-                      <td style={S.td}>
-                        <span style={S.badge(g.status)}>{g.status}</span>
-                      </td>
-                      <td style={S.td}>
-                        {g.status !== "active" && g.status !== "finished" && (
-                          <button style={S.actionBtn("teal")} onClick={() => activateGameweek(g.id, g.name)}>
-                            <ChevronRight size={11} style={{ marginRight: 3 }} />Activate
-                          </button>
-                        )}
-                        {g.status === "active" && (
-                          <span style={{ fontSize: 11, color: "#22c55e", fontWeight: 600 }}>● Active</span>
-                        )}
-                        {g.status === "finished" && (
-                          <span style={{ fontSize: 11, color: "#475569" }}>—</span>
-                        )}
-                      </td>
-                      <td style={S.td}>
-                        {g.status !== "finished" && (
-                          <button style={S.actionBtn("gray")} onClick={() => processGameweek(g.id, g.name)}>
-                            Process Results
-                          </button>
-                        )}
-                        {g.status === "finished" && (
-                          <span style={{ fontSize: 11, color: "#64748b" }}>Done</span>
-                        )}
-                      </td>
+              <>
+                {/* Scoring result banner */}
+                {scoringResult && (
+                  <div style={{
+                    margin: "16px 16px 0",
+                    borderRadius: 10,
+                    border: scoringResult.warning && scoringResult.fixturesProcessed === 0
+                      ? "1px solid rgba(234,179,8,0.4)"
+                      : "1px solid rgba(34,197,94,0.35)",
+                    background: scoringResult.warning && scoringResult.fixturesProcessed === 0
+                      ? "rgba(234,179,8,0.06)"
+                      : "rgba(34,197,94,0.06)",
+                    padding: "14px 18px",
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, color: scoringResult.warning && scoringResult.fixturesProcessed === 0 ? "#eab308" : "#22c55e" }}>
+                        {scoringResult.warning && scoringResult.fixturesProcessed === 0 ? "⚠ Scoring Notice" : "✓ Gameweek Processed"}
+                      </span>
+                      <button style={{ ...S.trashBtn, color: "#475569" }} onClick={() => setScoringResult(null)}>
+                        <X size={14} />
+                      </button>
+                    </div>
+                    {scoringResult.warning ? (
+                      <p style={{ color: "#94a3b8", fontSize: 13, margin: 0 }}>{scoringResult.warning}</p>
+                    ) : (
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+                        {[
+                          { label: "Matches", value: scoringResult.fixturesProcessed },
+                          { label: "Players Scored", value: scoringResult.playersUpdated },
+                          { label: "Teams Updated", value: scoringResult.teamsUpdated },
+                          { label: "Total Pts Awarded", value: scoringResult.totalPointsAwarded },
+                        ].map(({ label, value }) => (
+                          <div key={label} style={{ textAlign: "center" as const, background: "rgba(255,255,255,0.04)", borderRadius: 8, padding: "10px 8px" }}>
+                            <div style={{ fontSize: 22, fontWeight: 800, color: "#22c55e", lineHeight: 1 }}>{value}</div>
+                            <div style={{ fontSize: 10, fontWeight: 600, color: "#64748b", letterSpacing: "0.08em", textTransform: "uppercase" as const, marginTop: 4 }}>{label}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Processing spinner */}
+                {processingGwId && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", color: "#06b6d4", fontSize: 13 }}>
+                    <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} />
+                    Fetching match data and calculating scores… this may take a minute.
+                  </div>
+                )}
+
+                <table style={S.table}>
+                  <thead>
+                    <tr style={{ background: "#0a1628" }}>
+                      {["GW", "Name", "Status", "Activate", "Process Gameweek"].map(h => (
+                        <th key={h} style={S.th}>{h}</th>
+                      ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {gameweeks.map(g => (
+                      <tr key={g.id}>
+                        <td style={{ ...S.td, color: "#475569", fontFamily: "monospace" }}>{g.number}</td>
+                        <td style={{ ...S.td, fontWeight: 600 }}>{g.name}</td>
+                        <td style={S.td}>
+                          <span style={S.badge(g.status)}>{g.status}</span>
+                        </td>
+                        <td style={S.td}>
+                          {g.status !== "active" && g.status !== "finished" && (
+                            <button style={S.actionBtn("teal")} onClick={() => activateGameweek(g.id, g.name)}>
+                              <ChevronRight size={11} style={{ marginRight: 3 }} />Activate
+                            </button>
+                          )}
+                          {g.status === "active" && (
+                            <span style={{ fontSize: 11, color: "#22c55e", fontWeight: 600 }}>● Active</span>
+                          )}
+                          {g.status === "finished" && (
+                            <span style={{ fontSize: 11, color: "#475569" }}>—</span>
+                          )}
+                        </td>
+                        <td style={S.td}>
+                          {g.status !== "finished" && (
+                            <button
+                              style={{
+                                ...S.actionBtn("gray"),
+                                opacity: processingGwId ? 0.5 : 1,
+                                cursor: processingGwId ? "not-allowed" : "pointer",
+                                display: "inline-flex", alignItems: "center", gap: 5,
+                              }}
+                              onClick={() => !processingGwId && processGameweek(g.id, g.name)}
+                              disabled={!!processingGwId}
+                            >
+                              {processingGwId === g.id
+                                ? <><Loader2 size={11} style={{ animation: "spin 1s linear infinite" }} />Scoring…</>
+                                : <>⚡ Process Gameweek</>
+                              }
+                            </button>
+                          )}
+                          {g.status === "finished" && (
+                            <span style={{ fontSize: 11, color: "#22c55e", fontWeight: 600 }}>✓ Done</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
             )}
 
             {/* ── LEAGUES ── */}
