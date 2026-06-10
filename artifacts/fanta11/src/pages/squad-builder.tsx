@@ -72,23 +72,16 @@ function Jersey({
       width={size} height={h} viewBox="0 0 100 115"
       style={{ display: "block", filter: "drop-shadow(0 5px 12px rgba(0,0,0,0.6))" }}
     >
-      {/* Left sleeve */}
       <path d="M4,20 L26,9 L30,38 L10,44 Z" fill={primary} />
-      {/* Right sleeve */}
       <path d="M96,20 L74,9 L70,38 L90,44 Z" fill={primary} />
-      {/* Body */}
       <path d="M26,9 L34,4 L38,0 L62,0 L66,4 L74,9 L90,44 L90,113 L10,113 L10,44 Z" fill={primary} />
-      {/* Collar */}
       <path d="M38,0 Q50,18 62,0 Z" fill={secondary} />
-      {/* Sleeve trim */}
       <path d="M4,20 L26,9"  stroke={secondary} strokeWidth="3" strokeLinecap="round" opacity="0.5" />
       <path d="M10,44 L30,38" stroke={secondary} strokeWidth="3" strokeLinecap="round" opacity="0.5" />
       <path d="M96,20 L74,9"  stroke={secondary} strokeWidth="3" strokeLinecap="round" opacity="0.5" />
       <path d="M90,44 L70,38" stroke={secondary} strokeWidth="3" strokeLinecap="round" opacity="0.5" />
-      {/* Highlight sheen */}
       <path d="M26,9 L34,4 L38,0 L62,0 L66,4 L74,9 L90,44 L90,113 L10,113 L10,44 Z"
         fill="white" opacity="0.07" />
-      {/* Code */}
       <text x="50" y="76" textAnchor="middle" dominantBaseline="middle"
         fill="white" fontSize="17" fontWeight="900"
         fontFamily="system-ui, -apple-system, sans-serif"
@@ -117,7 +110,7 @@ function EmptyJersey({ posColor, size = 54 }: { posColor: string; size?: number 
   );
 }
 
-/* ─── Player name + price label ──────────────────────────────────── */
+/* ─── Player name + price label (used on desktop pitch) ───────────── */
 function PlayerLabel({
   name, price, isCaptain, isVice,
 }: {
@@ -222,17 +215,16 @@ export function SquadBuilder() {
   };
   const refreshTeam = () => qc.invalidateQueries({ queryKey: getGetTeamQueryKey(TEAM_ID) });
 
-  /* Viewport-aware jersey sizing — fits 5-player rows without horizontal scroll */
+  /* Viewport-aware jersey sizing for desktop pitch — fits 5-player rows */
   const [vw, setVw] = useState(() => typeof window !== "undefined" ? window.innerWidth : 1024);
   useEffect(() => {
     const h = () => setVw(window.innerWidth);
     window.addEventListener("resize", h);
     return () => window.removeEventListener("resize", h);
   }, []);
-  // Available pitch width = vw − (layout p-4 × 2 = 32) − (pitch px-1 × 2 = 8) − (4 gaps × 4px = 16) = vw − 56
   const jerseySize = Math.min(62, Math.max(38, Math.floor((vw - 56) / 5)));
 
-  /* Nation counts from current squad (club field = nation) */
+  /* Nation counts */
   const nationCounts: Record<string, number> = {};
   for (const tp of teamPlayers ?? []) {
     const nation = tp.player.club;
@@ -247,8 +239,7 @@ export function SquadBuilder() {
     );
   }
 
-  /* Slot layout — 14 on pitch + 1 bench GK = 15 total
-     Slots 1: GK, 2-6: DEF, 7-11: MID, 12-14: FWD, 15: bench GK */
+  /* Desktop pitch layout */
   const pitchLayout = [
     { position: "GK",  count: 1 },
     { position: "DEF", count: 5 },
@@ -261,222 +252,425 @@ export function SquadBuilder() {
   }));
   const BENCH_GK_SLOT = 15;
 
-  return (
-    <div className="flex flex-col gap-2 pb-4 sm:pb-0 sm:h-[calc(100vh-60px)]">
+  /* Mobile position groups */
+  const mobileGroups = [
+    { label: "Goalkeepers", singular: "Goalkeeper", position: "GK",  slots: [1],           color: POS_COLOR.GK  },
+    { label: "Defenders",   singular: "Defender",   position: "DEF", slots: [2,3,4,5,6],   color: POS_COLOR.DEF },
+    { label: "Midfielders", singular: "Midfielder", position: "MID", slots: [7,8,9,10,11], color: POS_COLOR.MID },
+    { label: "Forwards",    singular: "Forward",    position: "FWD", slots: [12,13,14],     color: POS_COLOR.FWD },
+  ];
 
-      {/* ── Header bar ── */}
-      <div className="shrink-0 flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-black tracking-tight">Squad Builder</h1>
-          <p className="text-xs text-muted-foreground">2 GK · 5 DEF · 5 MID · 3 FWD · World Cup 2026</p>
-        </div>
-        <div className="text-right">
-          <div className="text-[10px] font-semibold tracking-widest uppercase text-muted-foreground">Budget</div>
-          <div style={{ fontSize: 22, fontFamily: "monospace", fontWeight: 800, color: "#38bdf8", textShadow: "0 0 16px rgba(56,189,248,0.45)" }}>
-            £{team?.budget?.toFixed(1) ?? "0.0"}m
+  return (
+    <div>
+
+      {/* ══════════════════════════════════════════
+          MOBILE LIST VIEW  (visible below md / 768px)
+      ══════════════════════════════════════════ */}
+      <div className="md:hidden flex flex-col gap-4 pb-8">
+
+        {/* Header */}
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-xl font-black tracking-tight">Squad Builder</h1>
+            <p className="text-xs text-muted-foreground">2 GK · 5 DEF · 5 MID · 3 FWD · WC 2026</p>
+          </div>
+          <div className="text-right">
+            <div className="text-[10px] font-semibold tracking-widest uppercase text-muted-foreground">Budget</div>
+            <div style={{ fontSize: 20, fontFamily: "monospace", fontWeight: 800, color: "#38bdf8", textShadow: "0 0 12px rgba(56,189,248,0.4)" }}>
+              £{team?.budget?.toFixed(1) ?? "0.0"}m
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* ── Pitch ── */}
-      <div
-        className="flex-1 min-h-0 rounded-xl overflow-hidden relative"
-        style={{
-          minHeight: 280,
-          backgroundImage: "url('/pitch.png')",
-          backgroundSize: "cover",
-          backgroundPosition: "center top",
-          boxShadow: "0 0 0 1px rgba(255,255,255,0.05), 0 8px 40px rgba(0,0,0,0.5)",
-        }}
-      >
-        {/* Top + bottom gradient overlays for readability */}
-        <div className="absolute inset-0 pointer-events-none" style={{
-          background: "linear-gradient(to bottom, rgba(0,0,0,0.30) 0%, rgba(0,0,0,0.0) 18%, rgba(0,0,0,0.0) 82%, rgba(0,0,0,0.32) 100%)",
-        }} />
+        {/* Position groups */}
+        {mobileGroups.map(({ label, singular, position, slots, color }) => {
+          const filledCount = slots.filter(s => teamPlayers?.find(p => p.slot === s)).length;
+          return (
+            <div key={position}>
+              {/* Section header */}
+              <div className="flex items-center gap-2 mb-2">
+                <div
+                  className="px-2 py-0.5 rounded-md"
+                  style={{ background: `${color}18`, border: `1px solid ${color}33` }}
+                >
+                  <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color }}>
+                    {label}
+                  </span>
+                </div>
+                <span style={{ fontSize: 11, color: "#475569", fontWeight: 600 }}>
+                  {filledCount}/{slots.length}
+                </span>
+                <div className="flex-1 h-px" style={{ background: `${color}18` }} />
+              </div>
 
-        {/* Player rows — FWD at top, GK at bottom */}
-        <div className="relative z-10 h-full flex flex-col justify-between py-4 px-1">
-          {rows.map((row) => {
-            const pc = POS_COLOR[row.position] ?? "#94a3b8";
-            return (
-              <div key={row.position} className="flex justify-center items-start gap-1 sm:gap-3">
-                {Array.from({ length: row.count }, (_, i) => {
-                  const slot      = row.startSlot + i;
-                  const rec       = teamPlayers?.find((p) => p.slot === slot) ?? null;
+              {/* Slots */}
+              <div className="space-y-2">
+                {slots.map(slot => {
+                  const rec       = teamPlayers?.find(p => p.slot === slot) ?? null;
                   const isCaptain = team?.captainId    === rec?.playerId;
                   const isVice    = team?.viceCaptainId === rec?.playerId && !isCaptain;
                   const [kPri, kSec] = rec ? kitColors(rec.player.club) : ["#1e293b", "#334155"];
 
-                  return (
-                    <div key={slot} style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0, width: jerseySize }}>
-                      {rec ? (
-                        /* Filled slot */
-                        <div
-                          className="relative group"
-                          style={{ display: "inline-flex", flexDirection: "column", alignItems: "center" }}
-                        >
-                          {/* Remove X */}
-                          <button
-                            className="absolute -top-1 -right-1 z-20 w-[18px] h-[18px] rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                            style={{ background: "#ef4444", boxShadow: "0 0 8px rgba(239,68,68,0.7)", border: "1.5px solid rgba(255,255,255,0.3)" }}
-                            onClick={() => removeMut.mutate({ id: TEAM_ID, playerId: rec.playerId }, { onSuccess: refreshPlayers })}
-                          >
-                            <X style={{ width: 9, height: 9, color: "white" }} />
-                          </button>
-
-                          {/* Info i */}
-                          <button
-                            className="absolute -top-1 -left-1 z-20 w-[18px] h-[18px] rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                            style={{ background: "#0ea5e9", boxShadow: "0 0 8px rgba(14,165,233,0.7)", border: "1.5px solid rgba(255,255,255,0.3)" }}
-                            onClick={() => setInfoPlayer(rec)}
-                          >
-                            <Info style={{ width: 9, height: 9, color: "white" }} />
-                          </button>
-
-                          {/* Jersey */}
-                          <div
-                            className="cursor-pointer transition-transform group-hover:scale-110"
-                            onClick={() => setInfoPlayer(rec)}
-                          >
-                            <Jersey primary={kPri} secondary={kSec} label={rec.player.clubShortName ?? ""} size={jerseySize} />
-                          </div>
-
-                          {/* Name + price */}
-                          <PlayerLabel
-                            name={rec.player.name}
-                            price={rec.player.price}
-                            isCaptain={isCaptain}
-                            isVice={isVice}
-                          />
+                  if (rec) {
+                    return (
+                      <div
+                        key={slot}
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
+                        style={{
+                          background: "rgba(8,17,40,0.72)",
+                          border: `1px solid ${color}22`,
+                          boxShadow: "0 2px 12px rgba(0,0,0,0.25)",
+                        }}
+                      >
+                        <div className="flex-shrink-0 cursor-pointer" onClick={() => setInfoPlayer(rec)}>
+                          <Jersey primary={kPri} secondary={kSec} label={rec.player.clubShortName ?? ""} size={40} />
                         </div>
-                      ) : (
-                        /* Empty slot */
-                        <button
-                          onClick={() => { setPicker({ position: row.position, slot }); setSearch(""); }}
-                          className="transition-transform hover:scale-105"
-                          style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", flexDirection: "column", alignItems: "center" }}
-                        >
-                          <EmptyJersey posColor={pc} size={jerseySize} />
-                          <div style={{
-                            marginTop: 4,
-                            background: `${pc}22`,
-                            color: pc,
-                            border: `1px solid ${pc}44`,
-                            borderRadius: 4,
-                            padding: "1px 7px",
-                            fontSize: 8.5,
-                            fontWeight: 700,
-                            letterSpacing: "0.1em",
-                          }}>
-                            {row.position}
+                        <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setInfoPlayer(rec)}>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-bold text-sm text-white truncate leading-tight">{rec.player.name}</span>
+                            {isCaptain && (
+                              <span style={{ fontSize: 9, background: "#f59e0b22", color: "#f59e0b", border: "1px solid #f59e0b44", borderRadius: 4, padding: "0 5px", fontWeight: 800, flexShrink: 0 }}>C</span>
+                            )}
+                            {isVice && (
+                              <span style={{ fontSize: 9, background: "#94a3b822", color: "#94a3b8", border: "1px solid #94a3b844", borderRadius: 4, padding: "0 5px", fontWeight: 800, flexShrink: 0 }}>V</span>
+                            )}
                           </div>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-xs text-muted-foreground">{rec.player.club}</span>
+                            <span className="font-mono text-xs font-bold" style={{ color: "#38bdf8" }}>£{rec.player.price.toFixed(1)}m</span>
+                            <span className="font-mono text-xs" style={{ color }}>{rec.player.totalPoints} pts</span>
+                          </div>
+                        </div>
+                        <button
+                          className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center"
+                          style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)" }}
+                          onClick={() => removeMut.mutate({ id: TEAM_ID, playerId: rec.playerId }, { onSuccess: refreshPlayers })}
+                        >
+                          <X size={14} style={{ color: "#ef4444" }} />
                         </button>
-                      )}
-                    </div>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <button
+                      key={slot}
+                      onClick={() => { setPicker({ position, slot }); setSearch(""); }}
+                      className="w-full flex items-center gap-3 px-3 py-3 rounded-xl active:scale-[0.98] transition-transform text-left"
+                      style={{ background: "rgba(8,17,40,0.35)", border: `1px dashed ${color}33` }}
+                    >
+                      <div
+                        className="w-10 h-[46px] rounded-lg flex items-center justify-center flex-shrink-0"
+                        style={{ background: `${color}0e`, border: `1px dashed ${color}44` }}
+                      >
+                        <span style={{ fontSize: 22, color, fontWeight: 200, lineHeight: 1 }}>+</span>
+                      </div>
+                      <span style={{ fontSize: 13, color: `${color}99`, fontWeight: 600 }}>
+                        Add {singular}
+                      </span>
+                    </button>
                   );
                 })}
               </div>
-            );
-          })}
-        </div>
+            </div>
+          );
+        })}
+
+        {/* Bench GK */}
+        {(() => {
+          const benchRec  = teamPlayers?.find(p => p.slot === BENCH_GK_SLOT) ?? null;
+          const isCaptain = team?.captainId    === benchRec?.playerId;
+          const isVice    = team?.viceCaptainId === benchRec?.playerId && !isCaptain;
+          const [kPri, kSec] = benchRec ? kitColors(benchRec.player.club) : ["#1e293b", "#334155"];
+          const color = POS_COLOR.GK;
+          return (
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <div className="px-2 py-0.5 rounded-md" style={{ background: "rgba(100,116,139,0.1)", border: "1px solid rgba(100,116,139,0.2)" }}>
+                  <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: "#64748b" }}>Bench</span>
+                </div>
+                <span style={{ fontSize: 11, color: "#475569", fontWeight: 600 }}>{benchRec ? "1/1" : "0/1"}</span>
+                <div className="flex-1 h-px bg-white/5" />
+              </div>
+              {benchRec ? (
+                <div
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
+                  style={{ background: "rgba(8,17,40,0.72)", border: "1px solid rgba(245,158,11,0.2)", boxShadow: "0 2px 12px rgba(0,0,0,0.25)" }}
+                >
+                  <div className="flex-shrink-0 cursor-pointer" onClick={() => setInfoPlayer(benchRec)}>
+                    <Jersey primary={kPri} secondary={kSec} label={benchRec.player.clubShortName ?? ""} size={40} />
+                  </div>
+                  <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setInfoPlayer(benchRec)}>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-bold text-sm text-white truncate">{benchRec.player.name}</span>
+                      {isCaptain && <span style={{ fontSize: 9, background: "#f59e0b22", color: "#f59e0b", border: "1px solid #f59e0b44", borderRadius: 4, padding: "0 5px", fontWeight: 800 }}>C</span>}
+                      {isVice && <span style={{ fontSize: 9, background: "#94a3b822", color: "#94a3b8", border: "1px solid #94a3b844", borderRadius: 4, padding: "0 5px", fontWeight: 800 }}>V</span>}
+                    </div>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-xs text-muted-foreground">{benchRec.player.club}</span>
+                      <span className="font-mono text-xs font-bold" style={{ color: "#38bdf8" }}>£{benchRec.player.price.toFixed(1)}m</span>
+                      <span className="text-xs text-muted-foreground">Bench GK</span>
+                    </div>
+                  </div>
+                  <button
+                    className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center"
+                    style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)" }}
+                    onClick={() => removeMut.mutate({ id: TEAM_ID, playerId: benchRec.playerId }, { onSuccess: refreshPlayers })}
+                  >
+                    <X size={14} style={{ color: "#ef4444" }} />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => { setPicker({ position: "GK", slot: BENCH_GK_SLOT }); setSearch(""); }}
+                  className="w-full flex items-center gap-3 px-3 py-3 rounded-xl active:scale-[0.98] transition-transform text-left"
+                  style={{ background: "rgba(8,17,40,0.35)", border: `1px dashed ${color}33` }}
+                >
+                  <div
+                    className="w-10 h-[46px] rounded-lg flex items-center justify-center flex-shrink-0"
+                    style={{ background: `${color}0e`, border: `1px dashed ${color}44` }}
+                  >
+                    <span style={{ fontSize: 22, color, fontWeight: 200, lineHeight: 1 }}>+</span>
+                  </div>
+                  <span style={{ fontSize: 13, color: `${color}99`, fontWeight: 600 }}>
+                    Add Bench Goalkeeper
+                  </span>
+                </button>
+              )}
+            </div>
+          );
+        })()}
+
+        {/* Captain strip */}
+        {(teamPlayers?.length ?? 0) > 0 && (
+          <div>
+            <div className="text-[10px] font-semibold tracking-widest uppercase text-muted-foreground mb-2">
+              Set Captain — tap to assign
+            </div>
+            <div className="flex gap-1.5 overflow-x-auto pb-1">
+              {teamPlayers?.map((rec) => {
+                const isCap  = team?.captainId    === rec.playerId;
+                const isVice = team?.viceCaptainId === rec.playerId;
+                const lastName = rec.player.name.split(" ").pop() ?? rec.player.name;
+                return (
+                  <button
+                    key={rec.playerId}
+                    onClick={() => updateMut.mutate({ id: TEAM_ID, data: { captainId: rec.playerId } }, { onSuccess: refreshTeam })}
+                    className="shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-full transition-all"
+                    style={{
+                      background: isCap ? "#f59e0b22" : isVice ? "#94a3b822" : "rgba(255,255,255,0.05)",
+                      border: `1px solid ${isCap ? "#f59e0b55" : isVice ? "#94a3b855" : "rgba(255,255,255,0.08)"}`,
+                      color: isCap ? "#f59e0b" : isVice ? "#94a3b8" : "#64748b",
+                      fontSize: 11,
+                      fontWeight: 700,
+                    }}
+                  >
+                    {isCap ? "© " : isVice ? "V " : ""}{lastName}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* ── Bench ── */}
-      {(() => {
-        const benchRec = teamPlayers?.find((p) => p.slot === BENCH_GK_SLOT) ?? null;
-        const isCaptain = team?.captainId === benchRec?.playerId;
-        const isVice    = team?.viceCaptainId === benchRec?.playerId && !isCaptain;
-        const [kPri, kSec] = benchRec ? kitColors(benchRec.player.club) : ["#1e293b", "#334155"];
-        const pc = POS_COLOR["GK"];
-        return (
-          <div className="shrink-0 rounded-xl overflow-hidden" style={{
-            background: "linear-gradient(135deg, rgba(15,23,42,0.92) 0%, rgba(5,15,30,0.96) 100%)",
-            border: "1px solid rgba(255,255,255,0.07)",
-            boxShadow: "0 4px 24px rgba(0,0,0,0.4)",
-          }}>
-            <div className="flex items-center gap-3 px-4 py-2">
-              <div style={{
-                fontSize: 8.5, fontWeight: 800, letterSpacing: "0.18em",
-                color: "#64748b", textTransform: "uppercase",
-                borderRight: "1px solid rgba(255,255,255,0.08)",
-                paddingRight: 12, whiteSpace: "nowrap",
-              }}>
-                Bench
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div style={{ fontSize: 8, color: "#64748b", fontWeight: 700 }}>GK 2</div>
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-                  {benchRec ? (
-                    <div className="relative group" style={{ display: "inline-flex", flexDirection: "column", alignItems: "center" }}>
-                      <button
-                        className="absolute -top-1 -right-1 z-20 w-[16px] h-[16px] rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                        style={{ background: "#ef4444", boxShadow: "0 0 8px rgba(239,68,68,0.7)", border: "1.5px solid rgba(255,255,255,0.3)" }}
-                        onClick={() => removeMut.mutate({ id: TEAM_ID, playerId: benchRec.playerId }, { onSuccess: refreshPlayers })}
-                      >
-                        <X style={{ width: 8, height: 8, color: "white" }} />
-                      </button>
-                      <button
-                        className="absolute -top-1 -left-1 z-20 w-[16px] h-[16px] rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                        style={{ background: "#0ea5e9", boxShadow: "0 0 8px rgba(14,165,233,0.7)", border: "1.5px solid rgba(255,255,255,0.3)" }}
-                        onClick={() => setInfoPlayer(benchRec)}
-                      >
-                        <Info style={{ width: 8, height: 8, color: "white" }} />
-                      </button>
-                      <div className="cursor-pointer transition-transform group-hover:scale-110" onClick={() => setInfoPlayer(benchRec)}>
-                        <Jersey primary={kPri} secondary={kSec} label={benchRec.player.clubShortName ?? ""} size={44} />
+      {/* ══════════════════════════════════════════
+          DESKTOP PITCH VIEW  (hidden below md / 768px)
+      ══════════════════════════════════════════ */}
+      <div className="hidden md:flex flex-col gap-2" style={{ height: "calc(100vh - 60px)" }}>
+
+        {/* Header bar */}
+        <div className="shrink-0 flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-black tracking-tight">Squad Builder</h1>
+            <p className="text-xs text-muted-foreground">2 GK · 5 DEF · 5 MID · 3 FWD · World Cup 2026</p>
+          </div>
+          <div className="text-right">
+            <div className="text-[10px] font-semibold tracking-widest uppercase text-muted-foreground">Budget</div>
+            <div style={{ fontSize: 22, fontFamily: "monospace", fontWeight: 800, color: "#38bdf8", textShadow: "0 0 16px rgba(56,189,248,0.45)" }}>
+              £{team?.budget?.toFixed(1) ?? "0.0"}m
+            </div>
+          </div>
+        </div>
+
+        {/* Pitch */}
+        <div
+          className="flex-1 min-h-0 rounded-xl overflow-hidden relative"
+          style={{
+            minHeight: 280,
+            backgroundImage: "url('/pitch.png')",
+            backgroundSize: "cover",
+            backgroundPosition: "center top",
+            boxShadow: "0 0 0 1px rgba(255,255,255,0.05), 0 8px 40px rgba(0,0,0,0.5)",
+          }}
+        >
+          <div className="absolute inset-0 pointer-events-none" style={{
+            background: "linear-gradient(to bottom, rgba(0,0,0,0.30) 0%, rgba(0,0,0,0.0) 18%, rgba(0,0,0,0.0) 82%, rgba(0,0,0,0.32) 100%)",
+          }} />
+
+          <div className="relative z-10 h-full flex flex-col justify-between py-4 px-1">
+            {rows.map((row) => {
+              const pc = POS_COLOR[row.position] ?? "#94a3b8";
+              return (
+                <div key={row.position} className="flex justify-center items-start gap-1 sm:gap-3">
+                  {Array.from({ length: row.count }, (_, i) => {
+                    const slot      = row.startSlot + i;
+                    const rec       = teamPlayers?.find((p) => p.slot === slot) ?? null;
+                    const isCaptain = team?.captainId    === rec?.playerId;
+                    const isVice    = team?.viceCaptainId === rec?.playerId && !isCaptain;
+                    const [kPri, kSec] = rec ? kitColors(rec.player.club) : ["#1e293b", "#334155"];
+
+                    return (
+                      <div key={slot} style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0, width: jerseySize }}>
+                        {rec ? (
+                          <div className="relative group" style={{ display: "inline-flex", flexDirection: "column", alignItems: "center" }}>
+                            <button
+                              className="absolute -top-1 -right-1 z-20 w-[18px] h-[18px] rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                              style={{ background: "#ef4444", boxShadow: "0 0 8px rgba(239,68,68,0.7)", border: "1.5px solid rgba(255,255,255,0.3)" }}
+                              onClick={() => removeMut.mutate({ id: TEAM_ID, playerId: rec.playerId }, { onSuccess: refreshPlayers })}
+                            >
+                              <X style={{ width: 9, height: 9, color: "white" }} />
+                            </button>
+                            <button
+                              className="absolute -top-1 -left-1 z-20 w-[18px] h-[18px] rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                              style={{ background: "#0ea5e9", boxShadow: "0 0 8px rgba(14,165,233,0.7)", border: "1.5px solid rgba(255,255,255,0.3)" }}
+                              onClick={() => setInfoPlayer(rec)}
+                            >
+                              <Info style={{ width: 9, height: 9, color: "white" }} />
+                            </button>
+                            <div className="cursor-pointer transition-transform group-hover:scale-110" onClick={() => setInfoPlayer(rec)}>
+                              <Jersey primary={kPri} secondary={kSec} label={rec.player.clubShortName ?? ""} size={jerseySize} />
+                            </div>
+                            <PlayerLabel name={rec.player.name} price={rec.player.price} isCaptain={isCaptain} isVice={isVice} />
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => { setPicker({ position: row.position, slot }); setSearch(""); }}
+                            className="transition-transform hover:scale-105"
+                            style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", flexDirection: "column", alignItems: "center" }}
+                          >
+                            <EmptyJersey posColor={pc} size={jerseySize} />
+                            <div style={{
+                              marginTop: 4,
+                              background: `${pc}22`,
+                              color: pc,
+                              border: `1px solid ${pc}44`,
+                              borderRadius: 4,
+                              padding: "1px 7px",
+                              fontSize: 8.5,
+                              fontWeight: 700,
+                              letterSpacing: "0.1em",
+                            }}>
+                              {row.position}
+                            </div>
+                          </button>
+                        )}
                       </div>
-                      <PlayerLabel name={benchRec.player.name} price={benchRec.player.price} isCaptain={isCaptain} isVice={isVice} />
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => { setPicker({ position: "GK", slot: BENCH_GK_SLOT }); setSearch(""); }}
-                      className="transition-transform hover:scale-105"
-                      style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", flexDirection: "column", alignItems: "center" }}
-                    >
-                      <EmptyJersey posColor={pc} size={44} />
-                      <div style={{
-                        marginTop: 3, background: `${pc}22`, color: pc,
-                        border: `1px solid ${pc}44`, borderRadius: 4,
-                        padding: "1px 6px", fontSize: 8, fontWeight: 700, letterSpacing: "0.1em",
-                      }}>GK</div>
-                    </button>
-                  )}
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Bench */}
+        {(() => {
+          const benchRec = teamPlayers?.find((p) => p.slot === BENCH_GK_SLOT) ?? null;
+          const isCaptain = team?.captainId === benchRec?.playerId;
+          const isVice    = team?.viceCaptainId === benchRec?.playerId && !isCaptain;
+          const [kPri, kSec] = benchRec ? kitColors(benchRec.player.club) : ["#1e293b", "#334155"];
+          const pc = POS_COLOR["GK"];
+          return (
+            <div className="shrink-0 rounded-xl overflow-hidden" style={{
+              background: "linear-gradient(135deg, rgba(15,23,42,0.92) 0%, rgba(5,15,30,0.96) 100%)",
+              border: "1px solid rgba(255,255,255,0.07)",
+              boxShadow: "0 4px 24px rgba(0,0,0,0.4)",
+            }}>
+              <div className="flex items-center gap-3 px-4 py-2">
+                <div style={{
+                  fontSize: 8.5, fontWeight: 800, letterSpacing: "0.18em",
+                  color: "#64748b", textTransform: "uppercase",
+                  borderRight: "1px solid rgba(255,255,255,0.08)",
+                  paddingRight: 12, whiteSpace: "nowrap",
+                }}>
+                  Bench
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div style={{ fontSize: 8, color: "#64748b", fontWeight: 700 }}>GK 2</div>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                    {benchRec ? (
+                      <div className="relative group" style={{ display: "inline-flex", flexDirection: "column", alignItems: "center" }}>
+                        <button
+                          className="absolute -top-1 -right-1 z-20 w-[16px] h-[16px] rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                          style={{ background: "#ef4444", boxShadow: "0 0 8px rgba(239,68,68,0.7)", border: "1.5px solid rgba(255,255,255,0.3)" }}
+                          onClick={() => removeMut.mutate({ id: TEAM_ID, playerId: benchRec.playerId }, { onSuccess: refreshPlayers })}
+                        >
+                          <X style={{ width: 8, height: 8, color: "white" }} />
+                        </button>
+                        <button
+                          className="absolute -top-1 -left-1 z-20 w-[16px] h-[16px] rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                          style={{ background: "#0ea5e9", boxShadow: "0 0 8px rgba(14,165,233,0.7)", border: "1.5px solid rgba(255,255,255,0.3)" }}
+                          onClick={() => setInfoPlayer(benchRec)}
+                        >
+                          <Info style={{ width: 8, height: 8, color: "white" }} />
+                        </button>
+                        <div className="cursor-pointer transition-transform group-hover:scale-110" onClick={() => setInfoPlayer(benchRec)}>
+                          <Jersey primary={kPri} secondary={kSec} label={benchRec.player.clubShortName ?? ""} size={44} />
+                        </div>
+                        <PlayerLabel name={benchRec.player.name} price={benchRec.player.price} isCaptain={isCaptain} isVice={isVice} />
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => { setPicker({ position: "GK", slot: BENCH_GK_SLOT }); setSearch(""); }}
+                        className="transition-transform hover:scale-105"
+                        style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", flexDirection: "column", alignItems: "center" }}
+                      >
+                        <EmptyJersey posColor={pc} size={44} />
+                        <div style={{
+                          marginTop: 3, background: `${pc}22`, color: pc,
+                          border: `1px solid ${pc}44`, borderRadius: 4,
+                          padding: "1px 6px", fontSize: 8, fontWeight: 700, letterSpacing: "0.1em",
+                        }}>GK</div>
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
+          );
+        })()}
+
+        {/* Captain quick-set strip */}
+        {(teamPlayers?.length ?? 0) > 0 && (
+          <div className="shrink-0 flex gap-1 pt-0.5 overflow-x-auto">
+            {teamPlayers?.map((rec) => {
+              const isCap  = team?.captainId    === rec.playerId;
+              const isVice = team?.viceCaptainId === rec.playerId;
+              const lastName = rec.player.name.split(" ").pop() ?? rec.player.name;
+              return (
+                <button
+                  key={rec.playerId}
+                  onClick={() => updateMut.mutate({ id: TEAM_ID, data: { captainId: rec.playerId } }, { onSuccess: refreshTeam })}
+                  className="shrink-0 flex items-center gap-1 px-2 py-1 rounded-full transition-all"
+                  style={{
+                    background: isCap ? "#f59e0b22" : isVice ? "#94a3b822" : "rgba(255,255,255,0.05)",
+                    border: `1px solid ${isCap ? "#f59e0b55" : isVice ? "#94a3b855" : "rgba(255,255,255,0.08)"}`,
+                    color: isCap ? "#f59e0b" : isVice ? "#94a3b8" : "#64748b",
+                    fontSize: 9,
+                    fontWeight: 700,
+                  }}
+                >
+                  {isCap ? "© " : isVice ? "V " : <Star style={{ width: 9, height: 9, marginRight: 2 }} />}
+                  {lastName}
+                </button>
+              );
+            })}
           </div>
-        );
-      })()}
+        )}
+      </div>
 
-      {/* ── Captain quick-set strip ── */}
-      {(teamPlayers?.length ?? 0) > 0 && (
-        <div className="shrink-0 flex gap-1 pt-0.5 overflow-x-auto">
-          {teamPlayers?.map((rec) => {
-            const isCap  = team?.captainId    === rec.playerId;
-            const isVice = team?.viceCaptainId === rec.playerId;
-            const lastName = rec.player.name.split(" ").pop() ?? rec.player.name;
-            return (
-              <button
-                key={rec.playerId}
-                onClick={() => updateMut.mutate({ id: TEAM_ID, data: { captainId: rec.playerId } }, { onSuccess: refreshTeam })}
-                className="shrink-0 flex items-center gap-1 px-2 py-1 rounded-full transition-all"
-                style={{
-                  background: isCap ? "#f59e0b22" : isVice ? "#94a3b822" : "rgba(255,255,255,0.05)",
-                  border: `1px solid ${isCap ? "#f59e0b55" : isVice ? "#94a3b855" : "rgba(255,255,255,0.08)"}`,
-                  color: isCap ? "#f59e0b" : isVice ? "#94a3b8" : "#64748b",
-                  fontSize: 9,
-                  fontWeight: 700,
-                }}
-              >
-                {isCap ? "© " : isVice ? "V " : <Star style={{ width: 9, height: 9, marginRight: 2 }} />}
-                {lastName}
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {/* ── Player picker dialog ── */}
+      {/* ── Player picker dialog (shared) ── */}
       <Dialog open={!!picker} onOpenChange={(open) => { if (!open) setPicker(null); }}>
         <DialogContent className="sm:max-w-[520px]">
           <DialogHeader>
@@ -558,7 +752,7 @@ export function SquadBuilder() {
         </DialogContent>
       </Dialog>
 
-      {/* ── Player info dialog ── */}
+      {/* ── Player info dialog (shared) ── */}
       <Dialog open={!!infoPlayer} onOpenChange={(open) => { if (!open) setInfoPlayer(null); }}>
         <DialogContent className="sm:max-w-[320px]">
           {infoPlayer && (() => {
