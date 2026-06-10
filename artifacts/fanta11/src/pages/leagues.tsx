@@ -19,8 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useQueryClient } from "@tanstack/react-query";
 import { Label } from "@/components/ui/label";
-
-const MY_TEAM_ID = 1;
+import { useAuth } from "@/contexts/auth";
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -68,6 +67,9 @@ function RankBadge({ rank }: { rank: number }) {
 }
 
 export function Leagues() {
+  const { authState } = useAuth();
+  const myTeamId = authState.status === "authenticated" ? (authState.user.teamId ?? 0) : 0;
+
   const { data: leagues, isLoading } = useListLeagues();
   const [selectedLeagueId, setSelectedLeagueId] = useState<number | null>(null);
 
@@ -106,7 +108,7 @@ export function Leagues() {
       {
         onSuccess: (newLeague) => {
           joinLeague.mutate(
-            { id: 0, data: { teamId: MY_TEAM_ID, code: newLeague.code ?? "" } },
+            { id: 0, data: { teamId: myTeamId, code: newLeague.code ?? "" } },
             {
               onSettled: () => {
                 queryClient.invalidateQueries({ queryKey: getListLeaguesQueryKey() });
@@ -131,7 +133,7 @@ export function Leagues() {
     e.preventDefault();
     setJoinError("");
     joinLeague.mutate(
-      { id: 0, data: { teamId: MY_TEAM_ID, code: joinCode.trim().toUpperCase() } },
+      { id: 0, data: { teamId: myTeamId, code: joinCode.trim().toUpperCase() } },
       {
         onSuccess: (league) => {
           queryClient.invalidateQueries({ queryKey: getListLeaguesQueryKey() });
