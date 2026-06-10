@@ -72,7 +72,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <img
               src={logoSrc}
               alt="FANTA11"
-              className="w-28 h-28 object-contain drop-shadow-[0_0_20px_rgba(59,130,246,0.5)]"
+              className="w-20 h-20 object-contain drop-shadow-[0_0_20px_rgba(59,130,246,0.5)]"
             />
           </div>
           <div className="text-center">
