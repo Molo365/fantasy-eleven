@@ -110,6 +110,35 @@ function EmptyJersey({ posColor, size = 54 }: { posColor: string; size?: number 
   );
 }
 
+/* ─── Player photo with Jersey fallback ──────────────────────────── */
+function PlayerPhoto({
+  imageUrl, primary, secondary, label, size = 62,
+}: {
+  imageUrl?: string | null;
+  primary: string; secondary: string; label: string; size?: number;
+}) {
+  const [failed, setFailed] = useState(false);
+  if (!imageUrl || failed) {
+    return <Jersey primary={primary} secondary={secondary} label={label} size={size} />;
+  }
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: "50%", overflow: "hidden",
+      border: `2px solid ${primary}55`,
+      boxShadow: "0 4px 14px rgba(0,0,0,0.55)",
+      background: "#0a1628",
+      flexShrink: 0,
+    }}>
+      <img
+        src={imageUrl}
+        alt={label}
+        onError={() => setFailed(true)}
+        style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top center" }}
+      />
+    </div>
+  );
+}
+
 /* ─── Player name + price label (used on desktop pitch) ───────────── */
 function PlayerLabel({
   name, price, isCaptain, isVice,
@@ -323,7 +352,7 @@ export function SquadBuilder() {
                         }}
                       >
                         <div className="flex-shrink-0 cursor-pointer" onClick={() => setInfoPlayer(rec)}>
-                          <Jersey primary={kPri} secondary={kSec} label={rec.player.clubShortName ?? ""} size={40} />
+                          <PlayerPhoto imageUrl={rec.player.imageUrl} primary={kPri} secondary={kSec} label={rec.player.clubShortName ?? ""} size={40} />
                         </div>
                         <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setInfoPlayer(rec)}>
                           <div className="flex items-center gap-1.5 flex-wrap">
@@ -409,7 +438,7 @@ export function SquadBuilder() {
                   style={{ background: "rgba(8,17,40,0.72)", border: "1px solid rgba(245,158,11,0.2)", boxShadow: "0 2px 12px rgba(0,0,0,0.25)" }}
                 >
                   <div className="flex-shrink-0 cursor-pointer" onClick={() => setInfoPlayer(benchRec)}>
-                    <Jersey primary={kPri} secondary={kSec} label={benchRec.player.clubShortName ?? ""} size={40} />
+                    <PlayerPhoto imageUrl={benchRec.player.imageUrl} primary={kPri} secondary={kSec} label={benchRec.player.clubShortName ?? ""} size={40} />
                   </div>
                   <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setInfoPlayer(benchRec)}>
                     <div className="flex items-center gap-1.5">
@@ -563,7 +592,7 @@ export function SquadBuilder() {
                               <span style={{ fontSize: 8, fontWeight: 900, color: isCaptain ? "#000" : "#f59e0b", lineHeight: 1 }}>C</span>
                             </button>
                             <div className="cursor-pointer transition-transform group-hover:scale-110" onClick={() => setInfoPlayer(rec)}>
-                              <Jersey primary={kPri} secondary={kSec} label={rec.player.clubShortName ?? ""} size={jerseySize} />
+                              <PlayerPhoto imageUrl={rec.player.imageUrl} primary={kPri} secondary={kSec} label={rec.player.clubShortName ?? ""} size={jerseySize} />
                             </div>
                             <PlayerLabel name={rec.player.name} price={rec.player.price} isCaptain={isCaptain} isVice={isVice} />
                           </div>
@@ -653,7 +682,7 @@ export function SquadBuilder() {
                           <span style={{ fontSize: 7, fontWeight: 900, color: isCaptain ? "#000" : "#f59e0b", lineHeight: 1 }}>C</span>
                         </button>
                         <div className="cursor-pointer transition-transform group-hover:scale-110" onClick={() => setInfoPlayer(benchRec)}>
-                          <Jersey primary={kPri} secondary={kSec} label={benchRec.player.clubShortName ?? ""} size={44} />
+                          <PlayerPhoto imageUrl={benchRec.player.imageUrl} primary={kPri} secondary={kSec} label={benchRec.player.clubShortName ?? ""} size={44} />
                         </div>
                         <PlayerLabel name={benchRec.player.name} price={benchRec.player.price} isCaptain={isCaptain} isVice={isVice} />
                       </div>
@@ -742,7 +771,7 @@ export function SquadBuilder() {
                     >
                       <div className="flex items-center gap-2.5">
                         <div style={{ width: 28, flexShrink: 0 }}>
-                          <Jersey primary={kPri} secondary={kSec} label={p.clubShortName ?? ""} size={28} />
+                          <PlayerPhoto imageUrl={p.imageUrl} primary={kPri} secondary={kSec} label={p.clubShortName ?? ""} size={28} />
                         </div>
                         <div>
                           <div className="font-bold text-sm leading-tight">{p.name}</div>
@@ -803,7 +832,7 @@ export function SquadBuilder() {
                   <DialogTitle>{rec.player.name}</DialogTitle>
                 </DialogHeader>
                 <div style={{ display: "flex", gap: 16, alignItems: "flex-start", marginTop: 8 }}>
-                  <Jersey primary={kPri} secondary={kSec} label={rec.player.clubShortName ?? ""} size={72} />
+                  <PlayerPhoto imageUrl={rec.player.imageUrl} primary={kPri} secondary={kSec} label={rec.player.clubShortName ?? ""} size={72} />
                   <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 4 }}>
                     <StatRow label="Nation"   value={rec.player.club} />
                     <StatRow label="Position" value={rec.player.position} />
