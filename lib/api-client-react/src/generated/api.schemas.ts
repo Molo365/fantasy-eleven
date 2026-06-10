@@ -89,6 +89,16 @@ export interface League {
   description?: string | null;
   code?: string;
   teamCount: number;
+  /** @nullable */
+  maxMembers?: number | null;
+  entryFee?: string;
+  /** @nullable */
+  prize1st?: string | null;
+  /** @nullable */
+  prize2nd?: string | null;
+  /** @nullable */
+  prize3rd?: string | null;
+  isPublic?: boolean;
   createdAt?: string;
 }
 
@@ -96,6 +106,13 @@ export interface LeagueInput {
   /** @minLength 1 */
   name: string;
   description?: string;
+  /** @nullable */
+  maxMembers?: number | null;
+  entryFee?: string;
+  prize1st?: string;
+  prize2nd?: string;
+  prize3rd?: string;
+  isPublic?: boolean;
 }
 
 export interface JoinLeagueInput {

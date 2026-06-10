@@ -596,6 +596,18 @@ components:
           type: string
         teamCount:
           type: integer
+        maxMembers:
+          type: ["integer", "null"]
+        entryFee:
+          type: string
+        prize1st:
+          type: ["string", "null"]
+        prize2nd:
+          type: ["string", "null"]
+        prize3rd:
+          type: ["string", "null"]
+        isPublic:
+          type: boolean
         createdAt:
           type: string
 
@@ -608,6 +620,18 @@ components:
           minLength: 1
         description:
           type: string
+        maxMembers:
+          type: ["integer", "null"]
+        entryFee:
+          type: string
+        prize1st:
+          type: string
+        prize2nd:
+          type: string
+        prize3rd:
+          type: string
+        isPublic:
+          type: boolean
 
     JoinLeagueInput:
       type: object

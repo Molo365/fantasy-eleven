@@ -22,6 +22,8 @@ function randomCode(len = 6) {
 function serializeLeague(l: typeof leaguesTable.$inferSelect) {
   return {
     ...l,
+    entryFee: l.entryFee ?? "Free",
+    isPublic: l.isPublic ?? false,
     createdAt: l.createdAt instanceof Date ? l.createdAt.toISOString() : l.createdAt,
   };
 }
@@ -57,6 +59,12 @@ router.post("/leagues", async (req, res): Promise<void> => {
       name: parsed.data.name,
       description: parsed.data.description ?? null,
       code: randomCode(),
+      maxMembers: parsed.data.maxMembers ?? null,
+      entryFee: parsed.data.entryFee ?? "Free",
+      prize1st: parsed.data.prize1st ?? null,
+      prize2nd: parsed.data.prize2nd ?? null,
+      prize3rd: parsed.data.prize3rd ?? null,
+      isPublic: parsed.data.isPublic ?? false,
     })
     .returning();
   res.status(201).json(GetLeagueResponse.parse({ ...serializeLeague(league), teamCount: 0 }));

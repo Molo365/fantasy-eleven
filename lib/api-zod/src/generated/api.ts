@@ -246,6 +246,12 @@ export const ListLeaguesResponseItem = zod.object({
   "description": zod.string().nullish(),
   "code": zod.string().optional(),
   "teamCount": zod.number(),
+  "maxMembers": zod.number().nullish(),
+  "entryFee": zod.string().optional(),
+  "prize1st": zod.string().nullish(),
+  "prize2nd": zod.string().nullish(),
+  "prize3rd": zod.string().nullish(),
+  "isPublic": zod.boolean().optional(),
   "createdAt": zod.string().optional()
 })
 export const ListLeaguesResponse = zod.array(ListLeaguesResponseItem)
@@ -259,7 +265,13 @@ export const ListLeaguesResponse = zod.array(ListLeaguesResponseItem)
 
 export const CreateLeagueBody = zod.object({
   "name": zod.string().min(1),
-  "description": zod.string().optional()
+  "description": zod.string().optional(),
+  "maxMembers": zod.number().nullish(),
+  "entryFee": zod.string().optional(),
+  "prize1st": zod.string().optional(),
+  "prize2nd": zod.string().optional(),
+  "prize3rd": zod.string().optional(),
+  "isPublic": zod.boolean().optional()
 })
 
 
@@ -276,6 +288,12 @@ export const GetLeagueResponse = zod.object({
   "description": zod.string().nullish(),
   "code": zod.string().optional(),
   "teamCount": zod.number(),
+  "maxMembers": zod.number().nullish(),
+  "entryFee": zod.string().optional(),
+  "prize1st": zod.string().nullish(),
+  "prize2nd": zod.string().nullish(),
+  "prize3rd": zod.string().nullish(),
+  "isPublic": zod.boolean().optional(),
   "createdAt": zod.string().optional()
 })
 
@@ -316,6 +334,12 @@ export const JoinLeagueResponse = zod.object({
   "description": zod.string().nullish(),
   "code": zod.string().optional(),
   "teamCount": zod.number(),
+  "maxMembers": zod.number().nullish(),
+  "entryFee": zod.string().optional(),
+  "prize1st": zod.string().nullish(),
+  "prize2nd": zod.string().nullish(),
+  "prize3rd": zod.string().nullish(),
+  "isPublic": zod.boolean().optional(),
   "createdAt": zod.string().optional()
 })
 

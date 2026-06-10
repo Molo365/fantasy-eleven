@@ -13,5 +13,15 @@ export interface League {
   description?: string | null;
   code?: string;
   teamCount: number;
+  /** @nullable */
+  maxMembers?: number | null;
+  entryFee?: string;
+  /** @nullable */
+  prize1st?: string | null;
+  /** @nullable */
+  prize2nd?: string | null;
+  /** @nullable */
+  prize3rd?: string | null;
+  isPublic?: boolean;
   createdAt?: string;
 }

@@ -10,4 +10,11 @@ export interface LeagueInput {
   /** @minLength 1 */
   name: string;
   description?: string;
+  /** @nullable */
+  maxMembers?: number | null;
+  entryFee?: string;
+  prize1st?: string;
+  prize2nd?: string;
+  prize3rd?: string;
+  isPublic?: boolean;
 }
