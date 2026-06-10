@@ -4,9 +4,11 @@ import {
   getListLeaguesQueryKey,
   useCreateLeague,
   useJoinLeague,
+  useGetTeamPlayers,
+  useGetTeam,
 } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Users, Trophy, ChevronRight, Plus, Copy, Check, Medal } from "lucide-react";
+import { Loader2, Users, Trophy, ChevronRight, Plus, Copy, Check, Medal, ShieldHalf } from "lucide-react";
 import { useState, useEffect } from "react";
 import {
   Dialog,
@@ -20,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { useQueryClient } from "@tanstack/react-query";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/auth";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -66,6 +69,206 @@ function RankBadge({ rank }: { rank: number }) {
   );
 }
 
+/* ── Position metadata ─────────────────────────────────────────── */
+const POS_COLOR: Record<string, string> = {
+  GK: "#f59e0b", DEF: "#22c55e", MID: "#06b6d4", FWD: "#f43f5e",
+};
+const POS_ORDER = ["GK", "DEF", "MID", "FWD"];
+const POS_LABEL: Record<string, string> = {
+  GK: "Goalkeepers", DEF: "Defenders", MID: "Midfielders", FWD: "Forwards",
+};
+
+/* ── Squad viewer dialog ───────────────────────────────────────── */
+function SquadViewDialog({
+  teamId,
+  managerName,
+  teamName,
+  onClose,
+}: {
+  teamId: number;
+  managerName: string;
+  teamName: string;
+  onClose: () => void;
+}) {
+  const { data: team } = useGetTeam(teamId, { query: { enabled: teamId > 0 } });
+  const { data: players, isLoading } = useGetTeamPlayers(teamId, {
+    query: { enabled: teamId > 0 },
+  });
+
+  const captainId   = team?.captainId   ?? null;
+  const viceCaptainId = team?.viceCaptainId ?? null;
+
+  // Group players by position, bench GK last
+  const BENCH_SLOT = 15;
+  const byPosition = POS_ORDER.map((pos) => ({
+    pos,
+    players: (players ?? []).filter((p) => p.player.position === pos && p.slot !== BENCH_SLOT),
+  })).filter((g) => g.players.length > 0);
+  const benchGk = (players ?? []).find((p) => p.slot === BENCH_SLOT);
+
+  const totalValue = (players ?? []).reduce((sum, p) => sum + p.player.price, 0);
+
+  return (
+    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="sm:max-w-[480px] p-0 overflow-hidden">
+        {/* Header */}
+        <div style={{
+          background: "linear-gradient(135deg, #0a1628 0%, #0d1f3c 100%)",
+          borderBottom: "1px solid rgba(255,255,255,0.08)",
+          padding: "20px 24px 16px",
+        }}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2.5 text-base">
+              <ShieldHalf className="w-4 h-4 text-primary" />
+              {teamName}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex items-center gap-4 mt-2">
+            <span className="text-xs text-muted-foreground">
+              Manager: <span className="font-semibold text-foreground">{managerName}</span>
+            </span>
+            <span className="text-xs text-muted-foreground">
+              Squad value: <span className="font-mono font-bold text-sky-400">£{totalValue.toFixed(1)}m</span>
+            </span>
+          </div>
+        </div>
+
+        <ScrollArea className="max-h-[60vh]">
+          {isLoading ? (
+            <div className="flex justify-center items-center py-16">
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            </div>
+          ) : !players?.length ? (
+            <div className="text-center py-14 text-muted-foreground">
+              <ShieldHalf className="w-10 h-10 mx-auto mb-3 opacity-20" />
+              <p className="font-medium">No players picked yet</p>
+            </div>
+          ) : (
+            <div className="py-2">
+              {byPosition.map(({ pos, players: group }) => (
+                <div key={pos}>
+                  {/* Position header */}
+                  <div style={{
+                    display: "flex", alignItems: "center", gap: 8,
+                    padding: "8px 20px 4px",
+                  }}>
+                    <span style={{
+                      fontSize: 9, fontWeight: 800, letterSpacing: "0.12em",
+                      textTransform: "uppercase", color: POS_COLOR[pos],
+                      background: `${POS_COLOR[pos]}18`,
+                      border: `1px solid ${POS_COLOR[pos]}33`,
+                      borderRadius: 4, padding: "2px 7px",
+                    }}>
+                      {POS_LABEL[pos]}
+                    </span>
+                    <div style={{ flex: 1, height: 1, background: `${POS_COLOR[pos]}18` }} />
+                  </div>
+
+                  {/* Player rows */}
+                  {group.map((tp) => {
+                    const isCap  = tp.playerId === captainId;
+                    const isVice = tp.playerId === viceCaptainId && !isCap;
+                    return (
+                      <div
+                        key={tp.id}
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "1fr auto auto",
+                          alignItems: "center",
+                          gap: 12,
+                          padding: "8px 20px",
+                          borderBottom: "1px solid rgba(255,255,255,0.04)",
+                        }}
+                      >
+                        {/* Name + nation */}
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <span style={{ fontWeight: 700, fontSize: 13, color: "white", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {tp.player.name}
+                            </span>
+                            {isCap && (
+                              <span style={{
+                                fontSize: 9, fontWeight: 900, background: "#f59e0b",
+                                color: "#000", borderRadius: 99, padding: "1px 5px",
+                                flexShrink: 0, boxShadow: "0 0 8px rgba(245,158,11,0.6)",
+                              }}>C</span>
+                            )}
+                            {isVice && (
+                              <span style={{
+                                fontSize: 9, fontWeight: 900, background: "rgba(148,163,184,0.25)",
+                                color: "#94a3b8", border: "1px solid rgba(148,163,184,0.4)",
+                                borderRadius: 99, padding: "1px 5px", flexShrink: 0,
+                              }}>V</span>
+                            )}
+                          </div>
+                          <span style={{ fontSize: 11, color: "#64748b" }}>{tp.player.club}</span>
+                        </div>
+
+                        {/* Points */}
+                        <div style={{ textAlign: "right", minWidth: 36 }}>
+                          <div style={{ fontSize: 11, fontFamily: "monospace", fontWeight: 700, color: POS_COLOR[pos] }}>
+                            {tp.player.totalPoints} pts
+                          </div>
+                        </div>
+
+                        {/* Price */}
+                        <div style={{ textAlign: "right", minWidth: 44 }}>
+                          <div style={{ fontSize: 12, fontFamily: "monospace", fontWeight: 700, color: "#38bdf8" }}>
+                            £{tp.player.price.toFixed(1)}m
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+
+              {/* Bench GK */}
+              {benchGk && (
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 20px 4px" }}>
+                    <span style={{
+                      fontSize: 9, fontWeight: 800, letterSpacing: "0.12em",
+                      textTransform: "uppercase", color: "#64748b",
+                      background: "rgba(100,116,139,0.12)",
+                      border: "1px solid rgba(100,116,139,0.25)",
+                      borderRadius: 4, padding: "2px 7px",
+                    }}>
+                      Bench GK
+                    </span>
+                    <div style={{ flex: 1, height: 1, background: "rgba(100,116,139,0.12)" }} />
+                  </div>
+                  <div style={{
+                    display: "grid", gridTemplateColumns: "1fr auto auto",
+                    alignItems: "center", gap: 12, padding: "8px 20px",
+                  }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: 13, color: "white", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {benchGk.player.name}
+                      </div>
+                      <span style={{ fontSize: 11, color: "#64748b" }}>{benchGk.player.club}</span>
+                    </div>
+                    <div style={{ textAlign: "right", minWidth: 36 }}>
+                      <div style={{ fontSize: 11, fontFamily: "monospace", fontWeight: 700, color: "#64748b" }}>
+                        {benchGk.player.totalPoints} pts
+                      </div>
+                    </div>
+                    <div style={{ textAlign: "right", minWidth: 44 }}>
+                      <div style={{ fontSize: 12, fontFamily: "monospace", fontWeight: 700, color: "#38bdf8" }}>
+                        £{benchGk.player.price.toFixed(1)}m
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </ScrollArea>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function Leagues() {
   const { authState } = useAuth();
   const myTeamId = authState.status === "authenticated" ? (authState.user.teamId ?? 0) : 0;
@@ -100,6 +303,10 @@ export function Leagues() {
   const [joinCode, setJoinCode] = useState("");
   const [joinError, setJoinError] = useState("");
   const [isJoinOpen, setIsJoinOpen] = useState(false);
+
+  const [viewingTeam, setViewingTeam] = useState<{
+    teamId: number; teamName: string; managerName: string;
+  } | null>(null);
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
@@ -149,6 +356,7 @@ export function Leagues() {
   };
 
   return (
+    <>
     <div className="space-y-6 animate-in fade-in duration-500 h-full flex flex-col" style={{ position: "relative", zIndex: 0 }}>
       {/* Full-viewport background — fixed so it covers behind the sidebar & padding */}
       <div
@@ -349,7 +557,12 @@ export function Leagues() {
                     {leaderboard.map((entry) => (
                       <div
                         key={entry.teamId}
-                        className={`grid grid-cols-[40px_1fr_90px_90px] gap-2 items-center px-5 py-3.5 transition-colors hover:bg-secondary/30 ${
+                        onClick={() => setViewingTeam({
+                          teamId: entry.teamId,
+                          teamName: entry.teamName,
+                          managerName: entry.managerName,
+                        })}
+                        className={`grid grid-cols-[40px_1fr_90px_90px] gap-2 items-center px-5 py-3.5 transition-colors cursor-pointer hover:bg-secondary/40 active:bg-secondary/60 ${
                           entry.rank <= 3 ? "bg-primary/5" : ""
                         }`}
                       >
@@ -360,8 +573,12 @@ export function Leagues() {
 
                         {/* Team / Manager */}
                         <div className="min-w-0">
-                          <div className="font-semibold text-foreground truncate">{entry.teamName}</div>
-                          <div className="text-xs text-muted-foreground truncate">{entry.managerName}</div>
+                          <div className="font-semibold text-foreground truncate group-hover:text-primary transition-colors">
+                            {entry.teamName}
+                          </div>
+                          <div className="text-xs text-muted-foreground truncate hover:text-primary/80">
+                            {entry.managerName}
+                          </div>
                         </div>
 
                         {/* Total Points */}
@@ -390,5 +607,16 @@ export function Leagues() {
         </div>
       </div>
     </div>
+
+    {/* Squad viewer — opens when a leaderboard row is clicked */}
+    {viewingTeam && (
+      <SquadViewDialog
+        teamId={viewingTeam.teamId}
+        teamName={viewingTeam.teamName}
+        managerName={viewingTeam.managerName}
+        onClose={() => setViewingTeam(null)}
+      />
+    )}
+    </>
   );
 }
