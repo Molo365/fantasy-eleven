@@ -279,23 +279,38 @@ export function Dashboard() {
                 className="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-40 -mt-10 rounded-full pointer-events-none"
                 style={{ background: "radial-gradient(circle, rgba(245,158,11,0.15) 0%, transparent 70%)" }}
               />
-              <div
-                className="relative w-24 h-24 mx-auto rounded-full flex items-center justify-center text-4xl mb-4"
-                style={{
-                  background: "linear-gradient(135deg, rgba(8,17,40,0.9), rgba(13,27,62,0.9))",
-                  border: "2px solid rgba(245,158,11,0.5)",
-                  boxShadow: "0 0 20px rgba(245,158,11,0.3), inset 0 1px 0 rgba(255,255,255,0.08)",
-                }}
-              >
-                ⚽
-              </div>
-              <h3 className="font-bold text-xl">{summary?.topScorerName ?? "N/A"}</h3>
-              <p
-                className="font-mono text-lg mt-1 font-bold"
-                style={{ color: "#f59e0b", textShadow: "0 0 12px rgba(245,158,11,0.5)" }}
-              >
-                {summary?.topScorerPoints ?? 0} pts
-              </p>
+              {summary?.topScorerName ? (
+                <>
+                  <div
+                    className="relative w-24 h-24 mx-auto rounded-full flex items-center justify-center text-4xl mb-4"
+                    style={{
+                      background: "linear-gradient(135deg, rgba(8,17,40,0.9), rgba(13,27,62,0.9))",
+                      border: "2px solid rgba(245,158,11,0.5)",
+                      boxShadow: "0 0 20px rgba(245,158,11,0.3), inset 0 1px 0 rgba(255,255,255,0.08)",
+                    }}
+                  >
+                    ⚽
+                  </div>
+                  <h3 className="font-bold text-xl">{summary.topScorerName}</h3>
+                  <p
+                    className="font-mono text-lg mt-1 font-bold"
+                    style={{ color: "#f59e0b", textShadow: "0 0 12px rgba(245,158,11,0.5)" }}
+                  >
+                    {summary.topScorerPoints ?? 0} pts
+                  </p>
+                </>
+              ) : (
+                <div className="relative py-4 flex flex-col items-center gap-3">
+                  <div
+                    className="w-16 h-16 rounded-full flex items-center justify-center text-2xl"
+                    style={{ background: "rgba(245,158,11,0.08)", border: "1px dashed rgba(245,158,11,0.25)" }}
+                  >
+                    ⚽
+                  </div>
+                  <p className="text-sm font-semibold" style={{ color: "#475569" }}>No gameweek data yet</p>
+                  <p className="text-xs" style={{ color: "#334155" }}>Top scorer will appear once the tournament begins</p>
+                </div>
+              )}
             </div>
           </div>
 

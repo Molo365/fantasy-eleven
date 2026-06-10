@@ -147,6 +147,18 @@ router.post("/teams/:id/players", async (req, res): Promise<void> => {
     return;
   }
 
+  // Enforce max 3 players per nation
+  const existingPlayers = await db
+    .select({ club: playersTable.club })
+    .from(teamPlayersTable)
+    .innerJoin(playersTable, eq(teamPlayersTable.playerId, playersTable.id))
+    .where(eq(teamPlayersTable.teamId, params.data.id));
+  const nationCount = existingPlayers.filter((ep) => ep.club === player.club).length;
+  if (nationCount >= 3) {
+    res.status(400).json({ error: `Nation limit reached: max 3 players from ${player.club}` });
+    return;
+  }
+
   const [tp] = await db.insert(teamPlayersTable).values({
     teamId: params.data.id,
     playerId: parsed.data.playerId,

@@ -222,6 +222,13 @@ export function SquadBuilder() {
   };
   const refreshTeam = () => qc.invalidateQueries({ queryKey: getGetTeamQueryKey(TEAM_ID) });
 
+  /* Nation counts from current squad (club field = nation) */
+  const nationCounts: Record<string, number> = {};
+  for (const tp of teamPlayers ?? []) {
+    const nation = tp.player.club;
+    nationCounts[nation] = (nationCounts[nation] ?? 0) + 1;
+  }
+
   if (loadingTeam || loadingPlayers) {
     return (
       <div className="flex justify-center items-center h-full">
@@ -485,10 +492,12 @@ export function SquadBuilder() {
                 {available?.map((p) => {
                   const pc = POS_COLOR[picker?.position ?? ""] ?? "#94a3b8";
                   const [kPri, kSec] = kitColors(p.club);
+                  const nationFull = (nationCounts[p.club] ?? 0) >= 3;
                   return (
                     <div
                       key={p.id}
                       className="flex items-center justify-between p-2.5 rounded-lg border border-border hover:bg-secondary/40 transition-colors"
+                      style={nationFull ? { opacity: 0.55 } : undefined}
                     >
                       <div className="flex items-center gap-2.5">
                         <div style={{ width: 28, flexShrink: 0 }}>
@@ -496,7 +505,19 @@ export function SquadBuilder() {
                         </div>
                         <div>
                           <div className="font-bold text-sm leading-tight">{p.name}</div>
-                          <div className="text-xs text-muted-foreground">{p.club}</div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs text-muted-foreground">{p.club}</span>
+                            {nationFull && (
+                              <span style={{
+                                fontSize: 9, fontWeight: 700, letterSpacing: "0.04em",
+                                background: "rgba(239,68,68,0.15)", color: "#ef4444",
+                                border: "1px solid rgba(239,68,68,0.3)",
+                                borderRadius: 4, padding: "0px 5px",
+                              }}>
+                                3/3 nation limit
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
@@ -506,9 +527,9 @@ export function SquadBuilder() {
                         </div>
                         <Button
                           size="sm"
-                          disabled={addMut.isPending}
+                          disabled={addMut.isPending || nationFull}
                           onClick={() => {
-                            if (!picker) return;
+                            if (!picker || nationFull) return;
                             addMut.mutate(
                               { id: TEAM_ID, data: { playerId: p.id, slot: picker.slot } },
                               { onSuccess: () => { refreshPlayers(); setPicker(null); } },

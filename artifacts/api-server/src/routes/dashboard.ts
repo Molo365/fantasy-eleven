@@ -40,6 +40,7 @@ router.get("/dashboard/summary", async (req, res): Promise<void> => {
   const globalRank = team ? allTeams.findIndex((t) => t.id === team!.id) + 1 : 0;
 
   const topPlayer = await db.select().from(playersTable).orderBy(desc(playersTable.totalPoints)).limit(1);
+  const hasRealPoints = (topPlayer[0]?.totalPoints ?? 0) > 0;
 
   res.json(
     GetDashboardSummaryResponse.parse({
@@ -52,8 +53,8 @@ router.get("/dashboard/summary", async (req, res): Promise<void> => {
       hasSquad: playerCount > 0,
       captainName: captain?.name ?? null,
       captainPoints: captain?.totalPoints ?? null,
-      topScorerName: topPlayer[0]?.name ?? null,
-      topScorerPoints: topPlayer[0]?.totalPoints ?? null,
+      topScorerName: hasRealPoints ? (topPlayer[0]?.name ?? null) : null,
+      topScorerPoints: hasRealPoints ? (topPlayer[0]?.totalPoints ?? null) : null,
     })
   );
 });
