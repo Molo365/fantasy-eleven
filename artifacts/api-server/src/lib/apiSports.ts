@@ -209,6 +209,80 @@ export async function syncWorldCupPlayers(): Promise<{ inserted: number; skipped
   return total;
 }
 
+// ─── Fixtures ──────────────────────────────────────────────────────────────────
+
+export type LiveFixtureDTO = {
+  id: number;
+  date: string;
+  kickoff: string;
+  status: "scheduled" | "live" | "finished";
+  statusShort: string;
+  elapsed: number | null;
+  round: string;
+  venue: string | null;
+  homeTeam: string;
+  awayTeam: string;
+  homeLogo: string | null;
+  awayLogo: string | null;
+  homeScore: number | null;
+  awayScore: number | null;
+};
+
+type ApiFixture = {
+  fixture: {
+    id: number;
+    date: string;
+    venue: { name: string | null } | null;
+    status: { short: string; elapsed: number | null };
+  };
+  league: { round: string };
+  teams: {
+    home: { name: string; logo: string | null };
+    away: { name: string; logo: string | null };
+  };
+  goals: { home: number | null; away: number | null };
+};
+
+const LIVE_CODES = new Set(["1H", "2H", "HT", "ET", "BT", "P", "LIVE", "INT", "SUSP"]);
+const FINISHED_CODES = new Set(["FT", "AET", "PEN", "WO"]);
+
+function mapFixtureStatus(short: string): "scheduled" | "live" | "finished" {
+  if (LIVE_CODES.has(short)) return "live";
+  if (FINISHED_CODES.has(short)) return "finished";
+  return "scheduled";
+}
+
+const fixturesCache = new Map<number, { at: number; data: LiveFixtureDTO[] }>();
+const FIXTURES_TTL_MS = 30_000;
+
+export async function getWorldCupFixtures(season: number): Promise<LiveFixtureDTO[]> {
+  const cached = fixturesCache.get(season);
+  if (cached && Date.now() - cached.at < FIXTURES_TTL_MS) {
+    return cached.data;
+  }
+  const response = await apiFetch<ApiFixture[]>(`/fixtures?league=${WC_LEAGUE_ID}&season=${season}`);
+  const data: LiveFixtureDTO[] = response
+    .map((f) => ({
+      id: f.fixture.id,
+      date: f.fixture.date.slice(0, 10),
+      kickoff: f.fixture.date,
+      status: mapFixtureStatus(f.fixture.status.short),
+      statusShort: f.fixture.status.short,
+      elapsed: f.fixture.status.elapsed,
+      round: f.league.round,
+      venue: f.fixture.venue?.name ?? null,
+      homeTeam: f.teams.home.name,
+      awayTeam: f.teams.away.name,
+      homeLogo: f.teams.home.logo,
+      awayLogo: f.teams.away.logo,
+      homeScore: f.goals.home,
+      awayScore: f.goals.away,
+    }))
+    .sort((a, b) => a.kickoff.localeCompare(b.kickoff));
+  fixturesCache.set(season, { at: Date.now(), data });
+  return data;
+}
+
 export async function getPlayerCount(): Promise<number> {
   const [row] = await db.select({ value: count() }).from(playersTable);
   return row?.value ?? 0;

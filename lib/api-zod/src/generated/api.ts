@@ -408,6 +408,28 @@ export const GetGameweekFixturesResponse = zod.array(GetGameweekFixturesResponse
 
 
 /**
+ * @summary Get World Cup fixtures live from API-Sports
+ */
+export const GetLiveFixturesResponseItem = zod.object({
+  "id": zod.number(),
+  "date": zod.string(),
+  "kickoff": zod.string(),
+  "status": zod.enum(['scheduled', 'live', 'finished']),
+  "statusShort": zod.string().optional(),
+  "elapsed": zod.number().nullish(),
+  "round": zod.string(),
+  "venue": zod.string().nullish(),
+  "homeTeam": zod.string(),
+  "awayTeam": zod.string(),
+  "homeLogo": zod.string().nullish(),
+  "awayLogo": zod.string().nullish(),
+  "homeScore": zod.number().nullish(),
+  "awayScore": zod.number().nullish()
+})
+export const GetLiveFixturesResponse = zod.array(GetLiveFixturesResponseItem)
+
+
+/**
  * @summary Get dashboard summary for a team
  */
 export const GetDashboardSummaryQueryParams = zod.object({

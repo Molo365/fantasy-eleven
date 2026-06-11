@@ -225,6 +225,38 @@ export interface GameweekDetail {
   fixtures: Fixture[];
 }
 
+export type LiveFixtureStatus = typeof LiveFixtureStatus[keyof typeof LiveFixtureStatus];
+
+
+export const LiveFixtureStatus = {
+  scheduled: 'scheduled',
+  live: 'live',
+  finished: 'finished',
+} as const;
+
+export interface LiveFixture {
+  id: number;
+  date: string;
+  kickoff: string;
+  status: LiveFixtureStatus;
+  statusShort?: string;
+  /** @nullable */
+  elapsed?: number | null;
+  round: string;
+  /** @nullable */
+  venue?: string | null;
+  homeTeam: string;
+  awayTeam: string;
+  /** @nullable */
+  homeLogo?: string | null;
+  /** @nullable */
+  awayLogo?: string | null;
+  /** @nullable */
+  homeScore?: number | null;
+  /** @nullable */
+  awayScore?: number | null;
+}
+
 export interface DashboardSummary {
   teamPoints: number;
   gameweekPoints: number;

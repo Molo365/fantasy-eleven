@@ -28,6 +28,8 @@ export * from './league';
 export * from './leagueInput';
 export * from './listPlayersParams';
 export * from './listPlayersPosition';
+export * from './liveFixture';
+export * from './liveFixtureStatus';
 export * from './player';
 export * from './playerPosition';
 export * from './team';

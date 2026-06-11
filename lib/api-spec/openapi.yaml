@@ -422,6 +422,21 @@ paths:
                 items:
                   $ref: "#/components/schemas/Fixture"
 
+  /fixtures:
+    get:
+      operationId: getLiveFixtures
+      tags: [fixtures]
+      summary: Get World Cup fixtures live from API-Sports
+      responses:
+        "200":
+          description: Live fixtures
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LiveFixture"
+
   /dashboard/summary:
     get:
       operationId: getDashboardSummary
@@ -736,6 +751,40 @@ components:
         status:
           type: string
           enum: [scheduled, live, finished]
+
+    LiveFixture:
+      type: object
+      required: [id, date, kickoff, status, round, homeTeam, awayTeam]
+      properties:
+        id:
+          type: integer
+        date:
+          type: string
+        kickoff:
+          type: string
+        status:
+          type: string
+          enum: [scheduled, live, finished]
+        statusShort:
+          type: string
+        elapsed:
+          type: ["integer", "null"]
+        round:
+          type: string
+        venue:
+          type: ["string", "null"]
+        homeTeam:
+          type: string
+        awayTeam:
+          type: string
+        homeLogo:
+          type: ["string", "null"]
+        awayLogo:
+          type: ["string", "null"]
+        homeScore:
+          type: ["integer", "null"]
+        awayScore:
+          type: ["integer", "null"]
 
     DashboardSummary:
       type: object

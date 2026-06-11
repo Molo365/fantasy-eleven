@@ -34,6 +34,7 @@ import type {
   League,
   LeagueInput,
   ListPlayersParams,
+  LiveFixture,
   Player,
   Team,
   TeamInput,
@@ -1564,6 +1565,83 @@ export function useGetGameweekFixtures<TData = Awaited<ReturnType<typeof getGame
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetGameweekFixturesQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetLiveFixturesUrl = () => {
+
+
+
+
+  return `/api/fixtures`
+}
+
+/**
+ * @summary Get World Cup fixtures live from API-Sports
+ */
+export const getLiveFixtures = async ( options?: RequestInit): Promise<LiveFixture[]> => {
+
+  return customFetch<LiveFixture[]>(getGetLiveFixturesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetLiveFixturesQueryKey = () => {
+    return [
+    `/api/fixtures`
+    ] as const;
+    }
+
+
+export const getGetLiveFixturesQueryOptions = <TData = Awaited<ReturnType<typeof getLiveFixtures>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLiveFixtures>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetLiveFixturesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getLiveFixtures>>> = ({ signal }) => getLiveFixtures({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getLiveFixtures>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetLiveFixturesQueryResult = NonNullable<Awaited<ReturnType<typeof getLiveFixtures>>>
+export type GetLiveFixturesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get World Cup fixtures live from API-Sports
+ */
+
+export function useGetLiveFixtures<TData = Awaited<ReturnType<typeof getLiveFixtures>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLiveFixtures>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetLiveFixturesQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
