@@ -233,6 +233,57 @@ function EditPlayerModal({
   );
 }
 
+// ─── Create Gameweek Modal ────────────────────────────────────────────────────
+
+type CreateGwForm = { name: string; startDate: string; endDate: string };
+
+function CreateGameweekModal({
+  open, loading, error, form, onFormChange, onSubmit, onClose,
+}: {
+  open: boolean; loading: boolean; error: string | null;
+  form: CreateGwForm;
+  onFormChange: (f: CreateGwForm) => void;
+  onSubmit: () => void; onClose: () => void;
+}) {
+  if (!open) return null;
+  return (
+    <div style={S.modalOverlay} onClick={onClose}>
+      <div style={S.modalCard} onClick={e => e.stopPropagation()}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+          <span style={{ fontWeight: 700, fontSize: 15, color: "#f1f5f9" }}>Create Gameweek</span>
+          <button style={S.trashBtn} onClick={onClose}><X size={16} /></button>
+        </div>
+        {(["name", "startDate", "endDate"] as const).map(field => (
+          <div key={field} style={{ marginBottom: 12 }}>
+            <label style={{ fontSize: 11, color: "#64748b", fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: "0.06em", display: "block", marginBottom: 4 }}>
+              {field === "startDate" ? "Start Date" : field === "endDate" ? "End Date" : "Name"}
+            </label>
+            <input
+              style={S.input}
+              type={field === "startDate" || field === "endDate" ? "date" : "text"}
+              value={form[field]}
+              placeholder={field === "name" ? "e.g. Group Stage Round 1" : undefined}
+              onChange={e => onFormChange({ ...form, [field]: e.target.value })}
+            />
+          </div>
+        ))}
+        {error && <p style={{ fontSize: 12, color: "#ef4444", marginBottom: 8 }}>{error}</p>}
+        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
+          <button onClick={onClose} style={{ ...S.signOutBtn }}>Cancel</button>
+          <button
+            onClick={onSubmit}
+            disabled={loading}
+            style={{ ...S.btnSolidDanger, background: "#06b6d4", borderColor: "#06b6d4", opacity: loading ? 0.7 : 1, cursor: loading ? "not-allowed" : "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}
+          >
+            {loading ? <Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} /> : <Check size={13} />}
+            Create
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export function AdminDashboard() {
@@ -261,6 +312,12 @@ export function AdminDashboard() {
     warning?: string;
   } | null>(null);
   const [processingGwId, setProcessingGwId] = useState<number | null>(null);
+  const [createGwOpen, setCreateGwOpen] = useState(false);
+  const [createGwForm, setCreateGwForm] = useState<CreateGwForm>({ name: "", startDate: "", endDate: "" });
+  const [createGwLoading, setCreateGwLoading] = useState(false);
+  const [createGwError, setCreateGwError] = useState<string | null>(null);
+  const [autoCreating, setAutoCreating] = useState(false);
+  const [autoCreateResult, setAutoCreateResult] = useState<{ created: number; skipped: number } | null>(null);
 
   // ── Auth guard ──────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -374,6 +431,48 @@ export function AdminDashboard() {
         }
       },
     });
+  };
+
+  const submitCreateGameweek = async () => {
+    if (!createGwForm.name || !createGwForm.startDate || !createGwForm.endDate) {
+      setCreateGwError("All fields are required");
+      return;
+    }
+    setCreateGwLoading(true);
+    setCreateGwError(null);
+    try {
+      const gw = await apiFetch("/gameweeks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: createGwForm.name,
+          startDate: new Date(createGwForm.startDate).toISOString(),
+          endDate: new Date(createGwForm.endDate).toISOString(),
+        }),
+      }) as AdminGameweek;
+      setGameweeks(gs => [...gs, gw].sort((a, b) => a.number - b.number));
+      setCreateGwOpen(false);
+      setCreateGwForm({ name: "", startDate: "", endDate: "" });
+    } catch (err) {
+      setCreateGwError(String(err));
+    } finally {
+      setCreateGwLoading(false);
+    }
+  };
+
+  const autoCreateGameweeks = async () => {
+    setAutoCreating(true);
+    setAutoCreateResult(null);
+    try {
+      const result = await apiFetch("/gameweeks/auto-create", { method: "POST" }) as { created: number; skipped: number; gameweeks: AdminGameweek[] };
+      const g = await apiFetch("/gameweeks") as AdminGameweek[];
+      setGameweeks(g);
+      setAutoCreateResult({ created: result.created, skipped: result.skipped });
+    } catch (err) {
+      console.error("Auto-create WC 2026 failed", err);
+    } finally {
+      setAutoCreating(false);
+    }
   };
 
   const deleteLeague = (id: number, name: string) => {
@@ -673,6 +772,31 @@ export function AdminDashboard() {
             {/* ── GAMEWEEKS ── */}
             {tab === "gameweeks" && (
               <>
+                {/* Toolbar */}
+                <div style={{ display: "flex", gap: 10, padding: "16px 16px 14px", alignItems: "center", flexWrap: "wrap" as const, borderBottom: "1px solid #1e3550" }}>
+                  <button
+                    style={{ ...S.actionBtn("teal"), padding: "7px 16px", fontSize: 12 }}
+                    onClick={() => { setCreateGwError(null); setCreateGwOpen(true); }}
+                  >
+                    + Create Gameweek
+                  </button>
+                  <button
+                    style={{ ...S.actionBtn("gray"), padding: "7px 16px", fontSize: 12, opacity: autoCreating ? 0.6 : 1, cursor: autoCreating ? "not-allowed" : "pointer", display: "inline-flex", alignItems: "center", gap: 5 }}
+                    onClick={() => !autoCreating && autoCreateGameweeks()}
+                    disabled={autoCreating}
+                  >
+                    {autoCreating
+                      ? <><Loader2 size={11} style={{ animation: "spin 1s linear infinite" }} /> Creating…</>
+                      : "⚡ Auto-Create WC 2026"
+                    }
+                  </button>
+                  {autoCreateResult && (
+                    <span style={{ fontSize: 12, color: "#22c55e", fontWeight: 600 }}>
+                      ✓ Created {autoCreateResult.created}, skipped {autoCreateResult.skipped}
+                    </span>
+                  )}
+                </div>
+
                 {/* Scoring result banner */}
                 {scoringResult && (
                   <div style={{
@@ -840,6 +964,15 @@ export function AdminDashboard() {
         player={editPlayer}
         onSave={savePlayer}
         onClose={() => setEditPlayer(null)}
+      />
+      <CreateGameweekModal
+        open={createGwOpen}
+        loading={createGwLoading}
+        error={createGwError}
+        form={createGwForm}
+        onFormChange={setCreateGwForm}
+        onSubmit={submitCreateGameweek}
+        onClose={() => setCreateGwOpen(false)}
       />
     </div>
   );

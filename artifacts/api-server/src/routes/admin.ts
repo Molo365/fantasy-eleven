@@ -166,6 +166,67 @@ router.get("/admin/gameweeks", requireAdmin, async (_req, res): Promise<void> =>
   })));
 });
 
+const WC_2026_GAMEWEEKS = [
+  { number: 1, name: "Group Stage Round 1", round: "group", startDate: "2026-06-11", endDate: "2026-06-14" },
+  { number: 2, name: "Group Stage Round 2", round: "group", startDate: "2026-06-15", endDate: "2026-06-19" },
+  { number: 3, name: "Group Stage Round 3", round: "group", startDate: "2026-06-20", endDate: "2026-06-26" },
+  { number: 4, name: "Round of 32",         round: "r32",   startDate: "2026-06-27", endDate: "2026-07-02" },
+  { number: 5, name: "Quarter Finals",      round: "qf",    startDate: "2026-07-04", endDate: "2026-07-05" },
+  { number: 6, name: "Semi Finals",         round: "sf",    startDate: "2026-07-08", endDate: "2026-07-09" },
+  { number: 7, name: "Final",               round: "final", startDate: "2026-07-19", endDate: "2026-07-19" },
+];
+
+function serializeGwAdmin(g: { id: number; number: number; name: string; round: string; status: string; startDate: Date | string; endDate: Date | string; createdAt: Date | string; averagePoints: number | null; highestPoints: number | null }) {
+  return {
+    ...g,
+    startDate: g.startDate instanceof Date ? g.startDate.toISOString() : g.startDate,
+    endDate: g.endDate instanceof Date ? g.endDate.toISOString() : g.endDate,
+    createdAt: g.createdAt instanceof Date ? g.createdAt.toISOString() : g.createdAt,
+  };
+}
+
+router.post("/admin/gameweeks", requireAdmin, async (req, res): Promise<void> => {
+  const { name, startDate, endDate, round = "group" } = req.body as Record<string, string>;
+  if (!name || !startDate || !endDate) {
+    res.status(400).json({ error: "name, startDate, and endDate are required" });
+    return;
+  }
+  const existing = await db.select({ n: gameweeksTable.number }).from(gameweeksTable);
+  const maxNum = existing.reduce((m, r) => Math.max(m, r.n), 0);
+  const [gw] = await db.insert(gameweeksTable).values({
+    number: maxNum + 1,
+    name,
+    round,
+    status: "upcoming",
+    startDate: new Date(startDate),
+    endDate: new Date(endDate),
+  }).returning();
+  req.log.info({ gameweekId: gw.id, name }, "Admin created gameweek");
+  res.status(201).json(serializeGwAdmin(gw));
+});
+
+router.post("/admin/gameweeks/auto-create", requireAdmin, async (req, res): Promise<void> => {
+  const existing = await db.select({ number: gameweeksTable.number }).from(gameweeksTable);
+  const existingNums = new Set(existing.map(r => r.number));
+  let created = 0, skipped = 0;
+  const inserted: ReturnType<typeof serializeGwAdmin>[] = [];
+  for (const gw of WC_2026_GAMEWEEKS) {
+    if (existingNums.has(gw.number)) { skipped++; continue; }
+    const [row] = await db.insert(gameweeksTable).values({
+      number: gw.number,
+      name: gw.name,
+      round: gw.round,
+      status: "upcoming",
+      startDate: new Date(gw.startDate),
+      endDate: new Date(gw.endDate),
+    }).returning();
+    inserted.push(serializeGwAdmin(row));
+    created++;
+  }
+  req.log.info({ created, skipped }, "Admin auto-created WC 2026 gameweeks");
+  res.json({ created, skipped, gameweeks: inserted });
+});
+
 router.post("/admin/gameweeks/:id/activate", requireAdmin, async (req, res): Promise<void> => {
   const id = parseInt(req.params["id"] as string);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
