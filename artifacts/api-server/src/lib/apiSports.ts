@@ -181,6 +181,105 @@ export async function getZafronixTeams(tournament: number): Promise<ZafronixTeam
   return zafronixFetch<ZafronixTeam[]>(`/teams?tournament=${tournament}`);
 }
 
+// Accent-insensitive, lowercase token set for robust name matching.
+function zafronixNameTokens(name: string): Set<string> {
+  const normalized = name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+  return new Set(normalized.split(/[^a-z0-9]+/).filter(Boolean));
+}
+
+// Star players: every listed token must be present (whole-word) in the player's
+// name. Multi-token entries disambiguate common surnames (e.g. Theo vs Lucas
+// Hernández, Emiliano vs Lautaro Martínez). Checked in order; first match wins.
+const ZAFRONIX_STAR_PRICES: Array<{ tokens: string[]; anyOf?: string[]; price: number }> = [
+  { tokens: ["mbappe"], price: 13.0 },
+  { tokens: ["vinicius"], anyOf: ["junior", "jr"], price: 12.5 },
+  { tokens: ["haaland"], price: 12.5 },
+  { tokens: ["bellingham"], price: 12.0 },
+  { tokens: ["rodri"], price: 11.5 },
+  { tokens: ["pedri"], price: 11.0 },
+  { tokens: ["foden"], price: 11.0 },
+  { tokens: ["saka"], price: 11.0 },
+  { tokens: ["yamal"], price: 11.0 },
+  { tokens: ["raphinha"], price: 10.5 },
+  { tokens: ["messi"], price: 10.5 },
+  { tokens: ["valverde"], price: 10.5 },
+  { tokens: ["gavi"], price: 10.0 },
+  { tokens: ["bruno", "fernandes"], price: 10.0 },
+  { tokens: ["leao"], price: 10.0 },
+  { tokens: ["musiala"], price: 10.0 },
+  { tokens: ["wirtz"], price: 10.0 },
+  { tokens: ["dembele"], price: 10.0 },
+  { tokens: ["kane"], price: 9.5 },
+  { tokens: ["griezmann"], price: 9.5 },
+  { tokens: ["bernardo", "silva"], price: 9.5 },
+  { tokens: ["rice"], price: 9.0 },
+  { tokens: ["kroos"], price: 9.0 },
+  { tokens: ["kimmich"], price: 9.0 },
+  { tokens: ["jong"], price: 9.0 },
+  { tokens: ["gakpo"], price: 9.0 },
+  { tokens: ["lautaro"], price: 9.0 },
+  { tokens: ["julian", "alvarez"], price: 9.0 },
+  { tokens: ["depay"], price: 8.5 },
+  { tokens: ["hakimi"], price: 8.5 },
+  { tokens: ["marquinhos"], price: 8.5 },
+  { tokens: ["dijk"], price: 8.5 },
+  { tokens: ["allister"], price: 8.5 },
+  { tokens: ["vlahovic"], price: 8.5 },
+  { tokens: ["theo", "hernandez"], price: 8.5 },
+  { tokens: ["ruben", "dias"], price: 8.0 },
+  { tokens: ["son"], price: 8.0 },
+  { tokens: ["mane"], price: 8.0 },
+  { tokens: ["modric"], price: 8.0 },
+  { tokens: ["pulisic"], price: 8.0 },
+  { tokens: ["cancelo"], price: 7.5 },
+  { tokens: ["gvardiol"], price: 7.5 },
+  { tokens: ["kovacic"], price: 7.5 },
+  { tokens: ["sarr"], price: 7.5 },
+  { tokens: ["ziyech"], price: 7.5 },
+  { tokens: ["reijnders"], price: 7.5 },
+  { tokens: ["dumfries"], price: 7.5 },
+  { tokens: ["reyna"], price: 7.5 },
+  { tokens: ["lozano"], price: 7.5 },
+  { tokens: ["amrabat"], price: 7.0 },
+  { tokens: ["vega"], price: 7.0 },
+  { tokens: ["emiliano", "martinez"], price: 7.0 },
+  { tokens: ["maignan"], price: 7.0 },
+  { tokens: ["alisson"], price: 7.0 },
+];
+
+const ZAFRONIX_TOP_NATIONS = new Set<string>([
+  "Brazil", "France", "England", "Argentina", "Spain", "Portugal", "Germany", "Netherlands",
+]);
+
+const ZAFRONIX_STRONG_NATIONS = new Set<string>([
+  "Croatia", "USA", "United States", "Mexico", "Senegal", "Morocco", "Japan",
+  "Switzerland", "Denmark", "Uruguay", "Colombia", "South Korea", "Serbia", "Belgium",
+]);
+
+const ZAFRONIX_TIER_DEFAULTS: Record<"top" | "strong" | "other", Record<Pos, number>> = {
+  top: { FWD: 8.0, MID: 7.0, DEF: 6.0, GK: 5.5 },
+  strong: { FWD: 6.5, MID: 6.0, DEF: 5.5, GK: 5.0 },
+  other: { FWD: 5.5, MID: 5.0, DEF: 4.5, GK: 4.5 },
+};
+
+function zafronixPrice(name: string, pos: Pos, nation: string): number {
+  const tokens = zafronixNameTokens(name);
+  for (const star of ZAFRONIX_STAR_PRICES) {
+    if (!star.tokens.every((t) => tokens.has(t))) continue;
+    if (star.anyOf && !star.anyOf.some((t) => tokens.has(t))) continue;
+    return star.price;
+  }
+  const tier = ZAFRONIX_TOP_NATIONS.has(nation)
+    ? "top"
+    : ZAFRONIX_STRONG_NATIONS.has(nation)
+      ? "strong"
+      : "other";
+  return ZAFRONIX_TIER_DEFAULTS[tier][pos];
+}
+
 /**
  * Pull all WC 2026 teams + squads from the Zafronix API and replace the player
  * pool. Throws if the API returns 0 teams/players (no fallback).
@@ -216,7 +315,7 @@ export async function syncZafronixPlayers(): Promise<{
       const pos = ZAFRONIX_POS_MAP[p.position];
       if (!pos) { skipped++; continue; }
       const cleanName = p.name.replace(/\s*\(captain\)\s*$/i, "").trim();
-      const price = typeof p.price === "number" && p.price > 0 ? p.price : 5.0;
+      const price = zafronixPrice(cleanName, pos, nationName);
       try {
         await db.insert(playersTable).values({
           externalId: null,
