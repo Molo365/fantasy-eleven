@@ -140,6 +140,105 @@ export async function clearAndSyncWorldCupPlayers(): Promise<{
   return { cleared: Number(before), ...result };
 }
 
+// ─── Zafronix WC 2026 squads ────────────────────────────────────────────────
+
+const ZAFRONIX_BASE = "https://api.zafronix.com/fifa/worldcup/v1";
+
+const ZAFRONIX_POS_MAP: Record<string, Pos> = {
+  GK: "GK", DF: "DEF", MF: "MID", FW: "FWD",
+};
+
+type ZafronixSquadPlayer = {
+  jersey: number | null;
+  name: string;
+  position: string;
+  club: { name: string; country: string } | null;
+  goals: number;
+  captain: boolean;
+  price?: number | null;
+};
+
+type ZafronixTeam = {
+  name: string;
+  code: string;
+  iso: string;
+  confederation: string;
+  squad: ZafronixSquadPlayer[];
+};
+
+async function zafronixFetch<T>(path: string): Promise<T> {
+  const key = process.env.ZAFRONIX_API_KEY;
+  if (!key) throw new Error("ZAFRONIX_API_KEY not set");
+  const res = await fetch(`${ZAFRONIX_BASE}${path}`, { headers: { "X-API-Key": key } });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`Zafronix HTTP ${res.status} for ${path}: ${body.slice(0, 200)}`);
+  }
+  return res.json() as Promise<T>;
+}
+
+export async function getZafronixTeams(tournament: number): Promise<ZafronixTeam[]> {
+  return zafronixFetch<ZafronixTeam[]>(`/teams?tournament=${tournament}`);
+}
+
+/**
+ * Pull all WC 2026 teams + squads from the Zafronix API and replace the player
+ * pool. Throws if the API returns 0 teams/players (no fallback).
+ */
+export async function syncZafronixPlayers(): Promise<{
+  cleared: number; inserted: number; skipped: number; nations: number;
+}> {
+  const tournament = 2026;
+  logger.info({ tournament }, "Fetching WC 2026 squads from Zafronix");
+  const teams = await getZafronixTeams(tournament);
+  if (!teams?.length) {
+    throw new Error("Zafronix returned 0 teams for tournament=2026");
+  }
+  const totalPlayers = teams.reduce((sum, t) => sum + (t.squad?.length ?? 0), 0);
+  if (totalPlayers === 0) {
+    throw new Error("Zafronix returned 0 players for tournament=2026");
+  }
+  logger.info({ teams: teams.length, totalPlayers }, "Got Zafronix squads — replacing player pool");
+
+  const [{ before }] = await db.select({ before: count() }).from(playersTable);
+  await db.execute(sql`TRUNCATE players RESTART IDENTITY CASCADE`);
+
+  let inserted = 0, skipped = 0;
+  const nations = new Set<string>();
+  const now = new Date();
+
+  for (const team of teams) {
+    const nationName = team.name;
+    const nationCode = team.code || toCode(nationName);
+    nations.add(nationName);
+
+    for (const p of team.squad ?? []) {
+      const pos = ZAFRONIX_POS_MAP[p.position];
+      if (!pos) { skipped++; continue; }
+      const cleanName = p.name.replace(/\s*\(captain\)\s*$/i, "").trim();
+      const price = typeof p.price === "number" && p.price > 0 ? p.price : 5.0;
+      try {
+        await db.insert(playersTable).values({
+          externalId: null,
+          name: cleanName,
+          position: pos,
+          club: nationName,
+          clubShortName: nationCode,
+          nationality: nationName,
+          price,
+          totalPoints: 0,
+          cachedFromApi: true,
+          cachedAt: now,
+        });
+        inserted++;
+      } catch { skipped++; }
+    }
+  }
+
+  logger.info({ inserted, skipped, nations: nations.size }, "Zafronix WC player sync complete");
+  return { cleared: Number(before), inserted, skipped, nations: nations.size };
+}
+
 export async function syncWorldCupPlayers(): Promise<{ inserted: number; skipped: number; nations: number }> {
   let apiInserted = 0, apiSkipped = 0;
   const nationsSeen = new Set<string>();

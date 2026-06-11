@@ -250,6 +250,8 @@ export function AdminDashboard() {
   const [editPlayer, setEditPlayer] = useState<EditPlayer | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<string | null>(null);
+  const [syncingZ, setSyncingZ] = useState(false);
+  const [syncResultZ, setSyncResultZ] = useState<string | null>(null);
   const [scoringResult, setScoringResult] = useState<{
     gwName: string;
     fixturesProcessed: number;
@@ -412,6 +414,20 @@ export function AdminDashboard() {
     }
   };
 
+  const syncZafronix = async () => {
+    setSyncingZ(true);
+    setSyncResultZ(null);
+    try {
+      const json = await apiFetch("/sync-zafronix", { method: "POST" }) as { ok: boolean; cleared: number; inserted: number; skipped: number; nations: number };
+      setSyncResultZ(`✓ Synced ${json.inserted} players from ${json.nations} nations (cleared ${json.cleared} old)`);
+      await loadAll();
+    } catch (e) {
+      setSyncResultZ(`✗ Sync failed: ${String(e)}`);
+    } finally {
+      setSyncingZ(false);
+    }
+  };
+
   const fullReset = () => {
     setConfirm({
       open: true, danger: true,
@@ -508,6 +524,20 @@ export function AdminDashboard() {
             {syncResult && (
               <span style={{ fontSize: 12, color: syncResult.startsWith("✓") ? "#4ade80" : "#f87171" }}>
                 {syncResult}
+              </span>
+            )}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginTop: 12 }}>
+            <button
+              style={{ ...S.btnSolidDanger, background: "#7c3aed", borderColor: "#a78bfa", opacity: syncingZ ? 0.7 : 1, cursor: syncingZ ? "not-allowed" : "pointer", minWidth: 180 }}
+              onClick={syncZafronix}
+              disabled={syncingZ}
+            >
+              {syncingZ ? "⟳ Syncing from Zafronix…" : "⟳ Sync from Zafronix"}
+            </button>
+            {syncResultZ && (
+              <span style={{ fontSize: 12, color: syncResultZ.startsWith("✓") ? "#4ade80" : "#f87171" }}>
+                {syncResultZ}
               </span>
             )}
           </div>

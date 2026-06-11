@@ -5,7 +5,7 @@ import {
   teamsTable, teamPlayersTable, leaguesTable, leagueTeamsTable, activityTable,
 } from "@workspace/db";
 import { logger } from "../lib/logger";
-import { clearAndSyncWorldCupPlayers } from "../lib/apiSports";
+import { clearAndSyncWorldCupPlayers, syncZafronixPlayers } from "../lib/apiSports";
 import { processGameweekScoring } from "../lib/scoring";
 
 const ADMIN_EMAIL = "domenicg@gmx.com";
@@ -205,6 +205,18 @@ router.post("/admin/sync-players", requireAdmin, async (req, res): Promise<void>
   const result = await clearAndSyncWorldCupPlayers();
   req.log.info(result, "WC player sync complete via admin");
   res.json({ ok: true, ...result });
+});
+
+router.post("/admin/sync-zafronix", requireAdmin, async (req, res): Promise<void> => {
+  try {
+    req.log.info("Admin triggered Zafronix WC player sync");
+    const result = await syncZafronixPlayers();
+    req.log.info(result, "Zafronix WC player sync complete via admin");
+    res.json({ ok: true, ...result });
+  } catch (err) {
+    req.log.error({ err }, "Zafronix player sync failed");
+    res.status(500).json({ error: String(err) });
+  }
 });
 
 router.post("/admin/wipe-test-data", requireAdmin, async (req, res): Promise<void> => {
