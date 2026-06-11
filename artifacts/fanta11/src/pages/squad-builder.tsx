@@ -486,7 +486,7 @@ export function SquadBuilder() {
                         <button
                           className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center"
                           style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)" }}
-                          onClick={() => removeMut.mutate({ id: TEAM_ID, playerId: rec.playerId }, { onSuccess: refreshPlayers })}
+                          onClick={() => removeMut.mutate({ id: TEAM_ID, slot: rec.slot }, { onSuccess: refreshPlayers })}
                         >
                           <X size={14} style={{ color: "#ef4444" }} />
                         </button>
@@ -557,7 +557,7 @@ export function SquadBuilder() {
                   <button
                     className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center"
                     style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)" }}
-                    onClick={() => removeMut.mutate({ id: TEAM_ID, playerId: benchRec.playerId }, { onSuccess: refreshPlayers })}
+                    onClick={() => removeMut.mutate({ id: TEAM_ID, slot: benchRec.slot }, { onSuccess: refreshPlayers })}
                   >
                     <X size={14} style={{ color: "#ef4444" }} />
                   </button>
@@ -669,7 +669,7 @@ export function SquadBuilder() {
                               <button
                                 className="absolute -top-1 -right-1 z-20 w-[18px] h-[18px] rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                                 style={{ background: "#ef4444", boxShadow: "0 0 8px rgba(239,68,68,0.7)", border: "1.5px solid rgba(255,255,255,0.3)" }}
-                                onClick={() => removeMut.mutate({ id: TEAM_ID, playerId: rec.playerId }, { onSuccess: refreshPlayers })}
+                                onClick={() => removeMut.mutate({ id: TEAM_ID, slot: rec.slot }, { onSuccess: refreshPlayers })}
                               >
                                 <X style={{ width: 9, height: 9, color: "white" }} />
                               </button>
@@ -760,7 +760,7 @@ export function SquadBuilder() {
                         <button
                           className="absolute -top-1 -right-1 z-20 w-[16px] h-[16px] rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                           style={{ background: "#ef4444", boxShadow: "0 0 8px rgba(239,68,68,0.7)", border: "1.5px solid rgba(255,255,255,0.3)" }}
-                          onClick={() => removeMut.mutate({ id: TEAM_ID, playerId: benchRec.playerId }, { onSuccess: refreshPlayers })}
+                          onClick={() => removeMut.mutate({ id: TEAM_ID, slot: benchRec.slot }, { onSuccess: refreshPlayers })}
                         >
                           <X style={{ width: 8, height: 8, color: "white" }} />
                         </button>
@@ -955,7 +955,7 @@ export function SquadBuilder() {
                     {isVice ? "Vice ✓" : "Vice"}
                   </Button>
                   <Button size="sm" variant="destructive" style={{ marginLeft: "auto" }}
-                    onClick={() => { removeMut.mutate({ id: TEAM_ID, playerId: rec.playerId }, { onSuccess: refreshPlayers }); setInfoPlayer(null); }}>
+                    onClick={() => { removeMut.mutate({ id: TEAM_ID, slot: rec.slot }, { onSuccess: refreshPlayers }); setInfoPlayer(null); }}>
                     <X className="w-3 h-3 mr-1" /> Remove
                   </Button>
                 </div>

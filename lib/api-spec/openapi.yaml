@@ -254,18 +254,18 @@ paths:
               schema:
                 $ref: "#/components/schemas/TeamPlayer"
 
-  /teams/{id}/players/{playerId}:
+  /teams/{id}/players/slot/{slot}:
     delete:
       operationId: removePlayerFromTeam
       tags: [teams]
-      summary: Remove a player from the team
+      summary: Remove a player from the team by slot
       parameters:
         - name: id
           in: path
           required: true
           schema:
             type: integer
-        - name: playerId
+        - name: slot
           in: path
           required: true
           schema:

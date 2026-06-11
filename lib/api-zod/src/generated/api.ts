@@ -229,11 +229,11 @@ export const AddPlayerToTeamBody = zod.object({
 
 
 /**
- * @summary Remove a player from the team
+ * @summary Remove a player from the team by slot
  */
 export const RemovePlayerFromTeamParams = zod.object({
   "id": zod.coerce.number(),
-  "playerId": zod.coerce.number()
+  "slot": zod.coerce.number()
 })
 
 

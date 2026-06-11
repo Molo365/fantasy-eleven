@@ -175,7 +175,7 @@ router.post("/teams/:id/players", async (req, res): Promise<void> => {
   res.status(201).json(GetTeamPlayersResponseItem.parse({ ...tp, player }));
 });
 
-router.delete("/teams/:id/players/:playerId", async (req, res): Promise<void> => {
+router.delete("/teams/:id/players/slot/:slot", async (req, res): Promise<void> => {
   const params = RemovePlayerFromTeamParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -187,7 +187,7 @@ router.delete("/teams/:id/players/:playerId", async (req, res): Promise<void> =>
     .from(teamPlayersTable)
     .where(and(
       eq(teamPlayersTable.teamId, params.data.id),
-      eq(teamPlayersTable.playerId, params.data.playerId),
+      eq(teamPlayersTable.slot, params.data.slot),
     ));
 
   if (tp) {
@@ -202,7 +202,7 @@ router.delete("/teams/:id/players/:playerId", async (req, res): Promise<void> =>
     .delete(teamPlayersTable)
     .where(and(
       eq(teamPlayersTable.teamId, params.data.id),
-      eq(teamPlayersTable.playerId, params.data.playerId),
+      eq(teamPlayersTable.slot, params.data.slot),
     ));
 
   res.sendStatus(204);
