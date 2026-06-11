@@ -698,6 +698,9 @@ export function SquadBuilder() {
                               </div>
                             </div>
                             <PitchName name={rec.player.name} isCaptain={isCaptain} isVice={isVice} maxWidth={photoSize + 18} />
+                            <div style={{ fontSize: 10, fontFamily: "monospace", color: "#38bdf8", background: "rgba(56,189,248,0.08)", border: "1px solid rgba(56,189,248,0.22)", borderRadius: 999, padding: "1px 6px", marginTop: 2, lineHeight: 1.6 }}>
+                              £{rec.player.price.toFixed(1)}m
+                            </div>
                           </div>
                         ) : (
                           <button
