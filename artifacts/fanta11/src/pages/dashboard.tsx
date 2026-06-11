@@ -1,7 +1,14 @@
-import { useGetDashboardSummary } from "@workspace/api-client-react";
+import {
+  useGetDashboardSummary,
+  getGetDashboardSummaryQueryKey,
+  useGetLiveFixtures,
+  getGetLiveFixturesQueryKey,
+  type LiveFixture,
+} from "@workspace/api-client-react";
 import { Trophy, TrendingUp, Users, Wallet, Zap, ShieldHalf, CalendarClock } from "lucide-react";
 import { useAuth } from "@/contexts/auth";
 import { Link } from "wouter";
+import { format } from "date-fns";
 
 function NoSquadPrompt() {
   return (
@@ -53,13 +60,162 @@ function NoSquadPrompt() {
   );
 }
 
+function TodayMatches() {
+  const today = format(new Date(), "yyyy-MM-dd");
+  const { data: fixtures } = useGetLiveFixtures({
+    query: { queryKey: getGetLiveFixturesQueryKey(), refetchInterval: 60_000 },
+  });
+
+  const todayMatches = (fixtures ?? []).filter((f: LiveFixture) => f.date === today);
+  if (todayMatches.length === 0) return null;
+
+  const liveCount = todayMatches.filter((f) => f.status === "live").length;
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <h2 className="text-lg font-bold">Today's Matches</h2>
+        {liveCount > 0 && (
+          <span
+            className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest animate-pulse"
+            style={{
+              background: "rgba(239,68,68,0.18)",
+              color: "#f87171",
+              border: "1px solid rgba(239,68,68,0.35)",
+            }}
+          >
+            {liveCount} Live
+          </span>
+        )}
+      </div>
+
+      <div
+        className="rounded-xl overflow-hidden"
+        style={{
+          background: "rgba(8,17,40,0.6)",
+          border: "1px solid rgba(255,255,255,0.06)",
+          backdropFilter: "blur(8px)",
+        }}
+      >
+        {todayMatches.map((fixture, i) => (
+          <div
+            key={fixture.id}
+            className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-white/[0.02]"
+            style={i < todayMatches.length - 1 ? { borderBottom: "1px solid rgba(255,255,255,0.05)" } : undefined}
+          >
+            {/* Home team */}
+            <div className="flex-1 flex items-center justify-end gap-2 min-w-0">
+              <span className="text-sm font-medium truncate text-right" style={{ color: "#e2e8f0" }}>
+                {fixture.homeTeam}
+              </span>
+              {fixture.homeLogo ? (
+                <img
+                  src={fixture.homeLogo}
+                  alt={fixture.homeTeam}
+                  className="w-6 h-6 object-contain shrink-0"
+                />
+              ) : (
+                <div className="w-6 h-6 rounded-full shrink-0" style={{ background: "rgba(255,255,255,0.08)" }} />
+              )}
+            </div>
+
+            {/* Centre: score or kickoff */}
+            <div className="flex flex-col items-center shrink-0" style={{ minWidth: 80 }}>
+              {fixture.status === "scheduled" ? (
+                <div
+                  className="px-2.5 py-1 rounded-md font-mono text-sm"
+                  style={{
+                    background: "rgba(255,255,255,0.06)",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    color: "#94a3b8",
+                  }}
+                >
+                  {format(new Date(fixture.kickoff), "HH:mm")}
+                </div>
+              ) : (
+                <div
+                  className="px-3 py-1 rounded-md font-mono text-base font-bold flex gap-2"
+                  style={
+                    fixture.status === "live"
+                      ? {
+                          background: "rgba(239,68,68,0.12)",
+                          border: "1px solid rgba(239,68,68,0.35)",
+                          color: "#f87171",
+                        }
+                      : {
+                          background: "rgba(255,255,255,0.06)",
+                          border: "1px solid rgba(255,255,255,0.08)",
+                          color: "#e2e8f0",
+                        }
+                  }
+                >
+                  <span>{fixture.homeScore ?? 0}</span>
+                  <span style={{ color: "#475569" }}>–</span>
+                  <span>{fixture.awayScore ?? 0}</span>
+                </div>
+              )}
+
+              {fixture.status === "live" && (
+                <span
+                  className="mt-1 px-1.5 py-0.5 rounded animate-pulse"
+                  style={{
+                    fontSize: 9,
+                    fontWeight: 900,
+                    letterSpacing: "0.12em",
+                    textTransform: "uppercase" as const,
+                    background: "rgba(239,68,68,0.2)",
+                    color: "#f87171",
+                    border: "1px solid rgba(239,68,68,0.35)",
+                  }}
+                >
+                  {fixture.elapsed != null ? `${fixture.elapsed}'` : "Live"}
+                </span>
+              )}
+              {fixture.status === "finished" && (
+                <span
+                  className="mt-1"
+                  style={{
+                    fontSize: 9,
+                    fontWeight: 700,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase" as const,
+                    color: "#475569",
+                  }}
+                >
+                  FT
+                </span>
+              )}
+            </div>
+
+            {/* Away team */}
+            <div className="flex-1 flex items-center gap-2 min-w-0">
+              {fixture.awayLogo ? (
+                <img
+                  src={fixture.awayLogo}
+                  alt={fixture.awayTeam}
+                  className="w-6 h-6 object-contain shrink-0"
+                />
+              ) : (
+                <div className="w-6 h-6 rounded-full shrink-0" style={{ background: "rgba(255,255,255,0.08)" }} />
+              )}
+              <span className="text-sm font-medium truncate" style={{ color: "#e2e8f0" }}>
+                {fixture.awayTeam}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function Dashboard() {
   const { authState } = useAuth();
   const teamId = authState.status === "authenticated" ? (authState.user.teamId ?? undefined) : undefined;
 
   const { data: summary, isLoading: isLoadingSummary } = useGetDashboardSummary(
     { teamId },
-    { query: { enabled: authState.status === "authenticated" } }
+    { query: { queryKey: getGetDashboardSummaryQueryKey({ teamId }), enabled: authState.status === "authenticated" } }
   );
 
   if (isLoadingSummary || authState.status === "loading") {
@@ -208,6 +364,9 @@ export function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* ── Today's Matches ── */}
+      <TodayMatches />
 
       {/* ── No squad prompt OR bottom section ── */}
       {!hasSquad ? (
