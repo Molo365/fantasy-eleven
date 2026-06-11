@@ -640,13 +640,13 @@ export function SquadBuilder() {
           className="flex-1 min-h-0 rounded-xl overflow-hidden relative"
           style={{
             minHeight: 280,
-            background: "radial-gradient(ellipse 85% 65% at 50% 42%, #0e1630 0%, #0a0f1e 72%)",
+            background: "repeating-linear-gradient(to right, #2d7a2d 0px, #2d7a2d 60px, #237023 60px, #237023 120px)",
             boxShadow: "0 0 0 1px rgba(255,255,255,0.05), 0 8px 40px rgba(0,0,0,0.5)",
           }}
         >
           <PitchLines />
           <div className="absolute inset-0 pointer-events-none" style={{
-            background: "linear-gradient(to bottom, rgba(0,0,0,0.28) 0%, rgba(0,0,0,0) 16%, rgba(0,0,0,0) 84%, rgba(0,0,0,0.3) 100%)",
+            background: "radial-gradient(ellipse at center, rgba(0,0,0,0) 50%, rgba(0,0,0,0.6) 100%)",
           }} />
 
           <div className="relative z-10 h-full flex flex-col justify-between py-5 px-2">
