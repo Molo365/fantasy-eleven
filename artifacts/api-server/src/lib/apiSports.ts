@@ -144,55 +144,51 @@ export async function syncWorldCupPlayers(): Promise<{ inserted: number; skipped
   let apiInserted = 0, apiSkipped = 0;
   const nationsSeen = new Set<string>();
 
-  for (const season of [2026, 2022]) {
-    try {
-      logger.info({ season }, "Fetching WC players via league/season endpoint");
-      const players = await getWorldCupSquads(season);
-      if (!players?.length) { logger.warn({ season }, "No players returned"); continue; }
-      logger.info({ count: players.length, season }, "Got WC players — inserting into DB");
-
-      const now = new Date();
-
-      for (const entry of players) {
-        const stat = entry.statistics?.[0];
-        if (!stat) { apiSkipped++; continue; }
-
-        const rawPos = stat.games?.position ?? "";
-        const pos = POS_MAP[rawPos];
-        if (!pos) { apiSkipped++; continue; }
-
-        const nationName = stat.team.name;
-        const nationCode = toCode(nationName);
-        nationsSeen.add(nationName);
-
-        const photoUrl = entry.player.id
-          ? `https://media.api-sports.io/football/players/${entry.player.id}.png`
-          : (entry.player.photo || null);
-
-        try {
-          await db.insert(playersTable).values({
-            externalId: entry.player.id,
-            name: entry.player.name,
-            position: pos,
-            club: nationName,
-            clubShortName: nationCode,
-            nationality: nationName,
-            price: assignPrice(entry.player.name, pos, nationName),
-            totalPoints: 0,
-            imageUrl: photoUrl,
-            cachedFromApi: true,
-            cachedAt: now,
-          }).onConflictDoNothing();
-          apiInserted++;
-        } catch { apiSkipped++; }
-      }
-
-      logger.info({ apiInserted, apiSkipped, nations: nationsSeen.size }, "API-Sports WC players done");
-      break; // success — don't fall back to older season
-    } catch (err) {
-      logger.warn({ err, season }, "Season fetch failed, trying next");
-    }
+  const season = 2026;
+  logger.info({ season }, "Fetching WC players via league/season endpoint");
+  const players = await getWorldCupSquads(season);
+  if (!players?.length) {
+    throw new Error("API-Sports returned 0 players for league=1&season=2026");
   }
+  logger.info({ count: players.length, season }, "Got WC players — inserting into DB");
+
+  const now = new Date();
+
+  for (const entry of players) {
+    const stat = entry.statistics?.[0];
+    if (!stat) { apiSkipped++; continue; }
+
+    const rawPos = stat.games?.position ?? "";
+    const pos = POS_MAP[rawPos];
+    if (!pos) { apiSkipped++; continue; }
+
+    const nationName = stat.team.name;
+    const nationCode = toCode(nationName);
+    nationsSeen.add(nationName);
+
+    const photoUrl = entry.player.id
+      ? `https://media.api-sports.io/football/players/${entry.player.id}.png`
+      : (entry.player.photo || null);
+
+    try {
+      await db.insert(playersTable).values({
+        externalId: entry.player.id,
+        name: entry.player.name,
+        position: pos,
+        club: nationName,
+        clubShortName: nationCode,
+        nationality: nationName,
+        price: assignPrice(entry.player.name, pos, nationName),
+        totalPoints: 0,
+        imageUrl: photoUrl,
+        cachedFromApi: true,
+        cachedAt: now,
+      }).onConflictDoNothing();
+      apiInserted++;
+    } catch { apiSkipped++; }
+  }
+
+  logger.info({ apiInserted, apiSkipped, nations: nationsSeen.size }, "API-Sports WC players done");
 
   // Fill any nations missing from the API with curated fallback data
   const existing = await db.selectDistinct({ club: playersTable.club }).from(playersTable);
