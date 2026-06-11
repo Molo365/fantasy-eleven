@@ -1,0 +1,1 @@
+- [Fanta11 desktop layout sizing](fanta11-desktop-layout.md) — viewport-width sizing formulas in pages must subtract the fixed 288px sidebar + p-8 padding or md-width rows clip.

@@ -193,6 +193,106 @@ function PlayerLabel({
   );
 }
 
+/* ─── SVG pitch line markings (desktop pitch background) ─────────── */
+function PitchLines() {
+  const c = "rgba(255,255,255,0.12)";
+  return (
+    <svg
+      viewBox="0 0 1000 1400"
+      preserveAspectRatio="none"
+      style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}
+    >
+      <g fill="none" stroke={c} strokeWidth={1.5}>
+        {/* outer boundary */}
+        <rect x="20" y="20" width="960" height="1360" vectorEffect="non-scaling-stroke" />
+        {/* halfway line + centre circle */}
+        <line x1="20" y1="700" x2="980" y2="700" vectorEffect="non-scaling-stroke" />
+        <circle cx="500" cy="700" r="140" vectorEffect="non-scaling-stroke" />
+        {/* top penalty area + goal box + arc */}
+        <rect x="275" y="20" width="450" height="200" vectorEffect="non-scaling-stroke" />
+        <rect x="395" y="20" width="210" height="85" vectorEffect="non-scaling-stroke" />
+        <path d="M 388 220 A 140 140 0 0 0 612 220" vectorEffect="non-scaling-stroke" />
+        {/* bottom penalty area + goal box + arc */}
+        <rect x="275" y="1180" width="450" height="200" vectorEffect="non-scaling-stroke" />
+        <rect x="395" y="1295" width="210" height="85" vectorEffect="non-scaling-stroke" />
+        <path d="M 388 1180 A 140 140 0 0 1 612 1180" vectorEffect="non-scaling-stroke" />
+      </g>
+      <g fill={c}>
+        <circle cx="500" cy="700" r="5" />
+        <circle cx="500" cy="150" r="5" />
+        <circle cx="500" cy="1250" r="5" />
+      </g>
+    </svg>
+  );
+}
+
+/* ─── Circular player photo with thick position-coloured ring (desktop pitch) ─ */
+function PitchPhoto({
+  imageUrl, posColor, kitPri, kitSec, label, size = 64,
+}: {
+  imageUrl?: string | null;
+  posColor: string; kitPri: string; kitSec: string; label: string; size?: number;
+}) {
+  const [failed, setFailed] = useState(false);
+  const showImg = imageUrl && !failed;
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: "50%", overflow: "hidden",
+      border: `3px solid ${posColor}`,
+      boxShadow: `0 5px 16px rgba(0,0,0,0.6), 0 0 0 1.5px rgba(0,0,0,0.45)`,
+      background: kitPri,
+      display: "flex", alignItems: "center", justifyContent: "center",
+      flexShrink: 0,
+    }}>
+      {showImg ? (
+        <img
+          src={imageUrl!}
+          alt={label}
+          onError={() => setFailed(true)}
+          style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top center" }}
+        />
+      ) : (
+        <span style={{ color: kitSec, fontWeight: 900, fontSize: Math.round(size * 0.3), letterSpacing: "0.02em" }}>
+          {label}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/* ─── Dashed empty circle for desktop pitch slots ────────────────── */
+function EmptyCircle({ posColor, size = 64 }: { posColor: string; size?: number }) {
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: "50%",
+      border: `2.5px dashed ${posColor}`,
+      background: `${posColor}14`,
+      display: "flex", alignItems: "center", justifyContent: "center",
+      flexShrink: 0,
+    }}>
+      <span style={{ color: posColor, fontSize: Math.round(size * 0.46), fontWeight: 200, lineHeight: 1, marginTop: -2 }}>+</span>
+    </div>
+  );
+}
+
+/* ─── Bold uppercase last-name label for desktop pitch ───────────── */
+function PitchName({ name, isCaptain, isVice, maxWidth = 84 }: { name: string; isCaptain: boolean; isVice: boolean; maxWidth?: number }) {
+  const last = name.split(" ").pop() ?? name;
+  return (
+    <div style={{
+      marginTop: 7, color: "white", fontWeight: 800, fontSize: 11.5,
+      textTransform: "uppercase", letterSpacing: "0.05em",
+      textShadow: "0 2px 8px rgba(0,0,0,0.95), 0 0 3px rgba(0,0,0,0.85)",
+      maxWidth, textAlign: "center", whiteSpace: "nowrap",
+      overflow: "hidden", textOverflow: "ellipsis",
+    }}>
+      {last}
+      {isCaptain && <span style={{ color: "#f59e0b" }}> (C)</span>}
+      {isVice && <span style={{ color: "#94a3b8" }}> (V)</span>}
+    </div>
+  );
+}
+
 /* ─── Stat row for info dialog ────────────────────────────────────── */
 function StatRow({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
@@ -253,7 +353,7 @@ export function SquadBuilder() {
     window.addEventListener("resize", h);
     return () => window.removeEventListener("resize", h);
   }, []);
-  const jerseySize = Math.min(62, Math.max(38, Math.floor((vw - 56) / 5)));
+  const photoSize = Math.min(64, Math.max(44, Math.floor((vw - 540) / 5)));
 
   /* Nation counts */
   const nationCounts: Record<string, number> = {};
@@ -540,21 +640,20 @@ export function SquadBuilder() {
           className="flex-1 min-h-0 rounded-xl overflow-hidden relative"
           style={{
             minHeight: 280,
-            backgroundImage: "url('/pitch.png')",
-            backgroundSize: "cover",
-            backgroundPosition: "center top",
+            background: "radial-gradient(ellipse 85% 65% at 50% 42%, #0e1630 0%, #0a0f1e 72%)",
             boxShadow: "0 0 0 1px rgba(255,255,255,0.05), 0 8px 40px rgba(0,0,0,0.5)",
           }}
         >
+          <PitchLines />
           <div className="absolute inset-0 pointer-events-none" style={{
-            background: "linear-gradient(to bottom, rgba(0,0,0,0.30) 0%, rgba(0,0,0,0.0) 18%, rgba(0,0,0,0.0) 82%, rgba(0,0,0,0.32) 100%)",
+            background: "linear-gradient(to bottom, rgba(0,0,0,0.28) 0%, rgba(0,0,0,0) 16%, rgba(0,0,0,0) 84%, rgba(0,0,0,0.3) 100%)",
           }} />
 
-          <div className="relative z-10 h-full flex flex-col justify-between py-4 px-1">
-            {rows.map((row) => {
+          <div className="relative z-10 h-full flex flex-col justify-between py-5 px-2">
+            {rows.slice().reverse().map((row) => {
               const pc = POS_COLOR[row.position] ?? "#94a3b8";
               return (
-                <div key={row.position} className="flex justify-center items-start gap-1 sm:gap-3">
+                <div key={row.position} className="flex justify-center items-start gap-2 sm:gap-3 lg:gap-8">
                   {Array.from({ length: row.count }, (_, i) => {
                     const slot      = row.startSlot + i;
                     const rec       = teamPlayers?.find((p) => p.slot === slot) ?? null;
@@ -563,40 +662,42 @@ export function SquadBuilder() {
                     const [kPri, kSec] = rec ? kitColors(rec.player.club) : ["#1e293b", "#334155"];
 
                     return (
-                      <div key={slot} style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0, width: jerseySize }}>
+                      <div key={slot} style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0, width: photoSize + 22 }}>
                         {rec ? (
-                          <div className="relative group" style={{ display: "inline-flex", flexDirection: "column", alignItems: "center" }}>
-                            <button
-                              className="absolute -top-1 -right-1 z-20 w-[18px] h-[18px] rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                              style={{ background: "#ef4444", boxShadow: "0 0 8px rgba(239,68,68,0.7)", border: "1.5px solid rgba(255,255,255,0.3)" }}
-                              onClick={() => removeMut.mutate({ id: TEAM_ID, playerId: rec.playerId }, { onSuccess: refreshPlayers })}
-                            >
-                              <X style={{ width: 9, height: 9, color: "white" }} />
-                            </button>
-                            <button
-                              className="absolute -top-1 -left-1 z-20 w-[18px] h-[18px] rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                              style={{ background: "#0ea5e9", boxShadow: "0 0 8px rgba(14,165,233,0.7)", border: "1.5px solid rgba(255,255,255,0.3)" }}
-                              onClick={() => setInfoPlayer(rec)}
-                            >
-                              <Info style={{ width: 9, height: 9, color: "white" }} />
-                            </button>
-                            <button
-                              className="absolute -bottom-1 left-1/2 -translate-x-1/2 z-20 w-[18px] h-[18px] rounded-full flex items-center justify-center transition-opacity"
-                              title={isCaptain ? "Captain" : "Set as Captain"}
-                              style={{
-                                background: isCaptain ? "#f59e0b" : "rgba(245,158,11,0.18)",
-                                border: `1.5px solid ${isCaptain ? "#f59e0b" : "rgba(245,158,11,0.55)"}`,
-                                boxShadow: isCaptain ? "0 0 8px rgba(245,158,11,0.8)" : "none",
-                                opacity: isCaptain ? 1 : undefined,
-                              }}
-                              onClick={() => updateMut.mutate({ id: TEAM_ID, data: { captainId: rec.playerId } }, { onSuccess: refreshTeam })}
-                            >
-                              <span style={{ fontSize: 8, fontWeight: 900, color: isCaptain ? "#000" : "#f59e0b", lineHeight: 1 }}>C</span>
-                            </button>
-                            <div className="cursor-pointer transition-transform group-hover:scale-110" onClick={() => setInfoPlayer(rec)}>
-                              <PlayerPhoto imageUrl={rec.player.imageUrl} primary={kPri} secondary={kSec} label={rec.player.clubShortName ?? ""} size={jerseySize} />
+                          <div className="group" style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                            <div className="relative" style={{ width: photoSize, height: photoSize }}>
+                              <button
+                                className="absolute -top-1 -right-1 z-20 w-[18px] h-[18px] rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                style={{ background: "#ef4444", boxShadow: "0 0 8px rgba(239,68,68,0.7)", border: "1.5px solid rgba(255,255,255,0.3)" }}
+                                onClick={() => removeMut.mutate({ id: TEAM_ID, playerId: rec.playerId }, { onSuccess: refreshPlayers })}
+                              >
+                                <X style={{ width: 9, height: 9, color: "white" }} />
+                              </button>
+                              <button
+                                className="absolute -top-1 -left-1 z-20 w-[18px] h-[18px] rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                style={{ background: "#0ea5e9", boxShadow: "0 0 8px rgba(14,165,233,0.7)", border: "1.5px solid rgba(255,255,255,0.3)" }}
+                                onClick={() => setInfoPlayer(rec)}
+                              >
+                                <Info style={{ width: 9, height: 9, color: "white" }} />
+                              </button>
+                              <button
+                                className="absolute -bottom-1 left-1/2 -translate-x-1/2 z-20 w-[18px] h-[18px] rounded-full flex items-center justify-center transition-opacity"
+                                title={isCaptain ? "Captain" : "Set as Captain"}
+                                style={{
+                                  background: isCaptain ? "#f59e0b" : "rgba(245,158,11,0.18)",
+                                  border: `1.5px solid ${isCaptain ? "#f59e0b" : "rgba(245,158,11,0.55)"}`,
+                                  boxShadow: isCaptain ? "0 0 8px rgba(245,158,11,0.8)" : "none",
+                                  opacity: isCaptain ? 1 : undefined,
+                                }}
+                                onClick={() => updateMut.mutate({ id: TEAM_ID, data: { captainId: rec.playerId } }, { onSuccess: refreshTeam })}
+                              >
+                                <span style={{ fontSize: 8, fontWeight: 900, color: isCaptain ? "#000" : "#f59e0b", lineHeight: 1 }}>C</span>
+                              </button>
+                              <div className="cursor-pointer transition-transform group-hover:scale-110" onClick={() => setInfoPlayer(rec)}>
+                                <PitchPhoto imageUrl={rec.player.imageUrl} posColor={pc} kitPri={kPri} kitSec={kSec} label={rec.player.clubShortName ?? ""} size={photoSize} />
+                              </div>
                             </div>
-                            <PlayerLabel name={rec.player.name} price={rec.player.price} isCaptain={isCaptain} isVice={isVice} />
+                            <PitchName name={rec.player.name} isCaptain={isCaptain} isVice={isVice} maxWidth={photoSize + 18} />
                           </div>
                         ) : (
                           <button
@@ -604,17 +705,17 @@ export function SquadBuilder() {
                             className="transition-transform hover:scale-105"
                             style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", flexDirection: "column", alignItems: "center" }}
                           >
-                            <EmptyJersey posColor={pc} size={jerseySize} />
+                            <EmptyCircle posColor={pc} size={photoSize} />
                             <div style={{
-                              marginTop: 4,
+                              marginTop: 7,
                               background: `${pc}22`,
                               color: pc,
-                              border: `1px solid ${pc}44`,
-                              borderRadius: 4,
-                              padding: "1px 7px",
-                              fontSize: 8.5,
-                              fontWeight: 700,
-                              letterSpacing: "0.1em",
+                              border: `1px solid ${pc}55`,
+                              borderRadius: 5,
+                              padding: "2px 9px",
+                              fontSize: 9.5,
+                              fontWeight: 800,
+                              letterSpacing: "0.12em",
                             }}>
                               {row.position}
                             </div>
