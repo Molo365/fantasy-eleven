@@ -338,6 +338,25 @@ function TopPerformersCard() {
   );
 }
 
+// ── Responsive grid styles (inline @media, not Tailwind breakpoints) ──────────
+const DashboardResponsiveStyles = () => (
+  <style>{`
+    .dash-stat-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
+    .dash-tri-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; }
+    .dash-skel-stat { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+    .dash-skel-tri { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; }
+    .dash-squad-strip { display: flex; gap: 1rem; overflow-x: auto; }
+    @media (min-width: 768px) {
+      .dash-tri-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .dash-skel-tri { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+    @media (min-width: 1024px) {
+      .dash-stat-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .dash-skel-stat { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    }
+  `}</style>
+);
+
 // ── Squad Strip ──────────────────────────────────────────────────────────────
 function SquadStrip({ teamId }: { teamId: number }) {
   const { data: squad } = useGetDashboardSquad(
@@ -356,7 +375,7 @@ function SquadStrip({ teamId }: { teamId: number }) {
       </div>
 
       <div
-        className="flex gap-4 px-4 py-4 overflow-x-auto"
+        className="dash-squad-strip px-4 py-4"
         style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" } as React.CSSProperties}
       >
         {(squad as SquadPlayer[]).map((p) => {
@@ -445,11 +464,12 @@ export function Dashboard() {
   if (isLoadingSummary || authState.status === "loading") {
     return (
       <div className="space-y-5 animate-pulse w-full overflow-x-hidden">
+        <DashboardResponsiveStyles />
         <div className="rounded-2xl" style={{ height: 200, background: "rgba(8,17,40,0.6)" }} />
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="dash-skel-stat">
           {[...Array(4)].map((_, i) => <div key={i} className="h-28 rounded-xl" style={{ background: "rgba(8,17,40,0.5)" }} />)}
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="dash-skel-tri">
           {[...Array(3)].map((_, i) => <div key={i} className="h-64 rounded-xl" style={{ background: "rgba(8,17,40,0.5)" }} />)}
         </div>
       </div>
@@ -512,6 +532,7 @@ export function Dashboard() {
         overflowX: "hidden",
       }}
     >
+      <DashboardResponsiveStyles />
       <div style={{ position: "absolute", inset: 0, background: "rgba(4,8,20,0.72)", pointerEvents: "none", zIndex: 0 }} />
 
       <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500 w-full overflow-x-hidden" style={{ position: "relative", zIndex: 1 }}>
@@ -539,7 +560,7 @@ export function Dashboard() {
             </div>
 
             {/* Stat cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 pb-6">
+            <div className="dash-stat-grid pb-6">
               {statCards.map(({ label, value, sub, subColor, Icon, accent, smallValue, bigAccent }) => (
                 <div
                   key={label}
@@ -575,7 +596,7 @@ export function Dashboard() {
         </div>
 
         {/* ── 3-column grid ── */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="dash-tri-grid">
           <TodayMatchesCard />
 
           {summary?.firstLeagueId != null ? (
