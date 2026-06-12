@@ -285,7 +285,7 @@ export function Dashboard() {
         position: "relative",
         backgroundImage: "url('/stadium-bg.jpg')",
         backgroundSize: "cover",
-        backgroundPosition: "center",
+        backgroundPosition: "center top",
         backgroundAttachment: "fixed",
       }}
     >
@@ -294,7 +294,7 @@ export function Dashboard() {
         style={{
           position: "absolute",
           inset: 0,
-          background: "rgba(4, 8, 20, 0.82)",
+          background: "rgba(4, 8, 20, 0.72)",
           pointerEvents: "none",
           zIndex: 0,
         }}
