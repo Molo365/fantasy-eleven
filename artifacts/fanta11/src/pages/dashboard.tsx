@@ -157,7 +157,7 @@ function TodayMatchesCard() {
                   </div>
 
                   {/* Centre: time/score */}
-                  <div className="flex flex-col items-center shrink-0" style={{ minWidth: 70 }}>
+                  <div className="flex flex-col items-center shrink-0" style={{ minWidth: 60, maxWidth: 80 }}>
                     {f.status === "scheduled" ? (
                       <span
                         className="px-2 py-0.5 rounded font-mono text-xs font-bold"
@@ -355,7 +355,10 @@ function SquadStrip({ teamId }: { teamId: number }) {
         </span>
       </div>
 
-      <div className="flex gap-4 px-4 py-4 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+      <div
+        className="flex gap-4 px-4 py-4 overflow-x-auto"
+        style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" } as React.CSSProperties}
+      >
         {(squad as SquadPlayer[]).map((p) => {
           const posColor = POS_COLORS[p.position] ?? "#64748b";
           const hasPoints = p.points > 0;
@@ -441,12 +444,12 @@ export function Dashboard() {
 
   if (isLoadingSummary || authState.status === "loading") {
     return (
-      <div className="space-y-5 animate-pulse">
+      <div className="space-y-5 animate-pulse w-full overflow-x-hidden">
         <div className="rounded-2xl" style={{ height: 200, background: "rgba(8,17,40,0.6)" }} />
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => <div key={i} className="h-28 rounded-xl" style={{ background: "rgba(8,17,40,0.5)" }} />)}
         </div>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[...Array(3)].map((_, i) => <div key={i} className="h-64 rounded-xl" style={{ background: "rgba(8,17,40,0.5)" }} />)}
         </div>
       </div>
@@ -504,11 +507,14 @@ export function Dashboard() {
         backgroundSize: "cover",
         backgroundPosition: "center top",
         backgroundAttachment: "fixed",
+        width: "100%",
+        maxWidth: "100%",
+        overflowX: "hidden",
       }}
     >
       <div style={{ position: "absolute", inset: 0, background: "rgba(4,8,20,0.72)", pointerEvents: "none", zIndex: 0 }} />
 
-      <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ position: "relative", zIndex: 1 }}>
+      <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500 w-full overflow-x-hidden" style={{ position: "relative", zIndex: 1 }}>
 
         {/* ── Hero header ── */}
         <div
