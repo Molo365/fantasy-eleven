@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { eq, desc } from "drizzle-orm";
-import { db, teamsTable, teamPlayersTable, playersTable, leagueTeamsTable, activityTable } from "@workspace/db";
+import { eq, desc, and } from "drizzle-orm";
+import { db, teamsTable, teamPlayersTable, playersTable, leagueTeamsTable, activityTable, gameweeksTable, gameweekTeamScoresTable } from "@workspace/db";
 import {
   GetDashboardSummaryQueryParams,
   GetRecentActivityQueryParams,
@@ -42,10 +42,31 @@ router.get("/dashboard/summary", async (req, res): Promise<void> => {
   const topPlayer = await db.select().from(playersTable).orderBy(desc(playersTable.totalPoints)).limit(1);
   const hasRealPoints = (topPlayer[0]?.totalPoints ?? 0) > 0;
 
+  // Look up the active gameweek score for this team
+  let gameweekPoints = 0;
+  if (teamIdNum) {
+    const [activeGw] = await db
+      .select({ id: gameweeksTable.id })
+      .from(gameweeksTable)
+      .where(eq(gameweeksTable.status, "active"))
+      .limit(1);
+    if (activeGw) {
+      const [gwScore] = await db
+        .select({ points: gameweekTeamScoresTable.points })
+        .from(gameweekTeamScoresTable)
+        .where(and(
+          eq(gameweekTeamScoresTable.gameweekId, activeGw.id),
+          eq(gameweekTeamScoresTable.teamId, teamIdNum),
+        ))
+        .limit(1);
+      gameweekPoints = gwScore?.points ?? 0;
+    }
+  }
+
   res.json(
     GetDashboardSummaryResponse.parse({
       teamPoints: team?.totalPoints ?? 0,
-      gameweekPoints: 0,
+      gameweekPoints,
       globalRank: playerCount > 0 ? (globalRank || null) : null,
       leagueCount,
       playerCount,

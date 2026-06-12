@@ -406,7 +406,7 @@ export function Dashboard() {
                 No match activity yet
               </p>
               <p className="text-xs mt-1.5 max-w-xs" style={{ color: "#475569" }}>
-                Player scores, assists, and bonus points will appear here once the World Cup 2026 kicks off.
+                No player activity this gameweek yet.
               </p>
             </div>
           </div>
