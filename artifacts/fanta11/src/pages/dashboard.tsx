@@ -280,7 +280,27 @@ export function Dashboard() {
   ];
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div
+      style={{
+        position: "relative",
+        backgroundImage: "url('/stadium.png')",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundAttachment: "fixed",
+      }}
+    >
+      {/* Dark overlay */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: "rgba(4, 8, 20, 0.82)",
+          pointerEvents: "none",
+          zIndex: 0,
+        }}
+      />
+      {/* Content */}
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ position: "relative", zIndex: 1 }}>
 
       {/* ── Hero section with stadium background ── */}
       <div
@@ -463,6 +483,7 @@ export function Dashboard() {
 
         </div>
       )}
+    </div>
     </div>
   );
 }
