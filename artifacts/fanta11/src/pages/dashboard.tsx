@@ -306,7 +306,7 @@ export function Dashboard() {
       <div
         className="relative rounded-2xl overflow-hidden"
         style={{
-          backgroundImage: "url('/stadium.png')",
+          backgroundImage: "url('/stadium-bg.jpg')",
           backgroundSize: "cover",
           backgroundPosition: "center 30%",
           minHeight: 160,
