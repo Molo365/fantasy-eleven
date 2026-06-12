@@ -274,6 +274,10 @@ export interface DashboardSummary {
   topScorerName?: string | null;
   /** @nullable */
   topScorerPoints?: number | null;
+  /** @nullable */
+  firstLeagueId?: number | null;
+  /** @nullable */
+  firstLeagueName?: string | null;
 }
 
 export type ActivityItemType = typeof ActivityItemType[keyof typeof ActivityItemType];

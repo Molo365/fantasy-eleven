@@ -3,7 +3,10 @@ import {
   getGetDashboardSummaryQueryKey,
   useGetLiveFixtures,
   getGetLiveFixturesQueryKey,
+  useGetLeagueLeaderboard,
+  getGetLeagueLeaderboardQueryKey,
   type LiveFixture,
+  type LeaderboardEntry,
 } from "@workspace/api-client-react";
 import { Trophy, TrendingUp, Users, Wallet, Zap, ShieldHalf, CalendarClock } from "lucide-react";
 import { useAuth } from "@/contexts/auth";
@@ -61,6 +64,70 @@ function NoSquadPrompt() {
 }
 
 const STATUS_SORT: Record<string, number> = { live: 0, scheduled: 1, finished: 2 };
+
+// ── My League mini-leaderboard ─────────────────────────────────────────────
+function MyLeague({ leagueId, leagueName, teamId }: { leagueId: number; leagueName: string | null; teamId: number | undefined }) {
+  const { data: rows, isLoading } = useGetLeagueLeaderboard(leagueId, {
+    query: { queryKey: getGetLeagueLeaderboardQueryKey(leagueId), enabled: leagueId > 0 },
+  });
+
+  const cardStyle: React.CSSProperties = {
+    background: "rgba(8,17,40,0.6)",
+    border: "1px solid rgba(255,255,255,0.06)",
+    backdropFilter: "blur(8px)",
+    borderRadius: 16,
+    padding: "20px 24px",
+  };
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-lg font-bold">{leagueName ?? "My League"}</h2>
+        <Link href="/leagues" className="text-xs font-medium" style={{ color: "#06b6d4" }}>
+          View all →
+        </Link>
+      </div>
+      <div style={cardStyle}>
+        {isLoading ? (
+          <div className="space-y-3">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="h-8 rounded-lg animate-pulse" style={{ background: "rgba(255,255,255,0.05)" }} />
+            ))}
+          </div>
+        ) : !rows?.length ? (
+          <p className="text-sm text-center py-6" style={{ color: "#475569" }}>No members in this league yet.</p>
+        ) : (
+          <div className="space-y-1">
+            {(rows as LeaderboardEntry[]).map((row) => {
+              const isMe = row.teamId === teamId;
+              return (
+                <div
+                  key={row.teamId}
+                  className="flex items-center gap-3 px-3 py-2 rounded-lg"
+                  style={{
+                    background: isMe ? "rgba(6,182,212,0.12)" : "transparent",
+                    border: isMe ? "1px solid rgba(6,182,212,0.25)" : "1px solid transparent",
+                  }}
+                >
+                  <span className="text-xs font-bold w-5 text-center" style={{ color: isMe ? "#06b6d4" : "#475569" }}>
+                    {row.rank}
+                  </span>
+                  <span className="flex-1 text-sm font-medium truncate" style={{ color: isMe ? "#e2e8f0" : "#94a3b8" }}>
+                    {row.managerName}
+                    {isMe && <span className="ml-1.5 text-xs" style={{ color: "#06b6d4" }}>(you)</span>}
+                  </span>
+                  <span className="text-sm font-bold tabular-nums" style={{ color: isMe ? "#06b6d4" : "#cbd5e1" }}>
+                    {row.totalPoints} pts
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function TodayMatches() {
   const today = format(new Date(), "yyyy-MM-dd");
@@ -398,6 +465,15 @@ export function Dashboard() {
 
       {/* ── Today's Matches ── */}
       <TodayMatches />
+
+      {/* ── My League ── */}
+      {summary?.firstLeagueId != null && (
+        <MyLeague
+          leagueId={summary.firstLeagueId}
+          leagueName={summary.firstLeagueName ?? null}
+          teamId={teamId}
+        />
+      )}
 
       {/* ── No squad prompt OR bottom section ── */}
       {!hasSquad ? (

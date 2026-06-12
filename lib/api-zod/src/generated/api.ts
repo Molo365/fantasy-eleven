@@ -447,7 +447,9 @@ export const GetDashboardSummaryResponse = zod.object({
   "captainName": zod.string().nullish(),
   "captainPoints": zod.number().nullish(),
   "topScorerName": zod.string().nullish(),
-  "topScorerPoints": zod.number().nullish()
+  "topScorerPoints": zod.number().nullish(),
+  "firstLeagueId": zod.number().nullish(),
+  "firstLeagueName": zod.string().nullish()
 })
 
 

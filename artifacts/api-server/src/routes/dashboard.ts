@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, desc, and, or } from "drizzle-orm";
-import { db, teamsTable, teamPlayersTable, playersTable, leagueTeamsTable, activityTable, gameweeksTable, gameweekTeamScoresTable } from "@workspace/db";
+import { db, teamsTable, teamPlayersTable, playersTable, leagueTeamsTable, leaguesTable, activityTable, gameweeksTable, gameweekTeamScoresTable } from "@workspace/db";
 import {
   GetDashboardSummaryQueryParams,
   GetRecentActivityQueryParams,
@@ -24,13 +24,25 @@ router.get("/dashboard/summary", async (req, res): Promise<void> => {
   let playerCount = 0;
   let leagueCount = 0;
   let captain = null;
+  let firstLeagueId: number | null = null;
+  let firstLeagueName: string | null = null;
 
   if (teamIdNum) {
     [team] = await db.select().from(teamsTable).where(eq(teamsTable.id, teamIdNum));
     const playerRows = await db.select().from(teamPlayersTable).where(eq(teamPlayersTable.teamId, teamIdNum));
     playerCount = playerRows.length;
-    const leagueRows = await db.select().from(leagueTeamsTable).where(eq(leagueTeamsTable.teamId, teamIdNum));
+    const leagueRows = await db
+      .select({ leagueId: leagueTeamsTable.leagueId, name: leaguesTable.name })
+      .from(leagueTeamsTable)
+      .leftJoin(leaguesTable, eq(leagueTeamsTable.leagueId, leaguesTable.id))
+      .where(eq(leagueTeamsTable.teamId, teamIdNum))
+      .orderBy(leagueTeamsTable.leagueId)
+      .limit(10);
     leagueCount = leagueRows.length;
+    if (leagueRows[0]) {
+      firstLeagueId = leagueRows[0].leagueId;
+      firstLeagueName = leagueRows[0].name ?? null;
+    }
     if (team?.captainId) {
       [captain] = await db.select().from(playersTable).where(eq(playersTable.id, team.captainId));
     }
@@ -78,6 +90,8 @@ router.get("/dashboard/summary", async (req, res): Promise<void> => {
       captainPoints: captain?.totalPoints ?? null,
       topScorerName: hasRealPoints ? (topPlayer[0]?.name ?? null) : null,
       topScorerPoints: hasRealPoints ? (topPlayer[0]?.totalPoints ?? null) : null,
+      firstLeagueId,
+      firstLeagueName,
     })
   );
 });
