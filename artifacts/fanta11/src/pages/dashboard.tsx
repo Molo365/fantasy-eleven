@@ -60,16 +60,27 @@ function NoSquadPrompt() {
   );
 }
 
+const STATUS_SORT: Record<string, number> = { live: 0, scheduled: 1, finished: 2 };
+
 function TodayMatches() {
   const today = format(new Date(), "yyyy-MM-dd");
   const { data: fixtures } = useGetLiveFixtures({
     query: { queryKey: getGetLiveFixturesQueryKey(), refetchInterval: 60_000 },
   });
 
-  const todayMatches = (fixtures ?? []).filter((f: LiveFixture) => f.date === today);
+  // Compare using kickoff in local time so live/scheduled games aren't missed
+  // due to UTC vs local date mismatch
+  const todayMatches = (fixtures ?? [])
+    .filter((f: LiveFixture) => format(new Date(f.kickoff), "yyyy-MM-dd") === today)
+    .sort((a: LiveFixture, b: LiveFixture) => {
+      const sDiff = (STATUS_SORT[a.status] ?? 9) - (STATUS_SORT[b.status] ?? 9);
+      if (sDiff !== 0) return sDiff;
+      return a.kickoff.localeCompare(b.kickoff);
+    });
+
   if (todayMatches.length === 0) return null;
 
-  const liveCount = todayMatches.filter((f) => f.status === "live").length;
+  const liveCount = todayMatches.filter((f: LiveFixture) => f.status === "live").length;
 
   return (
     <div className="space-y-3">
