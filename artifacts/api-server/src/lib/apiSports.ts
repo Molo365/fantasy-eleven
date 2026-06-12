@@ -1,5 +1,5 @@
-import { db, playersTable } from "@workspace/db";
-import { count, sql } from "drizzle-orm";
+import { db, playersTable, teamPlayersTable, teamsTable } from "@workspace/db";
+import { count, eq, sql } from "drizzle-orm";
 import { logger } from "./logger";
 
 const API_BASE = "https://v3.football.api-sports.io";
@@ -128,15 +128,133 @@ export async function getWorldCupSquads(season: number): Promise<ApiWCPlayer[]> 
   return all;
 }
 
+// ─── Squad save / restore across player re-syncs ─────────────────────────────
+
+function normalizeForMatch(s: string): string {
+  return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+}
+
+type SavedEntry = {
+  teamId: number;
+  slot: number;
+  isCaptain: boolean;
+  isViceCaptain: boolean;
+  playerName: string;
+  playerNation: string;
+  wasCaptainForTeam: boolean;
+  wasViceCaptainForTeam: boolean;
+};
+
+async function saveSquads(): Promise<SavedEntry[]> {
+  const rows = await db
+    .select({
+      teamId: teamPlayersTable.teamId,
+      playerId: teamPlayersTable.playerId,
+      slot: teamPlayersTable.slot,
+      isCaptain: teamPlayersTable.isCaptain,
+      isViceCaptain: teamPlayersTable.isViceCaptain,
+      playerName: playersTable.name,
+      playerNation: playersTable.nationality,
+    })
+    .from(teamPlayersTable)
+    .innerJoin(playersTable, eq(teamPlayersTable.playerId, playersTable.id));
+
+  if (rows.length === 0) return [];
+
+  const teamRows = await db
+    .select({ id: teamsTable.id, captainId: teamsTable.captainId, viceCaptainId: teamsTable.viceCaptainId })
+    .from(teamsTable);
+  const capMap = new Map(teamRows.map(t => [t.id, { captainId: t.captainId, viceCaptainId: t.viceCaptainId }]));
+
+  return rows.map(r => {
+    const caps = capMap.get(r.teamId);
+    return {
+      teamId: r.teamId,
+      slot: r.slot,
+      isCaptain: r.isCaptain,
+      isViceCaptain: r.isViceCaptain,
+      playerName: r.playerName,
+      playerNation: r.playerNation ?? "",
+      wasCaptainForTeam: caps?.captainId === r.playerId,
+      wasViceCaptainForTeam: caps?.viceCaptainId === r.playerId,
+    };
+  });
+}
+
+async function restoreSquads(
+  entries: SavedEntry[],
+): Promise<{ restored: number; lost: number; teamsFixed: number }> {
+  if (entries.length === 0) return { restored: 0, lost: 0, teamsFixed: 0 };
+
+  // Build lookup: normalizedName|normalizedNation → { id, price }
+  const newPlayers = await db
+    .select({ id: playersTable.id, name: playersTable.name, nationality: playersTable.nationality, price: playersTable.price })
+    .from(playersTable);
+
+  const playerMap = new Map<string, { id: number; price: number }>();
+  for (const p of newPlayers) {
+    const key = `${normalizeForMatch(p.name)}|${normalizeForMatch(p.nationality ?? "")}`;
+    if (!playerMap.has(key)) playerMap.set(key, { id: p.id, price: p.price });
+  }
+
+  // Group entries by team
+  const byTeam = new Map<number, SavedEntry[]>();
+  for (const e of entries) {
+    if (!byTeam.has(e.teamId)) byTeam.set(e.teamId, []);
+    byTeam.get(e.teamId)!.push(e);
+  }
+
+  let restored = 0, lost = 0;
+
+  for (const [teamId, teamEntries] of byTeam) {
+    let newCaptainId: number | null = null;
+    let newViceCaptainId: number | null = null;
+    let budgetSpent = 0;
+
+    for (const entry of teamEntries) {
+      const key = `${normalizeForMatch(entry.playerName)}|${normalizeForMatch(entry.playerNation)}`;
+      const match = playerMap.get(key);
+      if (!match) { lost++; continue; }
+
+      await db.insert(teamPlayersTable).values({
+        teamId,
+        playerId: match.id,
+        slot: entry.slot,
+        isCaptain: entry.isCaptain,
+        isViceCaptain: entry.isViceCaptain,
+      });
+      budgetSpent += match.price;
+      restored++;
+
+      if (entry.wasCaptainForTeam) newCaptainId = match.id;
+      if (entry.wasViceCaptainForTeam) newViceCaptainId = match.id;
+    }
+
+    await db.update(teamsTable)
+      .set({
+        budget: parseFloat(Math.max(0, 100 - budgetSpent).toFixed(1)),
+        captainId: newCaptainId,
+        viceCaptainId: newViceCaptainId,
+      })
+      .where(eq(teamsTable.id, teamId));
+  }
+
+  return { restored, lost, teamsFixed: byTeam.size };
+}
+
 // ─── Public sync functions ────────────────────────────────────────────────────
 
 export async function clearAndSyncWorldCupPlayers(): Promise<{
   cleared: number; inserted: number; skipped: number; nations: number;
 }> {
+  const saved = await saveSquads();
+  logger.info({ savedEntries: saved.length }, "Saved squad snapshot before API-Sports sync");
   const [{ before }] = await db.select({ before: count() }).from(playersTable);
   await db.execute(sql`TRUNCATE players RESTART IDENTITY CASCADE`);
   logger.info({ cleared: before }, "Cleared players table");
   const result = await syncWorldCupPlayers();
+  const restore = await restoreSquads(saved);
+  logger.info(restore, "Restored squads after API-Sports sync");
   return { cleared: Number(before), ...result };
 }
 
@@ -299,6 +417,9 @@ export async function syncZafronixPlayers(): Promise<{
   }
   logger.info({ teams: teams.length, totalPlayers }, "Got Zafronix squads — replacing player pool");
 
+  const saved = await saveSquads();
+  logger.info({ savedEntries: saved.length }, "Saved squad snapshot before Zafronix sync");
+
   const [{ before }] = await db.select({ before: count() }).from(playersTable);
   await db.execute(sql`TRUNCATE players RESTART IDENTITY CASCADE`);
 
@@ -334,7 +455,8 @@ export async function syncZafronixPlayers(): Promise<{
     }
   }
 
-  logger.info({ inserted, skipped, nations: nations.size }, "Zafronix WC player sync complete");
+  const restore = await restoreSquads(saved);
+  logger.info({ ...restore, inserted, skipped, nations: nations.size }, "Zafronix WC player sync complete — squads restored");
   return { cleared: Number(before), inserted, skipped, nations: nations.size };
 }
 
