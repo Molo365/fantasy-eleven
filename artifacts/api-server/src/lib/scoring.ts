@@ -252,24 +252,26 @@ export async function processGameweekScoring(gameweekId: number): Promise<Scorin
       teamId:        teamPlayersTable.teamId,
       playerId:      teamPlayersTable.playerId,
       isCaptain:     teamPlayersTable.isCaptain,
+      isViceCaptain: teamPlayersTable.isViceCaptain,
     })
     .from(teamPlayersTable);
 
   // Group by team
-  const teamSquads = new Map<number, Array<{ playerId: number; isCaptain: boolean }>>();
+  const teamSquads = new Map<number, Array<{ playerId: number; isCaptain: boolean; isViceCaptain: boolean }>>();
   for (const tp of allTeamPlayers) {
     if (!teamSquads.has(tp.teamId)) teamSquads.set(tp.teamId, []);
-    teamSquads.get(tp.teamId)!.push({ playerId: tp.playerId, isCaptain: tp.isCaptain });
+    teamSquads.get(tp.teamId)!.push({ playerId: tp.playerId, isCaptain: tp.isCaptain, isViceCaptain: tp.isViceCaptain });
   }
 
   let teamsUpdated = 0;
 
   for (const [teamId, squad] of teamSquads) {
     let gwPts = 0;
-    for (const { playerId, isCaptain } of squad) {
+    for (const { playerId, isCaptain, isViceCaptain } of squad) {
       const earned = playerEarned.get(playerId);
       if (!earned || earned.pts === 0) continue;
-      gwPts += earned.pts * (isCaptain ? 2 : 1);
+      const multiplier = isCaptain ? 2 : isViceCaptain ? 1.5 : 1;
+      gwPts += earned.pts * multiplier;
     }
 
     // Upsert this gameweek's score for the team — idempotent on reprocess
@@ -302,9 +304,9 @@ export async function processGameweekScoring(gameweekId: number): Promise<Scorin
   const gwPointsList = [...teamSquads.keys()].map(teamId => {
     const squad = teamSquads.get(teamId)!;
     let pts = 0;
-    for (const { playerId, isCaptain } of squad) {
+    for (const { playerId, isCaptain, isViceCaptain } of squad) {
       const earned = playerEarned.get(playerId);
-      if (earned) pts += earned.pts * (isCaptain ? 2 : 1);
+      if (earned) pts += earned.pts * (isCaptain ? 2 : isViceCaptain ? 1.5 : 1);
     }
     return pts;
   }).filter(p => p > 0);
