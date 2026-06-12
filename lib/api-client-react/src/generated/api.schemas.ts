@@ -278,6 +278,31 @@ export interface DashboardSummary {
   firstLeagueId?: number | null;
   /** @nullable */
   firstLeagueName?: string | null;
+  /** @nullable */
+  currentGameweekName?: string | null;
+  /** @nullable */
+  currentGameweekNumber?: number | null;
+}
+
+export interface TopPerformer {
+  id: number;
+  name: string;
+  /** @nullable */
+  nationality?: string | null;
+  position: string;
+  totalPoints: number;
+}
+
+export interface SquadPlayer {
+  playerId: number;
+  name: string;
+  /** @nullable */
+  nationality?: string | null;
+  position: string;
+  slot: number;
+  isCaptain: boolean;
+  isViceCaptain: boolean;
+  points: number;
 }
 
 export type ActivityItemType = typeof ActivityItemType[keyof typeof ActivityItemType];
@@ -336,6 +361,10 @@ export const GetTopPlayersPosition = {
 
 export type GetDashboardSummaryParams = {
 teamId?: number;
+};
+
+export type GetDashboardSquadParams = {
+teamId: number;
 };
 
 export type GetRecentActivityParams = {

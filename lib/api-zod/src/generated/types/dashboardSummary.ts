@@ -27,4 +27,8 @@ export interface DashboardSummary {
   firstLeagueId?: number | null;
   /** @nullable */
   firstLeagueName?: string | null;
+  /** @nullable */
+  currentGameweekName?: string | null;
+  /** @nullable */
+  currentGameweekNumber?: number | null;
 }

@@ -449,8 +449,43 @@ export const GetDashboardSummaryResponse = zod.object({
   "topScorerName": zod.string().nullish(),
   "topScorerPoints": zod.number().nullish(),
   "firstLeagueId": zod.number().nullish(),
-  "firstLeagueName": zod.string().nullish()
+  "firstLeagueName": zod.string().nullish(),
+  "currentGameweekName": zod.string().nullish(),
+  "currentGameweekNumber": zod.number().nullish()
 })
+
+
+/**
+ * @summary Get top 3 scoring players this gameweek
+ */
+export const GetDashboardTopPerformersResponseItem = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "nationality": zod.string().nullish(),
+  "position": zod.string(),
+  "totalPoints": zod.number()
+})
+export const GetDashboardTopPerformersResponse = zod.array(GetDashboardTopPerformersResponseItem)
+
+
+/**
+ * @summary Get user squad with player details and GW points
+ */
+export const GetDashboardSquadQueryParams = zod.object({
+  "teamId": zod.coerce.number()
+})
+
+export const GetDashboardSquadResponseItem = zod.object({
+  "playerId": zod.number(),
+  "name": zod.string(),
+  "nationality": zod.string().nullish(),
+  "position": zod.string(),
+  "slot": zod.number(),
+  "isCaptain": zod.boolean(),
+  "isViceCaptain": zod.boolean(),
+  "points": zod.number()
+})
+export const GetDashboardSquadResponse = zod.array(GetDashboardSquadResponseItem)
 
 
 /**

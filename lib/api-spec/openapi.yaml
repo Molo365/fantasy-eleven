@@ -455,6 +455,42 @@ paths:
               schema:
                 $ref: "#/components/schemas/DashboardSummary"
 
+  /dashboard/top-performers:
+    get:
+      operationId: getDashboardTopPerformers
+      tags: [dashboard]
+      summary: Get top 3 scoring players this gameweek
+      responses:
+        "200":
+          description: Top performers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TopPerformer"
+
+  /dashboard/squad:
+    get:
+      operationId: getDashboardSquad
+      tags: [dashboard]
+      summary: Get user squad with player details and GW points
+      parameters:
+        - name: teamId
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Squad players
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SquadPlayer"
+
   /dashboard/activity:
     get:
       operationId: getRecentActivity
@@ -816,6 +852,46 @@ components:
           type: ["integer", "null"]
         firstLeagueName:
           type: ["string", "null"]
+        currentGameweekName:
+          type: ["string", "null"]
+        currentGameweekNumber:
+          type: ["integer", "null"]
+
+    TopPerformer:
+      type: object
+      required: [id, name, position, totalPoints]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        nationality:
+          type: ["string", "null"]
+        position:
+          type: string
+        totalPoints:
+          type: integer
+
+    SquadPlayer:
+      type: object
+      required: [playerId, name, position, slot, isCaptain, isViceCaptain, points]
+      properties:
+        playerId:
+          type: integer
+        name:
+          type: string
+        nationality:
+          type: ["string", "null"]
+        position:
+          type: string
+        slot:
+          type: integer
+        isCaptain:
+          type: boolean
+        isViceCaptain:
+          type: boolean
+        points:
+          type: integer
 
     ActivityItem:
       type: object

@@ -25,6 +25,7 @@ import type {
   Fixture,
   Gameweek,
   GameweekDetail,
+  GetDashboardSquadParams,
   GetDashboardSummaryParams,
   GetRecentActivityParams,
   GetTopPlayersParams,
@@ -36,11 +37,13 @@ import type {
   ListPlayersParams,
   LiveFixture,
   Player,
+  SquadPlayer,
   Team,
   TeamInput,
   TeamPlayer,
   TeamPlayerInput,
-  TeamUpdate
+  TeamUpdate,
+  TopPerformer
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -1726,6 +1729,167 @@ export function useGetDashboardSummary<TData = Awaited<ReturnType<typeof getDash
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetDashboardSummaryQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetDashboardTopPerformersUrl = () => {
+
+
+
+
+  return `/api/dashboard/top-performers`
+}
+
+/**
+ * @summary Get top 3 scoring players this gameweek
+ */
+export const getDashboardTopPerformers = async ( options?: RequestInit): Promise<TopPerformer[]> => {
+
+  return customFetch<TopPerformer[]>(getGetDashboardTopPerformersUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetDashboardTopPerformersQueryKey = () => {
+    return [
+    `/api/dashboard/top-performers`
+    ] as const;
+    }
+
+
+export const getGetDashboardTopPerformersQueryOptions = <TData = Awaited<ReturnType<typeof getDashboardTopPerformers>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDashboardTopPerformers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetDashboardTopPerformersQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getDashboardTopPerformers>>> = ({ signal }) => getDashboardTopPerformers({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getDashboardTopPerformers>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetDashboardTopPerformersQueryResult = NonNullable<Awaited<ReturnType<typeof getDashboardTopPerformers>>>
+export type GetDashboardTopPerformersQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get top 3 scoring players this gameweek
+ */
+
+export function useGetDashboardTopPerformers<TData = Awaited<ReturnType<typeof getDashboardTopPerformers>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDashboardTopPerformers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetDashboardTopPerformersQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetDashboardSquadUrl = (params: GetDashboardSquadParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/dashboard/squad?${stringifiedParams}` : `/api/dashboard/squad`
+}
+
+/**
+ * @summary Get user squad with player details and GW points
+ */
+export const getDashboardSquad = async (params: GetDashboardSquadParams, options?: RequestInit): Promise<SquadPlayer[]> => {
+
+  return customFetch<SquadPlayer[]>(getGetDashboardSquadUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetDashboardSquadQueryKey = (params?: GetDashboardSquadParams,) => {
+    return [
+    `/api/dashboard/squad`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetDashboardSquadQueryOptions = <TData = Awaited<ReturnType<typeof getDashboardSquad>>, TError = ErrorType<unknown>>(params: GetDashboardSquadParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDashboardSquad>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetDashboardSquadQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getDashboardSquad>>> = ({ signal }) => getDashboardSquad(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getDashboardSquad>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetDashboardSquadQueryResult = NonNullable<Awaited<ReturnType<typeof getDashboardSquad>>>
+export type GetDashboardSquadQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get user squad with player details and GW points
+ */
+
+export function useGetDashboardSquad<TData = Awaited<ReturnType<typeof getDashboardSquad>>, TError = ErrorType<unknown>>(
+ params: GetDashboardSquadParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDashboardSquad>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetDashboardSquadQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

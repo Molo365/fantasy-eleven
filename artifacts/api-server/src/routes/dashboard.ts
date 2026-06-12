@@ -6,6 +6,9 @@ import {
   GetRecentActivityQueryParams,
   GetDashboardSummaryResponse,
   GetRecentActivityResponse,
+  GetDashboardTopPerformersResponse,
+  GetDashboardSquadQueryParams,
+  GetDashboardSquadResponse,
 } from "@workspace/api-zod";
 
 const router: IRouter = Router();
@@ -54,17 +57,21 @@ router.get("/dashboard/summary", async (req, res): Promise<void> => {
   const topPlayer = await db.select().from(playersTable).orderBy(desc(playersTable.totalPoints)).limit(1);
   const hasRealPoints = (topPlayer[0]?.totalPoints ?? 0) > 0;
 
-  // Look up the active gameweek score for this team
   let gameweekPoints = 0;
-  if (teamIdNum) {
-    // Use active gameweek, or fall back to the most recently finished one
-    const [currentGw] = await db
-      .select({ id: gameweeksTable.id, status: gameweeksTable.status })
-      .from(gameweeksTable)
-      .where(or(eq(gameweeksTable.status, "active"), eq(gameweeksTable.status, "finished")))
-      .orderBy(desc(gameweeksTable.id))
-      .limit(1);
-    if (currentGw) {
+  let currentGameweekName: string | null = null;
+  let currentGameweekNumber: number | null = null;
+
+  const [currentGw] = await db
+    .select({ id: gameweeksTable.id, status: gameweeksTable.status, name: gameweeksTable.name, number: gameweeksTable.number })
+    .from(gameweeksTable)
+    .where(or(eq(gameweeksTable.status, "active"), eq(gameweeksTable.status, "finished")))
+    .orderBy(desc(gameweeksTable.id))
+    .limit(1);
+
+  if (currentGw) {
+    currentGameweekName = currentGw.name ?? null;
+    currentGameweekNumber = currentGw.number ?? null;
+    if (teamIdNum) {
       const [gwScore] = await db
         .select({ points: gameweekTeamScoresTable.points })
         .from(gameweekTeamScoresTable)
@@ -92,8 +99,53 @@ router.get("/dashboard/summary", async (req, res): Promise<void> => {
       topScorerPoints: hasRealPoints ? (topPlayer[0]?.totalPoints ?? null) : null,
       firstLeagueId,
       firstLeagueName,
+      currentGameweekName,
+      currentGameweekNumber,
     })
   );
+});
+
+router.get("/dashboard/top-performers", async (req, res): Promise<void> => {
+  const players = await db
+    .select({
+      id: playersTable.id,
+      name: playersTable.name,
+      nationality: playersTable.nationality,
+      position: playersTable.position,
+      totalPoints: playersTable.totalPoints,
+    })
+    .from(playersTable)
+    .orderBy(desc(playersTable.totalPoints))
+    .limit(3);
+
+  res.json(GetDashboardTopPerformersResponse.parse(players));
+});
+
+router.get("/dashboard/squad", async (req, res): Promise<void> => {
+  const parsed = GetDashboardSquadQueryParams.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const { teamId } = parsed.data;
+
+  const rows = await db
+    .select({
+      playerId: teamPlayersTable.playerId,
+      slot: teamPlayersTable.slot,
+      isCaptain: teamPlayersTable.isCaptain,
+      isViceCaptain: teamPlayersTable.isViceCaptain,
+      points: teamPlayersTable.points,
+      name: playersTable.name,
+      nationality: playersTable.nationality,
+      position: playersTable.position,
+    })
+    .from(teamPlayersTable)
+    .innerJoin(playersTable, eq(teamPlayersTable.playerId, playersTable.id))
+    .where(eq(teamPlayersTable.teamId, teamId))
+    .orderBy(teamPlayersTable.slot);
+
+  res.json(GetDashboardSquadResponse.parse(rows));
 });
 
 router.get("/dashboard/activity", async (req, res): Promise<void> => {
