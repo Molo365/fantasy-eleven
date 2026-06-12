@@ -31,7 +31,12 @@ export function Players() {
         <p className="text-muted-foreground mt-1">Discover, analyze, and recruit</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <style>{`
+        .players-top-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; }
+        @media (max-width: 767px) { .players-top-grid { grid-template-columns: minmax(0, 1fr); } }
+        @media (min-width: 768px) { .players-top-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+      `}</style>
+      <div className="players-top-grid">
         {isLoadingTop ? (
           [...Array(3)].map((_, i) => <div key={i} className="h-32 bg-secondary rounded-lg animate-pulse" />)
         ) : (

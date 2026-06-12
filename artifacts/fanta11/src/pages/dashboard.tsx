@@ -342,13 +342,19 @@ function TopPerformersCard() {
 const DashboardResponsiveStyles = () => (
   <style>{`
     .dash-stat-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
-    .dash-tri-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; }
+    .dash-tri-grid  { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; }
     .dash-skel-stat { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
-    .dash-skel-tri { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; }
+    .dash-skel-tri  { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; }
     .dash-squad-strip { display: flex; gap: 1rem; overflow-x: auto; }
+    @media (max-width: 767px) {
+      .dash-stat-grid { grid-template-columns: minmax(0, 1fr); }
+      .dash-skel-stat { grid-template-columns: minmax(0, 1fr); }
+      .dash-tri-grid  { grid-template-columns: minmax(0, 1fr); }
+      .dash-skel-tri  { grid-template-columns: minmax(0, 1fr); }
+    }
     @media (min-width: 768px) {
-      .dash-tri-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-      .dash-skel-tri { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .dash-tri-grid  { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .dash-skel-tri  { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     }
     @media (min-width: 1024px) {
       .dash-stat-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
