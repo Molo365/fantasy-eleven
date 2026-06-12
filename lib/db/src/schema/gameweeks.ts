@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, timestamp, unique } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -26,6 +26,15 @@ export const fixturesTable = pgTable("fixtures", {
   status: text("status").notNull().default("scheduled"), // scheduled, live, finished
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const gameweekTeamScoresTable = pgTable("gameweek_team_scores", {
+  id: serial("id").primaryKey(),
+  gameweekId: integer("gameweek_id").notNull().references(() => gameweeksTable.id, { onDelete: "cascade" }),
+  teamId: integer("team_id").notNull(),
+  points: integer("points").notNull().default(0),
+}, (t) => [
+  unique().on(t.gameweekId, t.teamId),
+]);
 
 export const insertGameweekSchema = createInsertSchema(gameweeksTable).omit({ id: true, createdAt: true });
 export const insertFixtureSchema = createInsertSchema(fixturesTable).omit({ id: true, createdAt: true });

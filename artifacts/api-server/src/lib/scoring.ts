@@ -1,5 +1,5 @@
-import { db, playersTable, teamsTable, teamPlayersTable, gameweeksTable } from "@workspace/db";
-import { eq, sql } from "drizzle-orm";
+import { db, playersTable, teamsTable, teamPlayersTable, gameweeksTable, gameweekTeamScoresTable } from "@workspace/db";
+import { eq, sql, sum } from "drizzle-orm";
 import { logger } from "./logger";
 
 const API_BASE = "https://v3.football.api-sports.io";
@@ -261,13 +261,29 @@ export async function processGameweekScoring(gameweekId: number): Promise<Scorin
       gwPts += earned.pts * (isCaptain ? 2 : 1);
     }
 
+    // Upsert this gameweek's score for the team — idempotent on reprocess
+    await db
+      .insert(gameweekTeamScoresTable)
+      .values({ gameweekId, teamId, points: gwPts })
+      .onConflictDoUpdate({
+        target: [gameweekTeamScoresTable.gameweekId, gameweekTeamScoresTable.teamId],
+        set: { points: gwPts },
+      });
+
+    // Recompute totalPoints as the sum of ALL gameweek scores for this team
+    const [{ total }] = await db
+      .select({ total: sum(gameweekTeamScoresTable.points) })
+      .from(gameweekTeamScoresTable)
+      .where(eq(gameweekTeamScoresTable.teamId, teamId));
+
     await db
       .update(teamsTable)
       .set({
         gameweekPoints: gwPts,
-        totalPoints: sql`${teamsTable.totalPoints} + ${gwPts}`,
+        totalPoints: Number(total ?? 0),
       })
       .where(eq(teamsTable.id, teamId));
+
     if (gwPts > 0) teamsUpdated++;
   }
 
