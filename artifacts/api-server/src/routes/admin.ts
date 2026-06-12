@@ -305,6 +305,7 @@ router.post("/admin/wipe-test-data", requireAdmin, async (req, res): Promise<voi
 router.post("/admin/reset", requireAdmin, async (req, res): Promise<void> => {
   // Full reset: wipe everything except the admin user themselves
   const adminUserId = req.session.userId!;
+  const [adminUser] = await db.select({ displayName: usersTable.displayName }).from(usersTable).where(eq(usersTable.id, adminUserId));
   await db.execute(sql`DELETE FROM activity`);
   await db.execute(sql`DELETE FROM team_players`);
   await db.execute(sql`DELETE FROM league_teams`);
@@ -314,6 +315,14 @@ router.post("/admin/reset", requireAdmin, async (req, res): Promise<void> => {
   await db.execute(sql`DELETE FROM players`);
   await db.execute(sql`DELETE FROM leagues`);
   await db.execute(sql`DELETE FROM users WHERE id != ${adminUserId}`);
+  // Re-create a fresh team for the admin with a full £100m budget
+  const displayName = adminUser?.displayName ?? "Admin";
+  await db.insert(teamsTable).values({
+    userId: adminUserId,
+    name: `${displayName}'s Team`,
+    managerName: displayName,
+    budget: 100,
+  });
   req.log.warn({ adminUserId }, "Admin triggered full database reset");
   res.json({ ok: true });
 });

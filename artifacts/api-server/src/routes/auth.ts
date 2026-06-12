@@ -49,6 +49,7 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     userId: user.id,
     name: `${displayName}'s Team`,
     managerName: displayName,
+    budget: 100,
   }).returning({ id: teamsTable.id });
   res.status(201).json({
     id: user.id,
@@ -87,6 +88,7 @@ router.post("/auth/login", async (req, res): Promise<void> => {
       userId: user.id,
       name: `${user.displayName}'s Team`,
       managerName: user.displayName,
+      budget: 100,
     }).returning({ id: teamsTable.id });
     req.log.info({ userId: user.id, teamId: loginTeam?.id }, "Auto-created missing team on login");
   }
