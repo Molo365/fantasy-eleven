@@ -876,26 +876,21 @@ export function AdminDashboard() {
                           )}
                         </td>
                         <td style={S.td}>
-                          {g.status !== "finished" && (
-                            <button
-                              style={{
-                                ...S.actionBtn("gray"),
-                                opacity: processingGwId ? 0.5 : 1,
-                                cursor: processingGwId ? "not-allowed" : "pointer",
-                                display: "inline-flex", alignItems: "center", gap: 5,
-                              }}
-                              onClick={() => !processingGwId && processGameweek(g.id, g.name)}
-                              disabled={!!processingGwId}
-                            >
-                              {processingGwId === g.id
-                                ? <><Loader2 size={11} style={{ animation: "spin 1s linear infinite" }} />Scoring…</>
-                                : <>⚡ Process Gameweek</>
-                              }
-                            </button>
-                          )}
-                          {g.status === "finished" && (
-                            <span style={{ fontSize: 11, color: "#22c55e", fontWeight: 600 }}>✓ Done</span>
-                          )}
+                          <button
+                            style={{
+                              ...S.actionBtn("gray"),
+                              opacity: processingGwId ? 0.5 : 1,
+                              cursor: processingGwId ? "not-allowed" : "pointer",
+                              display: "inline-flex", alignItems: "center", gap: 5,
+                            }}
+                            onClick={() => !processingGwId && processGameweek(g.id, g.name)}
+                            disabled={!!processingGwId}
+                          >
+                            {processingGwId === g.id
+                              ? <><Loader2 size={11} style={{ animation: "spin 1s linear infinite" }} />Scoring…</>
+                              : <>⚡ Process Gameweek</>
+                            }
+                          </button>
                         </td>
                       </tr>
                     ))}
