@@ -105,7 +105,8 @@ export async function processGameweekScoring(gameweekId: number): Promise<Scorin
 
   if (!gameweek) throw new Error(`Gameweek ${gameweekId} not found`);
 
-  // 1b. Reset all team_players points to 0 so reprocessing never accumulates
+  // 1b. Reset in order: players first, then team_players
+  await db.update(playersTable).set({ totalPoints: 0 });
   await db.update(teamPlayersTable).set({ points: 0 });
 
   // 2. Pre-load all our players for position lookup (external id + name)
