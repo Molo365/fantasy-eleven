@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, or } from "drizzle-orm";
 import { db, teamsTable, teamPlayersTable, playersTable, leagueTeamsTable, activityTable, gameweeksTable, gameweekTeamScoresTable } from "@workspace/db";
 import {
   GetDashboardSummaryQueryParams,
@@ -45,17 +45,19 @@ router.get("/dashboard/summary", async (req, res): Promise<void> => {
   // Look up the active gameweek score for this team
   let gameweekPoints = 0;
   if (teamIdNum) {
-    const [activeGw] = await db
-      .select({ id: gameweeksTable.id })
+    // Use active gameweek, or fall back to the most recently finished one
+    const [currentGw] = await db
+      .select({ id: gameweeksTable.id, status: gameweeksTable.status })
       .from(gameweeksTable)
-      .where(eq(gameweeksTable.status, "active"))
+      .where(or(eq(gameweeksTable.status, "active"), eq(gameweeksTable.status, "finished")))
+      .orderBy(desc(gameweeksTable.id))
       .limit(1);
-    if (activeGw) {
+    if (currentGw) {
       const [gwScore] = await db
         .select({ points: gameweekTeamScoresTable.points })
         .from(gameweekTeamScoresTable)
         .where(and(
-          eq(gameweekTeamScoresTable.gameweekId, activeGw.id),
+          eq(gameweekTeamScoresTable.gameweekId, currentGw.id),
           eq(gameweekTeamScoresTable.teamId, teamIdNum),
         ))
         .limit(1);
