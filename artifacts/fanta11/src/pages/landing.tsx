@@ -211,7 +211,7 @@ export function LandingPage() {
         </div>
 
         {/* League logos */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 28, flexWrap: "wrap", padding: "0 20px" }}>
+        <div className="league-logos-row" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 28, flexWrap: "wrap", padding: "0 20px" }}>
           {[
             { src: "/league-premier.png",    alt: "Premier League" },
             { src: "/league-laliga.png",     alt: "La Liga" },
@@ -224,6 +224,7 @@ export function LandingPage() {
               src={src}
               alt={alt}
               title={alt}
+              className="league-logo-img"
               style={{ height: 52, width: "auto", objectFit: "contain", mixBlendMode: "screen", opacity: 0.9 }}
             />
           ))}
