@@ -283,7 +283,7 @@ export function Dashboard() {
     <div
       style={{
         position: "relative",
-        backgroundImage: "url('/stadium.png')",
+        backgroundImage: "url('/stadium-bg.jpg')",
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundAttachment: "fixed",
