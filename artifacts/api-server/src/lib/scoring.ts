@@ -105,6 +105,9 @@ export async function processGameweekScoring(gameweekId: number): Promise<Scorin
 
   if (!gameweek) throw new Error(`Gameweek ${gameweekId} not found`);
 
+  // 1b. Reset all team_players points to 0 so reprocessing never accumulates
+  await db.update(teamPlayersTable).set({ points: 0 });
+
   // 2. Pre-load all our players for position lookup (external id + name)
   const allPlayers = await db
     .select({
@@ -231,6 +234,13 @@ export async function processGameweekScoring(gameweekId: number): Promise<Scorin
         cleanSheets:  sql`${playersTable.cleanSheets}  + ${earned.cleanSheets}`,
       })
       .where(eq(playersTable.id, playerId));
+
+    // Write fresh gameweek points to every team_players row for this player
+    await db
+      .update(teamPlayersTable)
+      .set({ points: earned.pts })
+      .where(eq(teamPlayersTable.playerId, playerId));
+
     playersUpdated++;
     totalPointsAwarded += earned.pts;
   }

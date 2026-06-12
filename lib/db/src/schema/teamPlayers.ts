@@ -11,6 +11,7 @@ export const teamPlayersTable = pgTable("team_players", {
   slot: integer("slot").notNull(),
   isCaptain: boolean("is_captain").notNull().default(false),
   isViceCaptain: boolean("is_vice_captain").notNull().default(false),
+  points: integer("points").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
