@@ -1,4 +1,4 @@
-import { Switch, Route, Router as WouterRouter, Redirect, useLocation } from "wouter";
+import { Switch, Route, Router as WouterRouter, Redirect } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -19,7 +19,6 @@ const queryClient = new QueryClient();
 
 function AppRoutes() {
   const { authState } = useAuth();
-  const [location] = useLocation();
 
   if (authState.status === "loading") {
     return (
@@ -48,7 +47,7 @@ function AppRoutes() {
       {/* Standard authenticated routes inside the app shell */}
       <Route>
         <Layout>
-          <Switch key={location}>
+          <Switch>
             <Route path="/">{() => <Dashboard />}</Route>
             <Route path="">{() => <Dashboard />}</Route>
             <Route path="/squad" component={SquadBuilder} />
