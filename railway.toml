@@ -1,6 +1,6 @@
 [build]
 builder = "nixpacks"
-buildCommand = "cd artifacts/api-server && pnpm install && pnpm build"
+buildCommand = "pnpm install --no-frozen-lockfile && cd artifacts/api-server && pnpm build"
 
 [deploy]
 startCommand = "cd artifacts/api-server && node dist/app.js"
