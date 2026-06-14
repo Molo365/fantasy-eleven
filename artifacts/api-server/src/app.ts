@@ -1,11 +1,23 @@
 import express, { type Express } from "express";
 import cors from "cors";
 import session from "express-session";
+import connectPgSimple from "connect-pg-simple";
+import pg from "pg";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
 
+const PgSession = connectPgSimple(session);
+
+const pgPool = new pg.Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
+});
+
 const app: Express = express();
+
+// Trust Replit's reverse proxy so secure cookies work over HTTPS in production
+app.set("trust proxy", 1);
 
 app.use(
   pinoHttp({
@@ -39,6 +51,11 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use(
   session({
+    store: new PgSession({
+      pool: pgPool,
+      tableName: "session",
+      createTableIfMissing: true,
+    }),
     name: "fanta11.sid",
     secret: process.env.SESSION_SECRET ?? "fanta11-dev-secret",
     resave: false,
