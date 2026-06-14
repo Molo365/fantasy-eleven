@@ -153,7 +153,7 @@ function TodayMatchesCard() {
                   </div>
 
                   {/* Centre: time/score */}
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0, minWidth: 60, maxWidth: 80 }}>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
                     {f.status === "scheduled" ? (
                       <span
                         className="font-mono text-xs font-bold"
