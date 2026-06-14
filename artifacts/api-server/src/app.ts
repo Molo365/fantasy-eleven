@@ -85,7 +85,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const frontendDist = path.join(__dirname, "../../../../artifacts/fanta11/dist");
+const frontendDist = path.join(__dirname, "../../../artifacts/fanta11/dist");
 app.use(express.static(frontendDist));
 app.get("*path", (_req, res) => {
   res.sendFile(path.join(frontendDist, "index.html"));
