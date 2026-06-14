@@ -5,21 +5,24 @@ import {
   CalendarDays,
   LayoutDashboard,
   ShieldHalf,
+  Menu,
+  X,
   LogOut,
   User,
   ShieldCheck,
 } from "lucide-react";
+import { useState } from "react";
 import logoSrc from "../assets/logo.png";
 import { useAuth } from "@/contexts/auth";
 
 const ADMIN_EMAIL = "domenicg@gmx.com";
 
 const navItems = [
-  { href: "/", label: "Dashboard", shortLabel: "Home", icon: LayoutDashboard },
-  { href: "/squad", label: "Squad Builder", shortLabel: "Squad", icon: ShieldHalf },
-  { href: "/players", label: "Player Pool", shortLabel: "Players", icon: Users },
-  { href: "/leagues", label: "Leagues", shortLabel: "Leagues", icon: Trophy },
-  { href: "/fixtures", label: "Fixtures", shortLabel: "Fixtures", icon: CalendarDays },
+  { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/squad", label: "Squad Builder", icon: ShieldHalf },
+  { href: "/players", label: "Player Pool", icon: Users },
+  { href: "/leagues", label: "Leagues", icon: Trophy },
+  { href: "/fixtures", label: "Fixtures", icon: CalendarDays },
 ];
 
 function NavLink({
@@ -56,7 +59,8 @@ function NavLink({
 }
 
 export function Layout({ children }: { children: React.ReactNode }) {
-  const [location, navigate] = useLocation();
+  const [location] = useLocation();
+  const [mobileOpen, setMobileOpen] = useState(false);
   const { authState, logout } = useAuth();
   const user = authState.status === "authenticated" ? authState.user : null;
   const isAdmin = user?.email?.toLowerCase() === ADMIN_EMAIL;
@@ -188,80 +192,81 @@ export function Layout({ children }: { children: React.ReactNode }) {
             FANTA11
           </span>
         </div>
+        <button
+          type="button"
+          data-testid="mobile-menu-toggle"
+          onClick={() => setMobileOpen(!mobileOpen)}
+          style={{ touchAction: "manipulation", cursor: "pointer", position: "relative", zIndex: 60 }}
+          className="p-2 rounded-lg text-blue-200/70 hover:text-white hover:bg-white/10 transition-colors"
+        >
+          {mobileOpen ? <X size={22} /> : <Menu size={22} />}
+        </button>
       </header>
 
-      {/* ── Mobile Bottom Nav ── */}
-      <nav
-        className="md:hidden"
-        style={{
-          position: "fixed",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          zIndex: 50,
-          background: "linear-gradient(180deg, #0d1b38 0%, #0a1628 100%)",
-          borderTop: "1px solid rgba(255,255,255,0.08)",
-          display: "flex",
-          paddingBottom: "env(safe-area-inset-bottom, 0px)",
-        }}
-      >
-        {navItems.map(({ href, shortLabel, icon: Icon }) => {
-          const active = isActive(href);
-          return (
-            <Link
-              key={href}
-              href={href}
-              style={{
-                flex: 1,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                padding: "10px 4px 8px",
-                gap: 4,
-                textDecoration: "none",
-                touchAction: "manipulation",
-                cursor: "pointer",
-                position: "relative",
-              }}
-            >
-              <Icon
-                size={20}
-                style={{ color: active ? "#60a5fa" : "rgba(148,163,184,0.5)" }}
+      {/* ── Mobile Drawer ── */}
+      {mobileOpen && (
+        <div
+          className="md:hidden fixed inset-0 z-40 flex"
+          onClick={() => setMobileOpen(false)}
+        >
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+          <aside
+            style={{
+              background: "linear-gradient(180deg, #0e1f3d 0%, #162848 100%)",
+            }}
+            className="relative w-72 flex flex-col border-r border-white/10 h-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex flex-col items-center pt-10 pb-6 px-6 border-b border-white/8">
+              <img
+                src={logoSrc}
+                alt="FANTA11"
+                className="w-24 h-24 object-contain drop-shadow-[0_0_16px_rgba(59,130,246,0.5)]"
               />
               <span
+                className="mt-3 text-lg font-black tracking-widest uppercase text-white"
                 style={{
-                  fontSize: 9,
-                  fontWeight: 700,
-                  letterSpacing: "0.05em",
-                  textTransform: "uppercase",
-                  color: active ? "#60a5fa" : "rgba(148,163,184,0.4)",
+                  textShadow:
+                    "-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000",
                 }}
               >
-                {shortLabel}
+                FANTA11
               </span>
-              {active && (
-                <span
-                  style={{
-                    position: "absolute",
-                    bottom: 0,
-                    left: "50%",
-                    transform: "translateX(-50%)",
-                    width: 24,
-                    height: 2,
-                    borderRadius: 1,
-                    background: "#60a5fa",
-                  }}
+              <span className="text-xs text-blue-400/60 tracking-wider uppercase">
+                Fantasy Soccer
+              </span>
+            </div>
+            <nav className="flex-1 px-4 py-6 space-y-1">
+              {navItems.map((item) => (
+                <NavLink
+                  key={item.href}
+                  {...item}
+                  active={isActive(item.href)}
+                  onClick={() => setMobileOpen(false)}
                 />
+              ))}
+              {isAdmin && (
+                <>
+                  <p className="text-xs font-semibold text-amber-400/40 uppercase tracking-widest px-4 mt-5 mb-3">
+                    Admin
+                  </p>
+                  <NavLink
+                    href="/admin/dashboard"
+                    label="Admin Panel"
+                    icon={ShieldCheck}
+                    active={isActive("/admin/dashboard")}
+                    onClick={() => setMobileOpen(false)}
+                  />
+                </>
               )}
-            </Link>
-          );
-        })}
-      </nav>
+            </nav>
+          </aside>
+        </div>
+      )}
 
       {/* ── Main Content ── */}
       <div className="flex-1 md:ml-72 flex flex-col min-h-screen">
-        <main className="flex-1 p-4 md:p-8 pt-20 md:pt-8 pb-20 md:pb-8 overflow-y-auto">
+        <main className="flex-1 p-4 md:p-8 pt-20 md:pt-8 overflow-y-auto">
           <div className="max-w-7xl mx-auto">{children}</div>
         </main>
       </div>
