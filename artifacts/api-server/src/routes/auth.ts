@@ -4,6 +4,8 @@ import { eq } from "drizzle-orm";
 import { db, usersTable, teamsTable } from "@workspace/db";
 import { logger } from "../lib/logger";
 
+const ADMIN_EMAILS = new Set(["domenicg@gmx.com"]);
+
 const router: IRouter = Router();
 
 router.post("/auth/register", async (req, res): Promise<void> => {
@@ -33,13 +35,16 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     return;
   }
   const passwordHash = await bcrypt.hash(password, 12);
+  const normalizedEmail = email.toLowerCase();
+  const role = ADMIN_EMAILS.has(normalizedEmail) ? "admin" : "user";
   const [user] = await db
     .insert(usersTable)
     .values({
       username: username.toLowerCase(),
-      email: email.toLowerCase(),
+      email: normalizedEmail,
       passwordHash,
       displayName,
+      role,
     })
     .returning();
   req.session.userId = user.id;
@@ -56,6 +61,7 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     username: user.username,
     email: user.email,
     displayName: user.displayName,
+    role: user.role,
     teamId: newTeam?.id ?? null,
   });
 });
@@ -97,6 +103,7 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     username: user.username,
     email: user.email,
     displayName: user.displayName,
+    role: user.role,
     teamId: loginTeam?.id ?? null,
   });
 });
@@ -130,6 +137,7 @@ router.get("/auth/me", async (req, res): Promise<void> => {
     username: user.username,
     email: user.email,
     displayName: user.displayName,
+    role: user.role,
     teamId: team?.id ?? null,
   });
 });

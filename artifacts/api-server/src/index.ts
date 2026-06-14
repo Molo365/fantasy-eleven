@@ -1,5 +1,21 @@
 import app from "./app";
 import { logger } from "./lib/logger";
+import { db, usersTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
+
+const ADMIN_EMAILS = ["domenicg@gmx.com"];
+
+async function ensureAdminRoles() {
+  for (const email of ADMIN_EMAILS) {
+    const result = await db
+      .update(usersTable)
+      .set({ role: "admin" })
+      .where(eq(usersTable.email, email));
+    if ((result as unknown as { rowCount?: number }).rowCount) {
+      logger.info({ email }, "Ensured admin role on startup");
+    }
+  }
+}
 
 const rawPort = process.env["PORT"];
 
@@ -22,4 +38,8 @@ app.listen(port, (err) => {
   }
 
   logger.info({ port }, "Server listening");
+
+  ensureAdminRoles().catch((e) =>
+    logger.error({ err: e }, "Failed to ensure admin roles"),
+  );
 });
