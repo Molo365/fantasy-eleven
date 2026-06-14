@@ -113,7 +113,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
+        <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto" style={{ border: "2px solid red", zIndex: 9999, position: "relative" }}>
           <p className="text-xs font-semibold text-blue-400/40 uppercase tracking-widest px-4 mb-3">
             Menu
           </p>
