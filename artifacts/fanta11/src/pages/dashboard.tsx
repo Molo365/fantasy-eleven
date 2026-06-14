@@ -558,34 +558,35 @@ export function Dashboard() {
             </div>
 
             {/* ── Stat cards ── */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 12, paddingBottom: 24 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, paddingBottom: 20 }}>
               {statCards.map(({ label, value, sub, subColor, Icon, accent, smallValue, bigAccent }) => (
                 <div
                   key={label}
                   style={{
-                    position: "relative", overflow: "hidden", borderRadius: 12,
+                    position: "relative", overflow: "hidden", borderRadius: 10,
                     background: "rgba(8,17,40,0.76)",
                     backdropFilter: "blur(16px)",
                     border: `1px solid ${accent}28`,
-                    boxShadow: `0 4px 20px rgba(0,0,0,0.4), 0 0 16px ${accent}0e`,
+                    boxShadow: `0 2px 12px rgba(0,0,0,0.35), 0 0 10px ${accent}0e`,
+                    minHeight: 100,
                   }}
                 >
                   <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 1, background: `linear-gradient(90deg, transparent, ${accent}77, transparent)` }} />
-                  <div style={{ position: "absolute", top: -20, right: -20, width: 64, height: 64, borderRadius: "50%", opacity: 0.15, pointerEvents: "none", background: accent, filter: "blur(16px)" }} />
-                  <div style={{ padding: 16, position: "relative", zIndex: 10 }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                      <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.10em", textTransform: "uppercase", color: "#475569" }}>{label}</span>
-                      <div style={{ width: 28, height: 28, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", background: `${accent}18`, border: `1px solid ${accent}30` }}>
-                        <Icon size={14} style={{ color: accent }} />
+                  <div style={{ position: "absolute", top: -14, right: -14, width: 48, height: 48, borderRadius: "50%", opacity: 0.15, pointerEvents: "none", background: accent, filter: "blur(14px)" }} />
+                  <div style={{ padding: "10px 12px", position: "relative", zIndex: 10 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                      <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.10em", textTransform: "uppercase", color: "#475569" }}>{label}</span>
+                      <div style={{ width: 22, height: 22, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", background: `${accent}18`, border: `1px solid ${accent}30` }}>
+                        <Icon size={11} style={{ color: accent }} />
                       </div>
                     </div>
                     <div
                       className="font-black leading-none tracking-tight"
-                      style={{ fontSize: smallValue ? 17 : 26, fontFamily: smallValue ? "inherit" : "monospace", color: bigAccent ? accent : "#f1f5f9" }}
+                      style={{ fontSize: smallValue ? 14 : 20, fontFamily: smallValue ? "inherit" : "monospace", color: bigAccent ? accent : "#f1f5f9" }}
                     >
                       {value}
                     </div>
-                    <div style={{ fontSize: 10, color: subColor ?? "#94a3b8", marginTop: 5, fontWeight: 600 }}>{sub}</div>
+                    <div style={{ fontSize: 9, color: subColor ?? "#94a3b8", marginTop: 4, fontWeight: 600 }}>{sub}</div>
                   </div>
                 </div>
               ))}
