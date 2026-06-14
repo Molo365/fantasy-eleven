@@ -1,4 +1,4 @@
-import { Link, useLocation } from "wouter";
+import { useLocation } from "wouter";
 import {
   Trophy,
   Users,
@@ -35,13 +35,14 @@ function NavLink({
   active: boolean;
   onClick?: () => void;
 }) {
+  const [, setLocation] = useLocation();
   return (
-    <Link
-      href={href}
+    <button
+      type="button"
       data-testid={`nav-link-${label.toLowerCase().replace(/\s+/g, "-")}`}
-      onClick={onClick}
+      onClick={() => { setLocation(href); onClick?.(); }}
       className={`
-        flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-150
+        w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-150
         ${
           active
             ? "bg-primary text-white shadow-lg shadow-primary/30"
@@ -51,7 +52,7 @@ function NavLink({
     >
       <Icon size={18} className={active ? "text-white" : "text-blue-300/60"} />
       {label}
-    </Link>
+    </button>
   );
 }
 
@@ -208,9 +209,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
         {navItems.map(({ href, shortLabel, icon: Icon }) => {
           const active = isActive(href);
           return (
-            <a
+            <button
               key={href}
-              href={href}
+              type="button"
+              onClick={() => navigate(href)}
               style={{
                 flex: 1,
                 display: "flex",
@@ -219,7 +221,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 justifyContent: "center",
                 padding: "10px 4px 8px",
                 gap: 4,
-                textDecoration: "none",
+                background: "none",
+                border: "none",
                 touchAction: "manipulation",
                 cursor: "pointer",
                 position: "relative",
@@ -254,7 +257,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   }}
                 />
               )}
-            </a>
+            </button>
           );
         })}
       </nav>
