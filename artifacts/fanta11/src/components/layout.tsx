@@ -193,8 +193,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </span>
         </div>
         <button
+          type="button"
           data-testid="mobile-menu-toggle"
           onClick={() => setMobileOpen(!mobileOpen)}
+          style={{ touchAction: "manipulation", cursor: "pointer", position: "relative", zIndex: 60 }}
           className="p-2 rounded-lg text-blue-200/70 hover:text-white hover:bg-white/10 transition-colors"
         >
           {mobileOpen ? <X size={22} /> : <Menu size={22} />}
