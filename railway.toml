@@ -4,4 +4,4 @@ installCommand = "pnpm install --no-frozen-lockfile"
 buildCommand = "cd artifacts/api-server && pnpm build"
 
 [deploy]
-startCommand = "cd artifacts/api-server && node dist/app.js"
+startCommand = "cd artifacts/api-server && node --enable-source-maps ./dist/index.mjs"
