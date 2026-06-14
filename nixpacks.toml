@@ -5,4 +5,4 @@ cmds = ["pnpm install --no-frozen-lockfile"]
 cmds = ["cd artifacts/api-server && pnpm build"]
 
 [start]
-cmd = "cd artifacts/api-server && node dist/app.js"
+cmd = "cd artifacts/api-server && node --enable-source-maps ./dist/index.mjs"
