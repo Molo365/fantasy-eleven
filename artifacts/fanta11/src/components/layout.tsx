@@ -56,7 +56,7 @@ function NavLink({
 }
 
 export function Layout({ children }: { children: React.ReactNode }) {
-  const [location] = useLocation();
+  const [location, navigate] = useLocation();
   const { authState, logout } = useAuth();
   const user = authState.status === "authenticated" ? authState.user : null;
   const isAdmin = user?.email?.toLowerCase() === ADMIN_EMAIL;
@@ -208,9 +208,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
         {navItems.map(({ href, shortLabel, icon: Icon }) => {
           const active = isActive(href);
           return (
-            <Link
+            <button
               key={href}
-              href={href}
+              type="button"
+              onClick={() => navigate(href)}
               style={{
                 flex: 1,
                 display: "flex",
@@ -219,9 +220,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 justifyContent: "center",
                 padding: "10px 4px 8px",
                 gap: 4,
-                textDecoration: "none",
+                background: "none",
+                border: "none",
                 touchAction: "manipulation",
                 cursor: "pointer",
+                position: "relative",
               }}
             >
               <Icon
@@ -244,6 +247,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   style={{
                     position: "absolute",
                     bottom: 0,
+                    left: "50%",
+                    transform: "translateX(-50%)",
                     width: 24,
                     height: 2,
                     borderRadius: 1,
@@ -251,7 +256,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   }}
                 />
               )}
-            </Link>
+            </button>
           );
         })}
       </nav>
