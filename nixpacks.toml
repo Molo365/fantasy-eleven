@@ -2,7 +2,7 @@
 cmds = ["pnpm install --no-frozen-lockfile"]
 
 [phases.build]
-cmds = ["cd artifacts/fanta11 && pnpm build", "cd /app/artifacts/api-server && pnpm build"]
+cmds = ["pnpm --filter @workspace/fanta11 build && pnpm --filter @workspace/api-server build"]
 
 [start]
 cmd = "cd artifacts/api-server && node --enable-source-maps ./dist/index.mjs"
