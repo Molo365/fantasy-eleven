@@ -208,10 +208,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
         {navItems.map(({ href, shortLabel, icon: Icon }) => {
           const active = isActive(href);
           return (
-            <button
+            <a
               key={href}
-              type="button"
-              onClick={() => navigate(href)}
+              href={href}
               style={{
                 flex: 1,
                 display: "flex",
@@ -220,8 +219,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 justifyContent: "center",
                 padding: "10px 4px 8px",
                 gap: 4,
-                background: "none",
-                border: "none",
+                textDecoration: "none",
                 touchAction: "manipulation",
                 cursor: "pointer",
                 position: "relative",
@@ -256,7 +254,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   }}
                 />
               )}
-            </button>
+            </a>
           );
         })}
       </nav>
