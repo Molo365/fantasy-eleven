@@ -1,4 +1,3 @@
-import { useState, useEffect } from "react";
 import {
   useGetDashboardSummary,
   getGetDashboardSummaryQueryKey,
@@ -19,17 +18,6 @@ import { Trophy, TrendingUp, Users, Wallet, Zap, ShieldHalf } from "lucide-react
 import { useAuth } from "@/contexts/auth";
 import { Link } from "wouter";
 import { format } from "date-fns";
-
-// ── Mobile detection hook ─────────────────────────────────────────────────────
-function useIsMobile(): boolean {
-  const [isMobile, setIsMobile] = useState<boolean>(() => window.innerWidth < 768);
-  useEffect(() => {
-    const handler = () => setIsMobile(window.innerWidth < 768);
-    window.addEventListener("resize", handler);
-    return () => window.removeEventListener("resize", handler);
-  }, []);
-  return isMobile;
-}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -449,7 +437,6 @@ function NoSquadPrompt() {
 
 // ── Main Dashboard ────────────────────────────────────────────────────────────
 export function Dashboard() {
-  const isMobile = useIsMobile();
   const { authState } = useAuth();
   const teamId = authState.status === "authenticated" ? (authState.user.teamId ?? undefined) : undefined;
 
@@ -466,25 +453,13 @@ export function Dashboard() {
       >
         <div style={{ height: 200, borderRadius: 16, background: "rgba(8,17,40,0.6)" }} />
         {/* Skeleton stat cards */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: isMobile ? "1fr" : "repeat(4, minmax(0, 1fr))",
-            gap: 16,
-          }}
-        >
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {[...Array(4)].map((_, i) => (
             <div key={i} style={{ height: 112, borderRadius: 12, background: "rgba(8,17,40,0.5)" }} />
           ))}
         </div>
         {/* Skeleton 3-col */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: isMobile ? "1fr" : "repeat(3, minmax(0, 1fr))",
-            gap: 16,
-          }}
-        >
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {[...Array(3)].map((_, i) => (
             <div key={i} style={{ height: 256, borderRadius: 12, background: "rgba(8,17,40,0.5)" }} />
           ))}
@@ -568,7 +543,7 @@ export function Dashboard() {
           <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(4,10,24,0.55) 0%, rgba(4,10,24,0.85) 60%, rgba(4,10,24,0.97) 100%)" }} />
           <div style={{ position: "absolute", inset: 0, pointerEvents: "none", background: "radial-gradient(ellipse at 50% 0%, rgba(239,68,68,0.10) 0%, transparent 70%)" }} />
 
-          <div style={{ position: "relative", zIndex: 10, padding: isMobile ? "24px 16px 0" : "24px 24px 0" }}>
+          <div style={{ position: "relative", zIndex: 10, padding: "24px 16px 0" }}>
             <div style={{ marginBottom: 20 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
                 <Zap size={13} color="#06b6d4" style={{ filter: "drop-shadow(0 0 5px #06b6d4)" }} />
@@ -576,21 +551,14 @@ export function Dashboard() {
                   Live Overview
                 </span>
               </div>
-              <h1 style={{ fontSize: isMobile ? 28 : 36, fontWeight: 900, letterSpacing: "-0.02em", color: "#f1f5f9", textShadow: "0 2px 20px rgba(0,0,0,0.6)", margin: 0 }}>
+              <h1 style={{ fontSize: 28, fontWeight: 900, letterSpacing: "-0.02em", color: "#f1f5f9", textShadow: "0 2px 20px rgba(0,0,0,0.6)", margin: 0 }}>
                 Command Center
               </h1>
               <p style={{ color: "#64748b", fontSize: 13, marginTop: 3 }}>{gwLabel}</p>
             </div>
 
             {/* ── Stat cards ── */}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: isMobile ? "1fr" : "repeat(4, minmax(0, 1fr))",
-                gap: isMobile ? 12 : 12,
-                paddingBottom: 24,
-              }}
-            >
+            <div style={{ display: "flex", flexDirection: "column", gap: 12, paddingBottom: 24 }}>
               {statCards.map(({ label, value, sub, subColor, Icon, accent, smallValue, bigAccent }) => (
                 <div
                   key={label}
@@ -626,13 +594,7 @@ export function Dashboard() {
         </div>
 
         {/* ── 3-column grid ── */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: isMobile ? "1fr" : "repeat(3, minmax(0, 1fr))",
-            gap: 16,
-          }}
-        >
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <TodayMatchesCard />
 
           {summary?.firstLeagueId != null ? (
