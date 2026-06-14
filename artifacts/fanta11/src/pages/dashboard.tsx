@@ -14,7 +14,7 @@ import {
   type TopPerformer,
   type SquadPlayer,
 } from "@workspace/api-client-react";
-import { Trophy, TrendingUp, Users, Wallet, Zap, ShieldHalf } from "lucide-react";
+import { Trophy, TrendingUp, Users, Wallet, Zap, ShieldHalf, Calendar, LayoutGrid } from "lucide-react";
 import { useAuth } from "@/contexts/auth";
 import { Link } from "wouter";
 import { format } from "date-fns";
@@ -589,6 +589,34 @@ export function Dashboard() {
                     <div style={{ fontSize: 9, color: subColor ?? "#94a3b8", marginTop: 4, fontWeight: 600 }}>{sub}</div>
                   </div>
                 </div>
+              ))}
+            </div>
+
+            {/* ── Mobile nav strip (hidden on md+) ── */}
+            <div className="md:hidden" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6, paddingBottom: 16 }}>
+              {[
+                { label: "Squad", Icon: ShieldHalf, href: "/squad", accent: "#a78bfa" },
+                { label: "Players", Icon: LayoutGrid, href: "/players", accent: "#06b6d4" },
+                { label: "Leagues", Icon: Trophy, href: "/leagues", accent: "#f59e0b" },
+                { label: "Fixtures", Icon: Calendar, href: "/fixtures", accent: "#22c55e" },
+              ].map(({ label, Icon, href, accent }) => (
+                <Link key={href} href={href}>
+                  <div
+                    style={{
+                      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                      gap: 5, padding: "10px 4px",
+                      borderRadius: 10,
+                      background: "rgba(8,17,40,0.72)",
+                      border: `1px solid ${accent}28`,
+                      cursor: "pointer",
+                    }}
+                  >
+                    <div style={{ width: 32, height: 32, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", background: `${accent}18`, border: `1px solid ${accent}35` }}>
+                      <Icon size={15} style={{ color: accent }} />
+                    </div>
+                    <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "#94a3b8" }}>{label}</span>
+                  </div>
+                </Link>
               ))}
             </div>
           </div>
