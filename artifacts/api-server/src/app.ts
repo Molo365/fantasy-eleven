@@ -49,12 +49,22 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Create session table if missing (inline SQL — avoids esbuild-bundled file path issue)
+pgPool.query(`
+  CREATE TABLE IF NOT EXISTS "session" (
+    "sid" varchar NOT NULL COLLATE "default",
+    "sess" json NOT NULL,
+    "expire" timestamp(6) NOT NULL,
+    CONSTRAINT "session_pkey" PRIMARY KEY ("sid") NOT DEFERRABLE INITIALLY IMMEDIATE
+  );
+  CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "session" ("expire");
+`).catch((err: Error) => logger.error({ err }, "Failed to ensure session table"));
+
 app.use(
   session({
     store: new PgSession({
       pool: pgPool,
       tableName: "session",
-      createTableIfMissing: true,
     }),
     name: "fanta11.sid",
     secret: process.env.SESSION_SECRET ?? "fanta11-dev-secret",
