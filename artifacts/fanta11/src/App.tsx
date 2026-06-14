@@ -48,7 +48,8 @@ function AppRoutes() {
       <Route>
         <Layout>
           <Switch>
-            <Route path="/" component={Dashboard} />
+            <Route path="/">{() => <Dashboard />}</Route>
+            <Route path="">{() => <Dashboard />}</Route>
             <Route path="/squad" component={SquadBuilder} />
             <Route path="/players" component={Players} />
             <Route path="/leagues" component={Leagues} />
