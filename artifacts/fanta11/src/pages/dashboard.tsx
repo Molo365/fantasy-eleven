@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import {
   useGetDashboardSummary,
   getGetDashboardSummaryQueryKey,
@@ -19,7 +20,18 @@ import { useAuth } from "@/contexts/auth";
 import { Link } from "wouter";
 import { format } from "date-fns";
 
-// ── Helpers ─────────────────────────────────────────────────────────────────
+// ── Mobile detection hook ─────────────────────────────────────────────────────
+function useIsMobile(): boolean {
+  const [isMobile, setIsMobile] = useState<boolean>(() => window.innerWidth < 768);
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, []);
+  return isMobile;
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 const ABBREV_MAP: Record<string, string> = {
   "United States": "USA", "United States of America": "USA",
@@ -71,11 +83,7 @@ function toFlagEmoji(name: string): string {
   const code = FLAG_MAP[name];
   if (!code) return "🏴";
   if (code.includes("-")) {
-    const subcode = code.split("-")[1];
-    const base = 0x1F3F4;
-    const tag = (s: string) => [...s.toLowerCase()].map((c) => String.fromCodePoint(0xE0000 + c.charCodeAt(0))).join("");
-    const gb = String.fromCodePoint(0x1F1EC) + String.fromCodePoint(0x1F1E7);
-    return gb.length > 0 ? (code === "GB-ENG" ? "🏴󠁧󠁢󠁥󠁮󠁧󠁿" : code === "GB-SCT" ? "🏴󠁧󠁢󠁳󠁣󠁴󠁿" : "🏴󠁧󠁢󠁷󠁬󠁳󠁿") : "🏴";
+    return code === "GB-ENG" ? "🏴󠁧󠁢󠁥󠁮󠁧󠁿" : code === "GB-SCT" ? "🏴󠁧󠁢󠁳󠁣󠁴󠁿" : "🏴󠁧󠁢󠁷󠁬󠁳󠁿";
   }
   return [...code].map((c) => String.fromCodePoint(0x1F1E6 + c.charCodeAt(0) - 65)).join("");
 }
@@ -97,7 +105,7 @@ const CARD: React.CSSProperties = {
   overflow: "hidden",
 };
 
-// ── Today's Matches column ───────────────────────────────────────────────────
+// ── Today's Matches column ────────────────────────────────────────────────────
 function TodayMatchesCard() {
   const today = format(new Date(), "yyyy-MM-dd");
   const { data: fixtures } = useGetLiveFixtures({
@@ -115,23 +123,23 @@ function TodayMatchesCard() {
 
   return (
     <div style={{ ...CARD, display: "flex", flexDirection: "column" }}>
-      <div className="flex items-center gap-2 px-4 pt-4 pb-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "16px 16px 12px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
         <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: "#94a3b8" }}>
           Today's Matches
         </span>
         {liveCount > 0 && (
           <span
-            className="animate-pulse px-1.5 py-0.5 rounded-full"
-            style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.1em", textTransform: "uppercase", background: "rgba(239,68,68,0.18)", color: "#f87171", border: "1px solid rgba(239,68,68,0.35)" }}
+            className="animate-pulse"
+            style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.1em", textTransform: "uppercase", background: "rgba(239,68,68,0.18)", color: "#f87171", border: "1px solid rgba(239,68,68,0.35)", padding: "2px 6px", borderRadius: 999 }}
           >
             {liveCount} Live
           </span>
         )}
       </div>
 
-      <div className="flex-1 overflow-y-auto" style={{ maxHeight: 280 }}>
+      <div style={{ flex: 1, overflowY: "auto", maxHeight: 280 }}>
         {todayMatches.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-10 px-4 text-center gap-2">
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 16px", textAlign: "center", gap: 8 }}>
             <span style={{ fontSize: 22 }}>⚽</span>
             <p style={{ fontSize: 12, color: "#475569" }}>No matches today</p>
           </div>
@@ -147,9 +155,9 @@ function TodayMatchesCard() {
                   padding: "10px 14px",
                 }}
               >
-                <div className="flex items-center gap-2">
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   {/* Home */}
-                  <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0 }}>
                     <span style={{ fontSize: 15 }}>{toFlagEmoji(f.homeTeam)}</span>
                     <span style={{ fontSize: 12, fontWeight: 700, color: "#e2e8f0", letterSpacing: "0.04em" }}>
                       {teamAbbrev(f.homeTeam)}
@@ -157,25 +165,25 @@ function TodayMatchesCard() {
                   </div>
 
                   {/* Centre: time/score */}
-                  <div className="flex flex-col items-center shrink-0" style={{ minWidth: 60, maxWidth: 80 }}>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0, minWidth: 60, maxWidth: 80 }}>
                     {f.status === "scheduled" ? (
                       <span
-                        className="px-2 py-0.5 rounded font-mono text-xs font-bold"
-                        style={{ background: "rgba(99,102,241,0.15)", border: "1px solid rgba(99,102,241,0.3)", color: "#818cf8" }}
+                        className="font-mono text-xs font-bold"
+                        style={{ background: "rgba(99,102,241,0.15)", border: "1px solid rgba(99,102,241,0.3)", color: "#818cf8", padding: "2px 8px", borderRadius: 4 }}
                       >
                         {format(new Date(f.kickoff), "HH:mm")}
                       </span>
                     ) : (
-                      <div className="flex items-center gap-1">
+                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                         {isLive && (
                           <span
-                            className="w-1.5 h-1.5 rounded-full animate-pulse shrink-0"
-                            style={{ background: "#ef4444", boxShadow: "0 0 4px #ef4444" }}
+                            className="animate-pulse"
+                            style={{ width: 6, height: 6, borderRadius: "50%", background: "#ef4444", boxShadow: "0 0 4px #ef4444", flexShrink: 0, display: "inline-block" }}
                           />
                         )}
                         <span
-                          className="font-mono text-sm font-black"
-                          style={{ color: isLive ? "#f87171" : "#cbd5e1" }}
+                          className="font-mono font-black"
+                          style={{ fontSize: 14, color: isLive ? "#f87171" : "#cbd5e1" }}
                         >
                           {f.homeScore ?? 0} - {f.awayScore ?? 0}
                         </span>
@@ -192,7 +200,7 @@ function TodayMatchesCard() {
                   </div>
 
                   {/* Away */}
-                  <div className="flex items-center gap-1.5 flex-1 min-w-0 justify-end">
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0, justifyContent: "flex-end" }}>
                     <span style={{ fontSize: 12, fontWeight: 700, color: "#e2e8f0", letterSpacing: "0.04em" }}>
                       {teamAbbrev(f.awayTeam)}
                     </span>
@@ -214,7 +222,7 @@ function TodayMatchesCard() {
   );
 }
 
-// ── My League column ─────────────────────────────────────────────────────────
+// ── My League column ──────────────────────────────────────────────────────────
 function MyLeagueCard({ leagueId, leagueName, teamId }: { leagueId: number; leagueName: string | null; teamId: number | undefined }) {
   const { data: rows, isLoading } = useGetLeagueLeaderboard(leagueId, {
     query: { queryKey: getGetLeagueLeaderboardQueryKey(leagueId), enabled: leagueId > 0 },
@@ -222,7 +230,7 @@ function MyLeagueCard({ leagueId, leagueName, teamId }: { leagueId: number; leag
 
   return (
     <div style={{ ...CARD, display: "flex", flexDirection: "column" }}>
-      <div className="flex items-center justify-between px-4 pt-4 pb-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 16px 12px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
         <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: "#94a3b8" }}>
           My League{leagueName ? ` · ${leagueName}` : ""}
         </span>
@@ -231,15 +239,15 @@ function MyLeagueCard({ leagueId, leagueName, teamId }: { leagueId: number; leag
         </Link>
       </div>
 
-      <div className="flex-1 py-2 px-2">
+      <div style={{ flex: 1, padding: "8px" }}>
         {isLoading ? (
-          <div className="space-y-2 p-2">
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: 8 }}>
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-9 rounded-lg animate-pulse" style={{ background: "rgba(255,255,255,0.05)" }} />
+              <div key={i} className="animate-pulse" style={{ height: 36, borderRadius: 8, background: "rgba(255,255,255,0.05)" }} />
             ))}
           </div>
         ) : !rows?.length ? (
-          <p className="text-center py-8" style={{ fontSize: 12, color: "#475569" }}>No members yet.</p>
+          <p style={{ textAlign: "center", padding: "32px 0", fontSize: 12, color: "#475569" }}>No members yet.</p>
         ) : (
           (rows as LeaderboardEntry[]).map((row) => {
             const isMe = row.teamId === teamId;
@@ -247,15 +255,17 @@ function MyLeagueCard({ leagueId, leagueName, teamId }: { leagueId: number; leag
             return (
               <div
                 key={row.teamId}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1"
                 style={{
+                  display: "flex", alignItems: "center", gap: 12,
+                  padding: "10px 12px", borderRadius: 8, marginBottom: 4,
                   background: isMe ? "rgba(6,182,212,0.10)" : isFirst ? "rgba(245,158,11,0.06)" : "transparent",
                   border: isMe ? "1px solid rgba(6,182,212,0.22)" : "1px solid transparent",
                 }}
               >
                 <div
-                  className="flex items-center justify-center shrink-0 rounded-full font-black"
                   style={{
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    flexShrink: 0, borderRadius: "50%", fontWeight: 900,
                     width: 26, height: 26, fontSize: 11,
                     background: isFirst ? "#f59e0b" : "rgba(255,255,255,0.08)",
                     color: isFirst ? "#000" : "#64748b",
@@ -263,11 +273,11 @@ function MyLeagueCard({ leagueId, leagueName, teamId }: { leagueId: number; leag
                 >
                   {row.rank}
                 </div>
-                <span className="flex-1 text-sm font-semibold truncate" style={{ color: isMe ? "#e2e8f0" : "#94a3b8" }}>
+                <span className="truncate" style={{ flex: 1, fontSize: 14, fontWeight: 600, color: isMe ? "#e2e8f0" : "#94a3b8" }}>
                   {row.managerName}
-                  {isMe && <span className="ml-1.5 text-xs" style={{ color: "#06b6d4" }}>(you)</span>}
+                  {isMe && <span style={{ marginLeft: 6, fontSize: 12, color: "#06b6d4" }}>(you)</span>}
                 </span>
-                <span className="text-sm font-black tabular-nums" style={{ color: isMe ? "#06b6d4" : isFirst ? "#f59e0b" : "#cbd5e1" }}>
+                <span className="tabular-nums" style={{ fontSize: 14, fontWeight: 900, color: isMe ? "#06b6d4" : isFirst ? "#f59e0b" : "#cbd5e1" }}>
                   {row.totalPoints}
                 </span>
               </div>
@@ -279,7 +289,7 @@ function MyLeagueCard({ leagueId, leagueName, teamId }: { leagueId: number; leag
   );
 }
 
-// ── Top Performers column ────────────────────────────────────────────────────
+// ── Top Performers column ─────────────────────────────────────────────────────
 function TopPerformersCard() {
   const { data: performers } = useGetDashboardTopPerformers({
     query: { queryKey: getGetDashboardTopPerformersQueryKey(), refetchInterval: 120_000 },
@@ -293,15 +303,15 @@ function TopPerformersCard() {
 
   return (
     <div style={{ ...CARD, display: "flex", flexDirection: "column" }}>
-      <div className="px-4 pt-4 pb-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+      <div style={{ padding: "16px 16px 12px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
         <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: "#94a3b8" }}>
           Top Performers
         </span>
       </div>
 
-      <div className="flex-1 py-2 px-2">
+      <div style={{ flex: 1, padding: 8 }}>
         {!performers?.length ? (
-          <div className="flex flex-col items-center justify-center py-10 gap-2">
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 0", gap: 8 }}>
             <span style={{ fontSize: 22 }}>🏆</span>
             <p style={{ fontSize: 12, color: "#475569" }}>No scores yet</p>
           </div>
@@ -311,22 +321,29 @@ function TopPerformersCard() {
             return (
               <div
                 key={p.id}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1"
-                style={{ background: medal.bg, border: `1px solid ${medal.border}` }}
+                style={{
+                  display: "flex", alignItems: "center", gap: 12,
+                  padding: "10px 12px", borderRadius: 8, marginBottom: 4,
+                  background: medal.bg, border: `1px solid ${medal.border}`,
+                }}
               >
                 <div
-                  className="flex items-center justify-center shrink-0 rounded-full"
-                  style={{ width: 36, height: 36, background: "rgba(0,0,0,0.3)", border: `2px solid ${medal.border}`, fontSize: 16 }}
+                  style={{
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    flexShrink: 0, borderRadius: "50%",
+                    width: 36, height: 36, background: "rgba(0,0,0,0.3)",
+                    border: `2px solid ${medal.border}`, fontSize: 16,
+                  }}
                 >
                   ⚽
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold truncate" style={{ color: "#f1f5f9" }}>{p.name}</p>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p className="truncate" style={{ fontSize: 14, fontWeight: 700, color: "#f1f5f9" }}>{p.name}</p>
                   <p style={{ fontSize: 10, color: "#64748b", marginTop: 1 }}>
                     {p.nationality ?? "—"} · {p.position}
                   </p>
                 </div>
-                <span className="text-lg font-black tabular-nums" style={{ color: medal.pts }}>
+                <span className="tabular-nums" style={{ fontSize: 18, fontWeight: 900, color: medal.pts }}>
                   {p.totalPoints}
                 </span>
               </div>
@@ -338,32 +355,7 @@ function TopPerformersCard() {
   );
 }
 
-// ── Responsive grid styles (inline @media, not Tailwind breakpoints) ──────────
-const DashboardResponsiveStyles = () => (
-  <style>{`
-    .dash-stat-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
-    .dash-tri-grid  { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; }
-    .dash-skel-stat { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
-    .dash-skel-tri  { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; }
-    .dash-squad-strip { display: flex; gap: 1rem; overflow-x: auto; }
-    @media (max-width: 767px) {
-      .dash-stat-grid { grid-template-columns: minmax(0, 1fr); }
-      .dash-skel-stat { grid-template-columns: minmax(0, 1fr); }
-      .dash-tri-grid  { grid-template-columns: minmax(0, 1fr); }
-      .dash-skel-tri  { grid-template-columns: minmax(0, 1fr); }
-    }
-    @media (min-width: 768px) {
-      .dash-tri-grid  { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-      .dash-skel-tri  { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-    }
-    @media (min-width: 1024px) {
-      .dash-stat-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-      .dash-skel-stat { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-    }
-  `}</style>
-);
-
-// ── Squad Strip ──────────────────────────────────────────────────────────────
+// ── Squad Strip ───────────────────────────────────────────────────────────────
 function SquadStrip({ teamId }: { teamId: number }) {
   const { data: squad } = useGetDashboardSquad(
     { teamId },
@@ -374,15 +366,18 @@ function SquadStrip({ teamId }: { teamId: number }) {
 
   return (
     <div style={{ ...CARD }}>
-      <div className="px-4 pt-4 pb-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+      <div style={{ padding: "16px 16px 12px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
         <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: "#94a3b8" }}>
           My Squad · Active Players This GW
         </span>
       </div>
 
       <div
-        className="dash-squad-strip px-4 py-4"
-        style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" } as React.CSSProperties}
+        style={{
+          display: "flex", gap: 16, padding: 16,
+          overflowX: "auto", scrollbarWidth: "none",
+          WebkitOverflowScrolling: "touch",
+        } as React.CSSProperties}
       >
         {(squad as SquadPlayer[]).map((p) => {
           const posColor = POS_COLORS[p.position] ?? "#64748b";
@@ -391,36 +386,33 @@ function SquadStrip({ teamId }: { teamId: number }) {
           const natCode = p.nationality ? p.nationality.slice(0, 3).toUpperCase() : "—";
 
           return (
-            <div key={p.playerId} className="flex flex-col items-center shrink-0" style={{ minWidth: 56 }}>
+            <div key={p.playerId} style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0, minWidth: 56 }}>
               <div
-                className="relative flex items-center justify-center rounded-full font-black"
                 style={{
+                  position: "relative", display: "flex", alignItems: "center", justifyContent: "center",
+                  borderRadius: "50%", fontWeight: 900,
                   width: 52, height: 52,
                   background: hasPoints ? `${posColor}18` : "rgba(15,23,42,0.8)",
                   border: `2.5px solid ${posColor}`,
-                  fontSize: 11,
-                  color: posColor,
-                  letterSpacing: "0.04em",
+                  fontSize: 11, color: posColor, letterSpacing: "0.04em",
                 }}
               >
                 {natCode}
                 {p.isCaptain && (
-                  <span
-                    className="absolute -top-1 -right-1 flex items-center justify-center rounded-full font-black"
-                    style={{ width: 16, height: 16, fontSize: 8, background: "#f59e0b", color: "#000" }}
-                  >C</span>
+                  <span style={{ position: "absolute", top: -4, right: -4, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "50%", fontWeight: 900, width: 16, height: 16, fontSize: 8, background: "#f59e0b", color: "#000" }}>
+                    C
+                  </span>
                 )}
                 {p.isViceCaptain && !p.isCaptain && (
-                  <span
-                    className="absolute -top-1 -right-1 flex items-center justify-center rounded-full font-black"
-                    style={{ width: 16, height: 16, fontSize: 8, background: "#64748b", color: "#fff" }}
-                  >V</span>
+                  <span style={{ position: "absolute", top: -4, right: -4, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "50%", fontWeight: 900, width: 16, height: 16, fontSize: 8, background: "#64748b", color: "#fff" }}>
+                    V
+                  </span>
                 )}
               </div>
-              <p className="mt-1.5 text-center font-semibold truncate" style={{ fontSize: 10, color: "#cbd5e1", maxWidth: 56 }}>
+              <p className="truncate" style={{ marginTop: 6, textAlign: "center", fontWeight: 600, fontSize: 10, color: "#cbd5e1", maxWidth: 56 }}>
                 {lastName}
               </p>
-              <p className="font-black" style={{ fontSize: 10, color: hasPoints ? "#22c55e" : "#475569", marginTop: 1 }}>
+              <p style={{ fontWeight: 900, fontSize: 10, color: hasPoints ? "#22c55e" : "#475569", marginTop: 1 }}>
                 {p.points} pts
               </p>
             </div>
@@ -431,23 +423,21 @@ function SquadStrip({ teamId }: { teamId: number }) {
   );
 }
 
-// ── No Squad Prompt ──────────────────────────────────────────────────────────
+// ── No Squad Prompt ───────────────────────────────────────────────────────────
 function NoSquadPrompt() {
   return (
     <div
-      className="relative rounded-2xl overflow-hidden"
-      style={{ background: "rgba(8,17,40,0.6)", border: "1px solid rgba(255,255,255,0.06)", minHeight: 180 }}
+      style={{ position: "relative", borderRadius: 16, overflow: "hidden", background: "rgba(8,17,40,0.6)", border: "1px solid rgba(255,255,255,0.06)", minHeight: 180 }}
     >
-      <div className="flex flex-col items-center justify-center h-full py-12 px-6 text-center">
-        <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4" style={{ background: "rgba(59,130,246,0.12)", border: "1px solid rgba(59,130,246,0.25)" }}>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "48px 24px", textAlign: "center" }}>
+        <div style={{ width: 56, height: 56, borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16, background: "rgba(59,130,246,0.12)", border: "1px solid rgba(59,130,246,0.25)" }}>
           <ShieldHalf size={28} style={{ color: "#3b82f6" }} />
         </div>
-        <h2 className="text-xl font-black mb-2" style={{ color: "#f1f5f9" }}>No squad picked yet</h2>
+        <h2 style={{ fontSize: 20, fontWeight: 900, marginBottom: 8, color: "#f1f5f9" }}>No squad picked yet</h2>
         <p style={{ color: "#64748b", fontSize: 13, marginBottom: 20 }}>Build your team of 11 players to compete.</p>
         <Link href="/squad">
           <button
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm"
-            style={{ background: "linear-gradient(135deg, #2563eb, #3b82f6)", color: "#fff", boxShadow: "0 4px 20px rgba(59,130,246,0.35)" }}
+            style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 20px", borderRadius: 12, fontWeight: 700, fontSize: 14, background: "linear-gradient(135deg, #2563eb, #3b82f6)", color: "#fff", boxShadow: "0 4px 20px rgba(59,130,246,0.35)", border: "none", cursor: "pointer" }}
           >
             <ShieldHalf size={15} /> Go to Squad Builder
           </button>
@@ -457,8 +447,9 @@ function NoSquadPrompt() {
   );
 }
 
-// ── Main Dashboard ───────────────────────────────────────────────────────────
+// ── Main Dashboard ────────────────────────────────────────────────────────────
 export function Dashboard() {
+  const isMobile = useIsMobile();
   const { authState } = useAuth();
   const teamId = authState.status === "authenticated" ? (authState.user.teamId ?? undefined) : undefined;
 
@@ -469,14 +460,34 @@ export function Dashboard() {
 
   if (isLoadingSummary || authState.status === "loading") {
     return (
-      <div className="space-y-5 animate-pulse w-full overflow-x-hidden">
-        <DashboardResponsiveStyles />
-        <div className="rounded-2xl" style={{ height: 200, background: "rgba(8,17,40,0.6)" }} />
-        <div className="dash-skel-stat">
-          {[...Array(4)].map((_, i) => <div key={i} className="h-28 rounded-xl" style={{ background: "rgba(8,17,40,0.5)" }} />)}
+      <div
+        className="animate-pulse"
+        style={{ display: "flex", flexDirection: "column", gap: 20, width: "100%", maxWidth: "100%", overflow: "hidden" }}
+      >
+        <div style={{ height: 200, borderRadius: 16, background: "rgba(8,17,40,0.6)" }} />
+        {/* Skeleton stat cards */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: isMobile ? "1fr" : "repeat(4, minmax(0, 1fr))",
+            gap: 16,
+          }}
+        >
+          {[...Array(4)].map((_, i) => (
+            <div key={i} style={{ height: 112, borderRadius: 12, background: "rgba(8,17,40,0.5)" }} />
+          ))}
         </div>
-        <div className="dash-skel-tri">
-          {[...Array(3)].map((_, i) => <div key={i} className="h-64 rounded-xl" style={{ background: "rgba(8,17,40,0.5)" }} />)}
+        {/* Skeleton 3-col */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: isMobile ? "1fr" : "repeat(3, minmax(0, 1fr))",
+            gap: 16,
+          }}
+        >
+          {[...Array(3)].map((_, i) => (
+            <div key={i} style={{ height: 256, borderRadius: 12, background: "rgba(8,17,40,0.5)" }} />
+          ))}
         </div>
       </div>
     );
@@ -538,52 +549,65 @@ export function Dashboard() {
         overflowX: "hidden",
       }}
     >
-      <DashboardResponsiveStyles />
+      {/* Dark overlay */}
       <div style={{ position: "absolute", inset: 0, background: "rgba(4,8,20,0.72)", pointerEvents: "none", zIndex: 0 }} />
 
-      <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500 w-full overflow-x-hidden" style={{ position: "relative", zIndex: 1 }}>
-
+      {/* Content */}
+      <div
+        className="animate-in fade-in slide-in-from-bottom-4 duration-500"
+        style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", gap: 20, width: "100%", overflowX: "hidden" }}
+      >
         {/* ── Hero header ── */}
         <div
-          className="relative rounded-2xl overflow-hidden"
-          style={{ backgroundImage: "url('/stadium-bg.jpg')", backgroundSize: "cover", backgroundPosition: "center 30%", minHeight: 140 }}
+          style={{
+            position: "relative", borderRadius: 16, overflow: "hidden",
+            backgroundImage: "url('/stadium-bg.jpg')", backgroundSize: "cover",
+            backgroundPosition: "center 30%", minHeight: 140,
+          }}
         >
-          <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(4,10,24,0.55) 0%, rgba(4,10,24,0.85) 60%, rgba(4,10,24,0.97) 100%)" }} />
-          <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse at 50% 0%, rgba(239,68,68,0.10) 0%, transparent 70%)" }} />
+          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(4,10,24,0.55) 0%, rgba(4,10,24,0.85) 60%, rgba(4,10,24,0.97) 100%)" }} />
+          <div style={{ position: "absolute", inset: 0, pointerEvents: "none", background: "radial-gradient(ellipse at 50% 0%, rgba(239,68,68,0.10) 0%, transparent 70%)" }} />
 
-          <div className="relative z-10 px-4 sm:px-6 pt-6 pb-0">
-            <div className="mb-5">
-              <div className="flex items-center gap-2 mb-1">
+          <div style={{ position: "relative", zIndex: 10, padding: isMobile ? "24px 16px 0" : "24px 24px 0" }}>
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
                 <Zap size={13} color="#06b6d4" style={{ filter: "drop-shadow(0 0 5px #06b6d4)" }} />
                 <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.16em", textTransform: "uppercase", color: "#06b6d4" }}>
                   Live Overview
                 </span>
               </div>
-              <h1 className="text-3xl sm:text-4xl font-black tracking-tight" style={{ color: "#f1f5f9", textShadow: "0 2px 20px rgba(0,0,0,0.6)" }}>
+              <h1 style={{ fontSize: isMobile ? 28 : 36, fontWeight: 900, letterSpacing: "-0.02em", color: "#f1f5f9", textShadow: "0 2px 20px rgba(0,0,0,0.6)", margin: 0 }}>
                 Command Center
               </h1>
               <p style={{ color: "#64748b", fontSize: 13, marginTop: 3 }}>{gwLabel}</p>
             </div>
 
-            {/* Stat cards */}
-            <div className="dash-stat-grid pb-6">
+            {/* ── Stat cards ── */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: isMobile ? "1fr" : "repeat(4, minmax(0, 1fr))",
+                gap: isMobile ? 12 : 12,
+                paddingBottom: 24,
+              }}
+            >
               {statCards.map(({ label, value, sub, subColor, Icon, accent, smallValue, bigAccent }) => (
                 <div
                   key={label}
-                  className="relative overflow-hidden rounded-xl transition-transform hover:-translate-y-0.5"
                   style={{
+                    position: "relative", overflow: "hidden", borderRadius: 12,
                     background: "rgba(8,17,40,0.76)",
                     backdropFilter: "blur(16px)",
                     border: `1px solid ${accent}28`,
                     boxShadow: `0 4px 20px rgba(0,0,0,0.4), 0 0 16px ${accent}0e`,
                   }}
                 >
-                  <div className="absolute top-0 left-0 right-0 h-px" style={{ background: `linear-gradient(90deg, transparent, ${accent}77, transparent)` }} />
-                  <div className="absolute -top-5 -right-5 w-16 h-16 rounded-full opacity-15 pointer-events-none" style={{ background: accent, filter: "blur(16px)" }} />
-                  <div className="p-4 relative z-10">
-                    <div className="flex items-center justify-between mb-2">
+                  <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 1, background: `linear-gradient(90deg, transparent, ${accent}77, transparent)` }} />
+                  <div style={{ position: "absolute", top: -20, right: -20, width: 64, height: 64, borderRadius: "50%", opacity: 0.15, pointerEvents: "none", background: accent, filter: "blur(16px)" }} />
+                  <div style={{ padding: 16, position: "relative", zIndex: 10 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                       <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.10em", textTransform: "uppercase", color: "#475569" }}>{label}</span>
-                      <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: `${accent}18`, border: `1px solid ${accent}30` }}>
+                      <div style={{ width: 28, height: 28, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", background: `${accent}18`, border: `1px solid ${accent}30` }}>
                         <Icon size={14} style={{ color: accent }} />
                       </div>
                     </div>
@@ -602,7 +626,13 @@ export function Dashboard() {
         </div>
 
         {/* ── 3-column grid ── */}
-        <div className="dash-tri-grid">
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: isMobile ? "1fr" : "repeat(3, minmax(0, 1fr))",
+            gap: 16,
+          }}
+        >
           <TodayMatchesCard />
 
           {summary?.firstLeagueId != null ? (
@@ -613,7 +643,7 @@ export function Dashboard() {
             />
           ) : (
             <div style={{ ...CARD, display: "flex", alignItems: "center", justifyContent: "center", minHeight: 200 }}>
-              <div className="text-center px-4">
+              <div style={{ textAlign: "center", padding: "0 16px" }}>
                 <p style={{ fontSize: 12, color: "#475569", marginBottom: 8 }}>No league joined yet</p>
                 <Link href="/leagues" style={{ fontSize: 11, fontWeight: 700, color: "#06b6d4" }}>Browse leagues →</Link>
               </div>
