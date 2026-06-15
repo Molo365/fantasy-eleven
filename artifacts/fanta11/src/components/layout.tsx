@@ -174,7 +174,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         style={{
           background: "linear-gradient(90deg, #0e1f3d 0%, #1a2f57 100%)",
         }}
-        className="md:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-2 border-b border-white/10 h-16"
+        className="hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-2 border-b border-white/10 h-16"
       >
         <div className="flex items-center gap-3">
           <img
@@ -266,10 +266,38 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
       {/* ── Main Content ── */}
       <div className="flex-1 md:ml-72 flex flex-col min-h-screen" style={{ overflowX: "hidden" }}>
-        <main className="flex-1 p-4 md:p-8 pt-20 md:pt-8 overflow-y-auto">
+        <main className="flex-1 p-4 md:p-8 pt-4 md:pt-8 pb-24 md:pb-8 overflow-y-auto">
           <div className="max-w-7xl mx-auto">{children}</div>
         </main>
       </div>
+
+      {/* ── Mobile Bottom Nav ── */}
+      <nav
+        className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex border-t border-white/10"
+        style={{ background: "linear-gradient(180deg, #0e1f3d 0%, #162848 100%)" }}
+      >
+        {[
+          { href: "/", label: "Home", icon: LayoutDashboard },
+          { href: "/squad", label: "Squad", icon: ShieldHalf },
+          { href: "/players", label: "Players", icon: Users },
+          { href: "/leagues", label: "Leagues", icon: Trophy },
+          { href: "/fixtures", label: "Fixtures", icon: CalendarDays },
+        ].map(({ href, label, icon: Icon }) => {
+          const active = isActive(href);
+          return (
+            <a
+              key={href}
+              href={href}
+              className={`flex-1 flex flex-col items-center justify-center py-2 gap-0.5 text-[10px] font-medium transition-colors ${
+                active ? "text-primary" : "text-blue-200/50"
+              }`}
+            >
+              <Icon size={20} />
+              <span>{label}</span>
+            </a>
+          );
+        })}
+      </nav>
     </div>
   );
 }
