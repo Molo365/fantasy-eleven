@@ -266,11 +266,18 @@ export async function processGameweekScoring(gameweekId: number): Promise<Scorin
   let teamsUpdated = 0;
 
   for (const [teamId, squad] of teamSquads) {
+    const captainEntry = squad.find(p => p.isCaptain);
+    const captainPlayed = captainEntry
+      ? (playerEarned.get(captainEntry.playerId)?.pts ?? 0) > 0
+      : false;
+
     let gwPts = 0;
     for (const { playerId, isCaptain, isViceCaptain } of squad) {
       const earned = playerEarned.get(playerId);
       if (!earned || earned.pts === 0) continue;
-      const multiplier = isCaptain ? 2 : isViceCaptain ? 1.5 : 1;
+      let multiplier = 1;
+      if (isCaptain) multiplier = 2;
+      else if (isViceCaptain && !captainPlayed) multiplier = 2;
       gwPts += earned.pts * multiplier;
     }
 
@@ -303,10 +310,18 @@ export async function processGameweekScoring(gameweekId: number): Promise<Scorin
   // 7. Update gameweek aggregate stats
   const gwPointsList = [...teamSquads.keys()].map(teamId => {
     const squad = teamSquads.get(teamId)!;
+    const capEntry = squad.find(p => p.isCaptain);
+    const capPlayed = capEntry
+      ? (playerEarned.get(capEntry.playerId)?.pts ?? 0) > 0
+      : false;
     let pts = 0;
     for (const { playerId, isCaptain, isViceCaptain } of squad) {
       const earned = playerEarned.get(playerId);
-      if (earned) pts += earned.pts * (isCaptain ? 2 : isViceCaptain ? 1.5 : 1);
+      if (!earned) continue;
+      let mult = 1;
+      if (isCaptain) mult = 2;
+      else if (isViceCaptain && !capPlayed) mult = 2;
+      pts += earned.pts * mult;
     }
     return pts;
   }).filter(p => p > 0);
