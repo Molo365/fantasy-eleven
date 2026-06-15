@@ -69,7 +69,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     href === "/" ? location === "/" : location.startsWith(href);
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex dark">
+    <div className="min-h-screen bg-background text-foreground flex dark" style={{ maxWidth: "100vw", overflowX: "hidden" }}>
       {/* ── Desktop Sidebar ── */}
       <aside
         style={{
@@ -265,7 +265,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       )}
 
       {/* ── Main Content ── */}
-      <div className="flex-1 md:ml-72 flex flex-col min-h-screen">
+      <div className="flex-1 md:ml-72 flex flex-col min-h-screen" style={{ overflowX: "hidden" }}>
         <main className="flex-1 p-4 md:p-8 pt-20 md:pt-8 overflow-y-auto">
           <div className="max-w-7xl mx-auto">{children}</div>
         </main>
