@@ -85,7 +85,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const frontendDist = path.join(__dirname, "../../fanta11/dist");
+const frontendDist = path.join(path.dirname(process.argv[1]), "../../fanta11/dist");
 console.log("Frontend dist path:", frontendDist);
 app.use(express.static(frontendDist));
 app.get("*path", (_req, res) => {
