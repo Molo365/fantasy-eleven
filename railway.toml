@@ -1,7 +1,7 @@
 [build]
 builder = "nixpacks"
 installCommand = "pnpm install --no-frozen-lockfile"
-buildCommand = "cd artifacts/api-server && pnpm build"
+buildCommand = "pnpm run -C artifacts/fanta11 build && pnpm run -C artifacts/api-server build"
 
 [deploy]
-startCommand = "cd artifacts/api-server && node --enable-source-maps ./dist/index.mjs"
+startCommand = "node --enable-source-maps /app/artifacts/api-server/dist/index.mjs"
