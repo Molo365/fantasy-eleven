@@ -34,16 +34,16 @@ function TeamSide({
 }) {
   return (
     <div
-      className={`flex-1 flex items-center gap-2 sm:gap-3 min-w-0 ${
+      className={`flex-1 flex items-center gap-1.5 sm:gap-3 min-w-0 ${
         align === "right" ? "justify-end flex-row-reverse text-right" : "justify-start text-left"
       }`}
     >
       {logo ? (
-        <img src={logo} alt={name} className="w-7 h-7 sm:w-8 sm:h-8 object-contain shrink-0" />
+        <img src={logo} alt={name} className="w-5 h-5 sm:w-8 sm:h-8 object-contain shrink-0" />
       ) : (
-        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-secondary shrink-0" />
+        <div className="w-5 h-5 sm:w-8 sm:h-8 rounded-full bg-secondary shrink-0" />
       )}
-      <span className="font-medium text-sm sm:text-base truncate">{name}</span>
+      <span className="font-medium text-xs sm:text-base leading-tight max-w-[72px] sm:max-w-none break-words">{name}</span>
     </div>
   );
 }
