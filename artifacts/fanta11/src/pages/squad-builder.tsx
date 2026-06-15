@@ -460,10 +460,10 @@ export function SquadBuilder() {
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <span className="font-bold text-sm text-white truncate leading-tight">{rec.player.name}</span>
                             {isCaptain && (
-                              <span style={{ fontSize: 9, background: "#f59e0b22", color: "#f59e0b", border: "1px solid #f59e0b44", borderRadius: 4, padding: "0 5px", fontWeight: 800, flexShrink: 0 }}>C</span>
+                              <span style={{ fontSize: 9, background: "#f59e0b", color: "#000", borderRadius: 99, width: 16, height: 16, display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: 900, flexShrink: 0, boxShadow: "0 0 6px rgba(245,158,11,0.6)" }}>C</span>
                             )}
                             {isVice && (
-                              <span style={{ fontSize: 9, background: "#94a3b822", color: "#94a3b8", border: "1px solid #94a3b844", borderRadius: 4, padding: "0 5px", fontWeight: 800, flexShrink: 0 }}>V</span>
+                              <span style={{ fontSize: 9, background: "#94a3b8", color: "#0a0f1e", borderRadius: 99, width: 16, height: 16, display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: 900, flexShrink: 0 }}>V</span>
                             )}
                           </div>
                           <div className="flex items-center gap-2 mt-0.5">
@@ -472,17 +472,6 @@ export function SquadBuilder() {
                             <span className="font-mono text-xs" style={{ color }}>{rec.player.totalPoints} pts</span>
                           </div>
                         </div>
-                        <button
-                          className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center"
-                          title={isCaptain ? "Captain" : "Set as Captain"}
-                          style={{
-                            background: isCaptain ? "rgba(245,158,11,0.22)" : "rgba(245,158,11,0.07)",
-                            border: `1px solid ${isCaptain ? "rgba(245,158,11,0.55)" : "rgba(245,158,11,0.22)"}`,
-                          }}
-                          onClick={() => updateMut.mutate({ id: TEAM_ID, data: { captainId: rec.playerId } }, { onSuccess: refreshTeam })}
-                        >
-                          <span style={{ fontSize: 12, fontWeight: 900, color: "#f59e0b", lineHeight: 1 }}>C</span>
-                        </button>
                         <button
                           className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center"
                           style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)" }}
@@ -583,37 +572,6 @@ export function SquadBuilder() {
           );
         })()}
 
-        {/* Captain strip */}
-        {(teamPlayers?.length ?? 0) > 0 && (
-          <div>
-            <div className="text-[10px] font-semibold tracking-widest uppercase text-muted-foreground mb-2">
-              Set Captain — tap to assign
-            </div>
-            <div className="flex gap-1.5 overflow-x-auto pb-1">
-              {teamPlayers?.map((rec) => {
-                const isCap  = team?.captainId    === rec.playerId;
-                const isVice = team?.viceCaptainId === rec.playerId;
-                const lastName = rec.player.name.split(" ").pop() ?? rec.player.name;
-                return (
-                  <button
-                    key={rec.playerId}
-                    onClick={() => updateMut.mutate({ id: TEAM_ID, data: { captainId: rec.playerId } }, { onSuccess: refreshTeam })}
-                    className="shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-full transition-all"
-                    style={{
-                      background: isCap ? "#f59e0b22" : isVice ? "#94a3b822" : "rgba(255,255,255,0.05)",
-                      border: `1px solid ${isCap ? "#f59e0b55" : isVice ? "#94a3b855" : "rgba(255,255,255,0.08)"}`,
-                      color: isCap ? "#f59e0b" : isVice ? "#94a3b8" : "#64748b",
-                      fontSize: 11,
-                      fontWeight: 700,
-                    }}
-                  >
-                    {isCap ? "© " : isVice ? "V " : ""}{lastName}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
       </div>
 
       {/* ══════════════════════════════════════════
