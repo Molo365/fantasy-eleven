@@ -88,8 +88,10 @@ const __dirname = path.dirname(__filename);
 const frontendDist = path.join(path.dirname(process.argv[1]), "../../fanta11/dist/public");
 console.log("Frontend dist path:", frontendDist);
 app.use(express.static(frontendDist));
-app.use((_req, res, next) => {
-  if (_req.path.startsWith("/api")) return next();
+app.get("*path", (req, res, next) => {
+  if (req.path.startsWith("/api")) {
+    return next();
+  }
   res.sendFile(path.join(frontendDist, "index.html"));
 });
 
