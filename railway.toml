@@ -5,3 +5,6 @@ buildCommand = "pnpm run -C artifacts/fanta11 build && pnpm run -C artifacts/api
 
 [deploy]
 startCommand = "node --enable-source-maps /app/artifacts/api-server/dist/index.mjs"
+
+[variables]
+NIXPACKS_NODE_VERSION = "20"
