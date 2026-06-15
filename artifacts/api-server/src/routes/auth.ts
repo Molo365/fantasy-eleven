@@ -67,6 +67,7 @@ router.post("/auth/register", async (req, res): Promise<void> => {
 });
 
 router.post("/auth/login", async (req, res): Promise<void> => {
+  console.log("LOGIN ROUTE HIT", req.method, req.path);
   const { email, password } = req.body as Record<string, string>;
   if (!email || !password) {
     res.status(400).json({ error: "Email and password required" });
