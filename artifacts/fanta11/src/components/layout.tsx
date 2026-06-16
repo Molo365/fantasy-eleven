@@ -169,39 +169,59 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      {/* ── Mobile Header ── */}
-      <header
-        style={{
-          background: "linear-gradient(90deg, #0e1f3d 0%, #1a2f57 100%)",
-        }}
-        className="hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-2 border-b border-white/10 h-16"
-      >
-        <div className="flex items-center gap-3">
-          <img
-            src={logoSrc}
-            alt="FANTA11"
-            className="h-10 w-10 object-contain drop-shadow-[0_0_8px_rgba(59,130,246,0.6)]"
-          />
+      {/* ── Top Header Bar (mobile + desktop, authenticated only) ── */}
+      {user && (
+        <header
+          style={{ background: "linear-gradient(90deg, #0e1f3d 0%, #1a2f57 100%)" }}
+          className="fixed top-0 left-0 right-0 md:left-72 z-50 flex items-center justify-between px-4 h-12 border-b border-white/10"
+        >
+          {/* Left: logo text (mobile only — desktop sidebar already shows it) */}
           <span
-            className="font-black text-white tracking-[0.15em] text-base uppercase"
-            style={{
-              textShadow:
-                "-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000",
-            }}
+            className="md:hidden font-black text-base tracking-[0.18em] uppercase"
+            style={{ color: "#f59e0b", textShadow: "0 0 12px rgba(245,158,11,0.5)" }}
           >
             FANTA11
           </span>
-        </div>
-        <button
-          type="button"
-          data-testid="mobile-menu-toggle"
-          onClick={() => setMobileOpen(!mobileOpen)}
-          style={{ touchAction: "manipulation", cursor: "pointer", position: "relative", zIndex: 60 }}
-          className="p-2 rounded-lg text-blue-200/70 hover:text-white hover:bg-white/10 transition-colors"
-        >
-          {mobileOpen ? <X size={22} /> : <Menu size={22} />}
-        </button>
-      </header>
+          {/* Desktop spacer so right-side items stay right */}
+          <span className="hidden md:block" />
+
+          {/* Right: username + admin badge + sign out */}
+          <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-1.5">
+              <User size={13} className="text-blue-300/60" />
+              <span className="text-sm font-semibold text-white/90 max-w-[120px] truncate">
+                {user.username}
+              </span>
+            </div>
+            {isAdmin && (
+              <Link
+                href="/admin/dashboard"
+                className="text-[10px] font-bold px-2 py-0.5 rounded-md transition-colors hover:opacity-80"
+                style={{
+                  background: "rgba(245,158,11,0.15)",
+                  color: "#f59e0b",
+                  border: "1px solid rgba(245,158,11,0.35)",
+                }}
+              >
+                Admin
+              </Link>
+            )}
+            <button
+              data-testid="button-logout"
+              onClick={logout}
+              className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg transition-colors hover:opacity-80"
+              style={{
+                background: "rgba(239,68,68,0.1)",
+                color: "#ef4444",
+                border: "1px solid rgba(239,68,68,0.22)",
+              }}
+            >
+              <LogOut size={12} />
+              <span className="hidden sm:inline">Sign Out</span>
+            </button>
+          </div>
+        </header>
+      )}
 
       {/* ── Mobile Drawer ── */}
       {mobileOpen && (
@@ -266,7 +286,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
       {/* ── Main Content ── */}
       <div className="flex-1 md:ml-72 flex flex-col min-h-screen" style={{ overflowX: "hidden" }}>
-        <main className="flex-1 p-4 md:p-8 pt-4 md:pt-8 pb-24 md:pb-8 overflow-y-auto">
+        <main className="flex-1 p-4 md:p-8 pt-16 md:pt-16 pb-24 md:pb-8 overflow-y-auto">
           <div className="max-w-7xl mx-auto">{children}</div>
         </main>
       </div>
