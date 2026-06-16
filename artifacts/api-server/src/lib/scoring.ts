@@ -1,4 +1,4 @@
-import { db, playersTable, teamsTable, teamPlayersTable, gameweeksTable, gameweekTeamScoresTable } from "@workspace/db";
+import { db, playersTable, teamsTable, teamPlayersTable, gameweeksTable, gameweekTeamScoresTable, usersTable } from "@workspace/db";
 import { eq, sql, sum } from "drizzle-orm";
 import { logger } from "./logger";
 
@@ -160,10 +160,14 @@ export async function processGameweekScoring(gameweekId: number): Promise<Scorin
     };
   }
 
+  // Build a quick playerId -> name lookup for logging
+  const playerById = new Map<number, string>();
+  for (const p of allPlayers) playerById.set(p.id, p.name);
+
   // 4. Process each fixture — collect per-player earned points
-  // dbPlayerId -> { pts, goals, assists, cleanSheets }
+  // dbPlayerId -> { pts, minutes, goals, assists, cleanSheets }
   const playerEarned = new Map<number, {
-    pts: number; goals: number; assists: number; cleanSheets: number;
+    pts: number; minutes: number; goals: number; assists: number; cleanSheets: number;
   }>();
 
   let fixturesProcessed = 0;
@@ -208,10 +212,11 @@ export async function processGameweekScoring(gameweekId: number): Promise<Scorin
         if (pts === 0 && (stat.games.minutes ?? 0) === 0) continue;
 
         const prev = playerEarned.get(dbPlayer.id) ?? {
-          pts: 0, goals: 0, assists: 0, cleanSheets: 0,
+          pts: 0, minutes: 0, goals: 0, assists: 0, cleanSheets: 0,
         };
         playerEarned.set(dbPlayer.id, {
           pts: prev.pts + pts,
+          minutes: prev.minutes + (stat.games.minutes ?? 0),
           goals: prev.goals + (stat.goals.total ?? 0),
           assists: prev.assists + (stat.goals.assists ?? 0),
           cleanSheets: prev.cleanSheets + (cleanSheet && (dbPlayer.position === "GK" || dbPlayer.position === "DEF") ? 1 : 0),
@@ -247,6 +252,20 @@ export async function processGameweekScoring(gameweekId: number): Promise<Scorin
   }
 
   // 6. Calculate and store each team's gameweek score
+  // Load team → username mapping for logging
+  const teamInfoRows = await db
+    .select({
+      teamId:   teamsTable.id,
+      username: usersTable.username,
+    })
+    .from(teamsTable)
+    .leftJoin(usersTable, eq(teamsTable.userId, usersTable.id));
+
+  const teamUsernames = new Map<number, string>();
+  for (const row of teamInfoRows) {
+    teamUsernames.set(row.teamId, row.username ?? `team#${row.teamId}`);
+  }
+
   const allTeamPlayers = await db
     .select({
       teamId:        teamPlayersTable.teamId,
@@ -266,10 +285,19 @@ export async function processGameweekScoring(gameweekId: number): Promise<Scorin
   let teamsUpdated = 0;
 
   for (const [teamId, squad] of teamSquads) {
-    const captainEntry = squad.find(p => p.isCaptain);
-    const captainPlayed = captainEntry
-      ? (playerEarned.get(captainEntry.playerId)?.pts ?? 0) > 0
-      : false;
+    const captainEntry    = squad.find(p => p.isCaptain);
+    const captainEarned   = captainEntry ? playerEarned.get(captainEntry.playerId) : undefined;
+    const captainMinutes  = captainEarned?.minutes ?? 0;
+    const captainPlayed   = captainMinutes > 0;
+    const captainName     = captainEntry ? (playerById.get(captainEntry.playerId) ?? "Unknown") : "None";
+    const captainRawPts   = captainEarned?.pts ?? 0;
+    const username        = teamUsernames.get(teamId) ?? `team#${teamId}`;
+
+    console.log(
+      `[SCORING] user=${username} | captain=${captainName} | minutes=${captainMinutes}` +
+      ` | raw_pts=${captainRawPts} | after_x2=${captainRawPts * 2}` +
+      ` | captain_played=${captainPlayed}`,
+    );
 
     let gwPts = 0;
     for (const { playerId, isCaptain, isViceCaptain } of squad) {
