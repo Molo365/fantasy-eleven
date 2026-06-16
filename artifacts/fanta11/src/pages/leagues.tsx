@@ -842,9 +842,6 @@ export function Leagues() {
                         {/* Team / Manager */}
                         <div className="min-w-0">
                           <div className="font-semibold text-foreground truncate group-hover:text-primary transition-colors">
-                            {entry.teamName}
-                          </div>
-                          <div className="text-xs text-muted-foreground truncate hover:text-primary/80">
                             {entry.managerName}
                           </div>
                         </div>
