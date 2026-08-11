@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Search, TrendingUp, Star } from "lucide-react";
-import { ListPlayersPosition } from "@workspace/api-zod";
+import { ListPlayersPosition } from "@workspace/api-client-react";
 
 export function Players() {
   const [search, setSearch] = useState("");

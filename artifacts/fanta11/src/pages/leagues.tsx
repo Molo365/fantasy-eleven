@@ -2,10 +2,13 @@ import {
   useListLeagues,
   useGetLeagueLeaderboard,
   getListLeaguesQueryKey,
+  getGetLeagueLeaderboardQueryKey,
   useCreateLeague,
   useJoinLeague,
   useGetTeamPlayers,
+  getGetTeamPlayersQueryKey,
   useGetTeam,
+  getGetTeamQueryKey,
 } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, Users, Trophy, ChevronRight, Plus, Copy, Check, Medal, ShieldHalf } from "lucide-react";
@@ -92,9 +95,9 @@ function SquadViewDialog({
   teamName: string;
   onClose: () => void;
 }) {
-  const { data: team } = useGetTeam(teamId, { query: { enabled: teamId > 0 } });
+  const { data: team } = useGetTeam(teamId, { query: { enabled: teamId > 0, queryKey: getGetTeamQueryKey(teamId) } });
   const { data: players, isLoading } = useGetTeamPlayers(teamId, {
-    query: { enabled: teamId > 0 },
+    query: { enabled: teamId > 0, queryKey: getGetTeamPlayersQueryKey(teamId) },
   });
 
   const captainId   = team?.captainId   ?? null;
@@ -288,7 +291,7 @@ export function Leagues() {
 
   const { data: leaderboard, isLoading: isLoadingLeaderboard } =
     useGetLeagueLeaderboard(selectedLeagueId ?? 0, {
-      query: { enabled: selectedLeagueId !== null && selectedLeagueId > 0 },
+      query: { enabled: selectedLeagueId !== null && selectedLeagueId > 0, queryKey: getGetLeagueLeaderboardQueryKey(selectedLeagueId ?? 0) },
     });
 
   const selectedLeague = leagues?.find((l) => l.id === selectedLeagueId);
