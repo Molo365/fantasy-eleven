@@ -9,12 +9,11 @@ import {
   GetPlayerResponse,
   GetTopPlayersResponse,
 } from "@workspace/api-zod";
-import { syncWorldCupPlayers, ensurePlayersSeeded } from "../lib/apiSports";
+import { syncWorldCupPlayers } from "../lib/apiSports";
 
 const router: IRouter = Router();
 
 router.get("/players/top", async (req, res): Promise<void> => {
-  await ensurePlayersSeeded();
   const parsed = GetTopPlayersQueryParams.safeParse(req.query);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -42,7 +41,6 @@ router.get("/players/sync", async (req, res): Promise<void> => {
 });
 
 router.get("/players", async (req, res): Promise<void> => {
-  await ensurePlayersSeeded();
   const parsed = ListPlayersQueryParams.safeParse(req.query);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
