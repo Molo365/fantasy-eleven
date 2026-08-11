@@ -280,6 +280,87 @@ router.post("/admin/sync-zafronix", requireAdmin, async (req, res): Promise<void
   }
 });
 
+// ── Premier League (FPL) player sync ─────────────────────────────────────────
+
+type FplTeam = { id: number; name: string; short_name: string };
+type FplElement = {
+  id: number;
+  first_name: string;
+  second_name: string;
+  team: number;
+  element_type: number; // 1=GK 2=DEF 3=MID 4=FWD
+  now_cost: number;     // divide by 10 → £m value
+  total_points: number;
+};
+type FplBootstrap = { teams: FplTeam[]; elements: FplElement[] };
+
+const FPL_POS: Record<number, string> = { 1: "GK", 2: "DEF", 3: "MID", 4: "FWD" };
+
+router.post("/admin/sync-fpl", requireAdmin, async (req, res): Promise<void> => {
+  try {
+    req.log.info("Admin triggered FPL Premier League player sync");
+
+    const fplRes = await fetch("https://fantasy.premierleague.com/api/bootstrap-static/");
+    if (!fplRes.ok) {
+      res.status(502).json({ error: `FPL API returned HTTP ${fplRes.status}` });
+      return;
+    }
+    const fplData = await fplRes.json() as FplBootstrap;
+
+    if (!fplData.elements?.length || !fplData.teams?.length) {
+      res.status(502).json({ error: "FPL API returned empty elements or teams" });
+      return;
+    }
+
+    // Build teamId → { name, shortName } lookup
+    const teamMap = new Map(
+      fplData.teams.map(t => [t.id, { name: t.name, short: t.short_name }])
+    );
+
+    // Replace existing PL players only (cascade handles any squad entries)
+    const [{ cleared }] = await db
+      .select({ cleared: count() })
+      .from(playersTable)
+      .where(eq(playersTable.nationality, "premier_league"));
+    await db.delete(playersTable).where(eq(playersTable.nationality, "premier_league"));
+
+    let inserted = 0, skipped = 0;
+    const now = new Date();
+
+    for (const el of fplData.elements) {
+      const pos = FPL_POS[el.element_type];
+      const team = teamMap.get(el.team);
+      if (!pos || !team) { skipped++; continue; }
+
+      const fullName = `${el.first_name} ${el.second_name}`.trim();
+
+      try {
+        await db.insert(playersTable).values({
+          externalId: el.id,
+          name: fullName,
+          position: pos,
+          club: team.name,
+          clubShortName: team.short,
+          nationality: "premier_league", // league tag — no league column in schema
+          price: Math.round((el.now_cost / 10) * 10) / 10,
+          totalPoints: el.total_points,
+          cachedFromApi: true,
+          cachedAt: now,
+        });
+        inserted++;
+      } catch {
+        skipped++;
+      }
+    }
+
+    req.log.info({ cleared: Number(cleared), inserted, skipped }, "FPL Premier League player sync complete");
+    res.json({ ok: true, cleared: Number(cleared), inserted, skipped });
+  } catch (err) {
+    req.log.error({ err }, "FPL player sync failed");
+    res.status(500).json({ error: String(err) });
+  }
+});
+
 router.post("/admin/wipe-test-data", requireAdmin, async (req, res): Promise<void> => {
   // 1. Clear activity log
   await db.delete(activityTable);

@@ -303,6 +303,8 @@ export function AdminDashboard() {
   const [syncResult, setSyncResult] = useState<string | null>(null);
   const [syncingZ, setSyncingZ] = useState(false);
   const [syncResultZ, setSyncResultZ] = useState<string | null>(null);
+  const [syncingFPL, setSyncingFPL] = useState(false);
+  const [syncResultFPL, setSyncResultFPL] = useState<string | null>(null);
   const [scoringResult, setScoringResult] = useState<{
     gwName: string;
     fixturesProcessed: number;
@@ -527,6 +529,20 @@ export function AdminDashboard() {
     }
   };
 
+  const syncFPLPlayers = async () => {
+    setSyncingFPL(true);
+    setSyncResultFPL(null);
+    try {
+      const json = await apiFetch("/sync-fpl", { method: "POST" }) as { ok: boolean; cleared: number; inserted: number; skipped: number };
+      setSyncResultFPL(`✓ Synced ${json.inserted} Premier League players (cleared ${json.cleared} old, skipped ${json.skipped})`);
+      await loadAll();
+    } catch (e) {
+      setSyncResultFPL(`✗ Sync failed: ${String(e)}`);
+    } finally {
+      setSyncingFPL(false);
+    }
+  };
+
   const fullReset = () => {
     setConfirm({
       open: true, danger: true,
@@ -637,6 +653,20 @@ export function AdminDashboard() {
             {syncResultZ && (
               <span style={{ fontSize: 12, color: syncResultZ.startsWith("✓") ? "#4ade80" : "#f87171" }}>
                 {syncResultZ}
+              </span>
+            )}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginTop: 12 }}>
+            <button
+              style={{ ...S.btnSolidDanger, background: "#15803d", borderColor: "#4ade80", opacity: syncingFPL ? 0.7 : 1, cursor: syncingFPL ? "not-allowed" : "pointer", minWidth: 180 }}
+              onClick={syncFPLPlayers}
+              disabled={syncingFPL}
+            >
+              {syncingFPL ? "⟳ Syncing Premier League…" : "⟳ Sync Premier League (FPL)"}
+            </button>
+            {syncResultFPL && (
+              <span style={{ fontSize: 12, color: syncResultFPL.startsWith("✓") ? "#4ade80" : "#f87171" }}>
+                {syncResultFPL}
               </span>
             )}
           </div>
