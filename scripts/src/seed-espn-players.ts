@@ -78,7 +78,7 @@ const STAR: Record<string, number> = {
   "Keylor Navas": 5.0, "Joel Campbell": 6.5,
   "Guillermo Ochoa": 4.5, "Santiago Giménez": 8.0, "Raúl Jiménez": 7.5,
   "Salem Al-Dawsari": 6.5,
-  "Robert Lewandowski": 9.5, "Piotr Zieliński": 7.5,
+  "Piotr Zieliński": 7.5,
 };
 
 type Pos = "GK" | "DEF" | "MID" | "FWD";
