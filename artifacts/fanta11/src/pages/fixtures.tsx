@@ -72,7 +72,7 @@ export function Fixtures() {
     <div className="space-y-8 animate-in fade-in duration-500 max-w-4xl mx-auto">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Fixtures</h1>
-        <p className="text-muted-foreground mt-1">World Cup 2026 match schedule and live scores</p>
+        <p className="text-muted-foreground mt-1">Premier League match schedule and live scores</p>
       </div>
 
       {isLoading ? (
