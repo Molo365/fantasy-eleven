@@ -403,7 +403,7 @@ export function SquadBuilder() {
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-xl font-black tracking-tight">Squad Builder</h1>
-            <p className="text-xs text-muted-foreground">2 GK · 5 DEF · 5 MID · 3 FWD · WC 2026</p>
+            <p className="text-xs text-muted-foreground">2 GK · 5 DEF · 5 MID · 3 FWD · Premier League</p>
           </div>
           <div className="text-right">
             <div className="text-[10px] font-semibold tracking-widest uppercase text-muted-foreground">Budget</div>
