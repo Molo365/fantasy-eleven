@@ -1,4 +1,4 @@
-import express, { type Express } from "express";
+import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import cors from "cors";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
@@ -80,6 +80,24 @@ app.use(
 );
 
 app.use("/api", router);
+
+// ── Global error handler ──────────────────────────────────────────────────────
+// Catches any error passed via next(err) — including those forwarded by
+// asyncHandler — and logs the full Postgres error detail so error codes
+// (e.g. 42703 "column does not exist", 08006 "connection failure") are always
+// visible in production logs rather than being swallowed as generic failures.
+app.use((err: Error & { code?: string; detail?: string; cause?: unknown }, req: Request, res: Response, _next: NextFunction): void => {
+  const pgCode   = err.code;                         // e.g. "42703", "23505"
+  const pgDetail = err.detail;                       // Postgres DETAIL field
+  const cause    = err.cause;                        // nested cause if any
+  req.log.error({ err, pgCode, pgDetail, cause }, "Unhandled route error");
+  if (!res.headersSent) {
+    res.status(500).json({
+      error: "Internal server error",
+      ...(process.env.NODE_ENV !== "production" && { message: err.message, pgCode }),
+    });
+  }
+});
 
 import path from "path";
 import { fileURLToPath } from "url";

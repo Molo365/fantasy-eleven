@@ -10,10 +10,11 @@ import {
   GetTopPlayersResponse,
 } from "@workspace/api-zod";
 import { syncWorldCupPlayers } from "../lib/apiSports";
+import { asyncHandler } from "../lib/asyncHandler";
 
 const router: IRouter = Router();
 
-router.get("/players/top", async (req, res): Promise<void> => {
+router.get("/players/top", asyncHandler(async (req, res) => {
   const parsed = GetTopPlayersQueryParams.safeParse(req.query);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -28,7 +29,7 @@ router.get("/players/top", async (req, res): Promise<void> => {
     .orderBy(desc(playersTable.totalPoints))
     .limit(limit);
   res.json(GetTopPlayersResponse.parse(rows));
-});
+}));
 
 router.get("/players/sync", async (req, res): Promise<void> => {
   try {
@@ -40,7 +41,7 @@ router.get("/players/sync", async (req, res): Promise<void> => {
   }
 });
 
-router.get("/players", async (req, res): Promise<void> => {
+router.get("/players", asyncHandler(async (req, res) => {
   const parsed = ListPlayersQueryParams.safeParse(req.query);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -49,8 +50,8 @@ router.get("/players", async (req, res): Promise<void> => {
   const { position, club, search, limit = 50, offset = 0 } = parsed.data;
   const conditions = [];
   if (position) conditions.push(eq(playersTable.position, position));
-  if (club) conditions.push(eq(playersTable.club, club));
-  if (search) conditions.push(ilike(playersTable.name, `%${search}%`));
+  if (club)     conditions.push(eq(playersTable.club, club));
+  if (search)   conditions.push(ilike(playersTable.name, `%${search}%`));
 
   const rows = await db
     .select()
@@ -60,17 +61,17 @@ router.get("/players", async (req, res): Promise<void> => {
     .limit(limit)
     .offset(offset);
   res.json(ListPlayersResponse.parse(rows));
-});
+}));
 
-router.get("/players/nations", async (_req, res): Promise<void> => {
+router.get("/players/nations", asyncHandler(async (_req, res) => {
   const rows = await db
     .selectDistinct({ club: playersTable.club })
     .from(playersTable)
     .orderBy(asc(playersTable.club));
   res.json(rows.map(r => r.club));
-});
+}));
 
-router.get("/players/:id", async (req, res): Promise<void> => {
+router.get("/players/:id", asyncHandler(async (req, res) => {
   const params = GetPlayerParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -82,6 +83,6 @@ router.get("/players/:id", async (req, res): Promise<void> => {
     return;
   }
   res.json(GetPlayerResponse.parse(player));
-});
+}));
 
 export default router;

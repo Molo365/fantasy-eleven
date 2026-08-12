@@ -10,10 +10,11 @@ import {
   GetDashboardSquadQueryParams,
   GetDashboardSquadResponse,
 } from "@workspace/api-zod";
+import { asyncHandler } from "../lib/asyncHandler";
 
 const router: IRouter = Router();
 
-router.get("/dashboard/summary", async (req, res): Promise<void> => {
+router.get("/dashboard/summary", asyncHandler(async (req, res) => {
   const parsed = GetDashboardSummaryQueryParams.safeParse(req.query);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -123,9 +124,9 @@ router.get("/dashboard/summary", async (req, res): Promise<void> => {
       currentGameweekNumber: currentGw?.number ?? null,
     })
   );
-});
+}));
 
-router.get("/dashboard/top-performers", async (req, res): Promise<void> => {
+router.get("/dashboard/top-performers", asyncHandler(async (req, res) => {
   const players = await db
     .select({
       id:          playersTable.id,
@@ -139,9 +140,9 @@ router.get("/dashboard/top-performers", async (req, res): Promise<void> => {
     .limit(3);
 
   res.json(GetDashboardTopPerformersResponse.parse(players));
-});
+}));
 
-router.get("/dashboard/squad", async (req, res): Promise<void> => {
+router.get("/dashboard/squad", asyncHandler(async (req, res) => {
   const parsed = GetDashboardSquadQueryParams.safeParse(req.query);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -166,9 +167,9 @@ router.get("/dashboard/squad", async (req, res): Promise<void> => {
     .orderBy(teamPlayersTable.slot);
 
   res.json(GetDashboardSquadResponse.parse(rows));
-});
+}));
 
-router.get("/dashboard/activity", async (req, res): Promise<void> => {
+router.get("/dashboard/activity", asyncHandler(async (req, res) => {
   const parsed = GetRecentActivityQueryParams.safeParse(req.query);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -192,6 +193,6 @@ router.get("/dashboard/activity", async (req, res): Promise<void> => {
       }))
     )
   );
-});
+}));
 
 export default router;

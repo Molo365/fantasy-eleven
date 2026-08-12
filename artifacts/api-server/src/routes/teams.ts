@@ -15,6 +15,7 @@ import {
   GetTeamResponse,
   GetTeamPlayersResponse,
 } from "@workspace/api-zod";
+import { asyncHandler } from "../lib/asyncHandler";
 
 const router: IRouter = Router();
 
@@ -22,12 +23,12 @@ function serializeTeam(team: { createdAt: Date; [key: string]: unknown }) {
   return { ...team, createdAt: team.createdAt.toISOString() };
 }
 
-router.get("/teams", async (_req, res): Promise<void> => {
+router.get("/teams", asyncHandler(async (_req, res) => {
   const teams = await db.select().from(teamsTable).orderBy(teamsTable.totalPoints);
   res.json(ListTeamsResponse.parse(teams.map(serializeTeam)));
-});
+}));
 
-router.post("/teams", async (req, res): Promise<void> => {
+router.post("/teams", asyncHandler(async (req, res) => {
   const parsed = CreateTeamBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -40,9 +41,9 @@ router.post("/teams", async (req, res): Promise<void> => {
     userId,
   }).returning();
   res.status(201).json(GetTeamResponse.parse(serializeTeam(team)));
-});
+}));
 
-router.get("/teams/:id", async (req, res): Promise<void> => {
+router.get("/teams/:id", asyncHandler(async (req, res) => {
   const params = GetTeamParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -54,9 +55,9 @@ router.get("/teams/:id", async (req, res): Promise<void> => {
     return;
   }
   res.json(GetTeamResponse.parse(serializeTeam(team)));
-});
+}));
 
-router.patch("/teams/:id", async (req, res): Promise<void> => {
+router.patch("/teams/:id", asyncHandler(async (req, res) => {
   const params = UpdateTeamParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -68,8 +69,8 @@ router.patch("/teams/:id", async (req, res): Promise<void> => {
     return;
   }
   const updateData: Record<string, unknown> = {};
-  if (parsed.data.name !== undefined) updateData.name = parsed.data.name;
-  if (parsed.data.captainId !== undefined) updateData.captainId = parsed.data.captainId;
+  if (parsed.data.name !== undefined)          updateData.name          = parsed.data.name;
+  if (parsed.data.captainId !== undefined)     updateData.captainId     = parsed.data.captainId;
   if (parsed.data.viceCaptainId !== undefined) updateData.viceCaptainId = parsed.data.viceCaptainId;
 
   const [team] = await db
@@ -82,9 +83,9 @@ router.patch("/teams/:id", async (req, res): Promise<void> => {
     return;
   }
   res.json(GetTeamResponse.parse(serializeTeam(team)));
-});
+}));
 
-router.get("/teams/:id/players", async (req, res): Promise<void> => {
+router.get("/teams/:id/players", asyncHandler(async (req, res) => {
   const params = GetTeamPlayersParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -92,27 +93,27 @@ router.get("/teams/:id/players", async (req, res): Promise<void> => {
   }
   const rows = await db
     .select({
-      id: teamPlayersTable.id,
-      teamId: teamPlayersTable.teamId,
-      playerId: teamPlayersTable.playerId,
-      slot: teamPlayersTable.slot,
-      isCaptain: teamPlayersTable.isCaptain,
+      id:            teamPlayersTable.id,
+      teamId:        teamPlayersTable.teamId,
+      playerId:      teamPlayersTable.playerId,
+      slot:          teamPlayersTable.slot,
+      isCaptain:     teamPlayersTable.isCaptain,
       isViceCaptain: teamPlayersTable.isViceCaptain,
       player: {
-        id: playersTable.id,
-        name: playersTable.name,
-        position: playersTable.position,
-        club: playersTable.club,
+        id:            playersTable.id,
+        name:          playersTable.name,
+        position:      playersTable.position,
+        club:          playersTable.club,
         clubShortName: playersTable.clubShortName,
-        totalPoints: playersTable.totalPoints,
-        price: playersTable.price,
-        form: playersTable.form,
-        selected: playersTable.selected,
-        goalsScored: playersTable.goalsScored,
-        assists: playersTable.assists,
-        cleanSheets: playersTable.cleanSheets,
-        imageUrl: playersTable.imageUrl,
-        crestUrl: playersTable.crestUrl,
+        totalPoints:   playersTable.totalPoints,
+        price:         playersTable.price,
+        form:          playersTable.form,
+        selected:      playersTable.selected,
+        goalsScored:   playersTable.goalsScored,
+        assists:       playersTable.assists,
+        cleanSheets:   playersTable.cleanSheets,
+        imageUrl:      playersTable.imageUrl,
+        crestUrl:      playersTable.crestUrl,
       },
     })
     .from(teamPlayersTable)
@@ -120,9 +121,9 @@ router.get("/teams/:id/players", async (req, res): Promise<void> => {
     .where(eq(teamPlayersTable.teamId, params.data.id))
     .orderBy(teamPlayersTable.slot);
   res.json(GetTeamPlayersResponse.parse(rows));
-});
+}));
 
-router.post("/teams/:id/players", async (req, res): Promise<void> => {
+router.post("/teams/:id/players", asyncHandler(async (req, res) => {
   const params = AddPlayerToTeamParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -148,7 +149,7 @@ router.post("/teams/:id/players", async (req, res): Promise<void> => {
     return;
   }
 
-  // Enforce max 3 players per nation
+  // Enforce max 3 players per club
   const existingPlayers = await db
     .select({ club: playersTable.club })
     .from(teamPlayersTable)
@@ -161,10 +162,10 @@ router.post("/teams/:id/players", async (req, res): Promise<void> => {
   }
 
   const [tp] = await db.insert(teamPlayersTable).values({
-    teamId: params.data.id,
-    playerId: parsed.data.playerId,
-    slot: parsed.data.slot,
-    isCaptain: parsed.data.isCaptain ?? false,
+    teamId:        params.data.id,
+    playerId:      parsed.data.playerId,
+    slot:          parsed.data.slot,
+    isCaptain:     parsed.data.isCaptain ?? false,
     isViceCaptain: parsed.data.isViceCaptain ?? false,
   }).returning();
 
@@ -174,9 +175,9 @@ router.post("/teams/:id/players", async (req, res): Promise<void> => {
     .where(eq(teamsTable.id, params.data.id));
 
   res.status(201).json(GetTeamPlayersResponseItem.parse({ ...tp, player }));
-});
+}));
 
-router.delete("/teams/:id/players/slot/:slot", async (req, res): Promise<void> => {
+router.delete("/teams/:id/players/slot/:slot", asyncHandler(async (req, res) => {
   const params = RemovePlayerFromTeamParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -202,6 +203,6 @@ router.delete("/teams/:id/players/slot/:slot", async (req, res): Promise<void> =
     .where(eq(teamsTable.id, params.data.id));
 
   res.sendStatus(204);
-});
+}));
 
 export default router;

@@ -3,6 +3,13 @@ import { logger } from "./lib/logger";
 import { db, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 
+// Catch async errors that escape Express (e.g. route handlers without try/catch
+// that haven't been wrapped with asyncHandler yet) so the full Postgres error
+// code and message always appear in logs rather than silently hanging.
+process.on("unhandledRejection", (reason) => {
+  logger.error({ err: reason }, "Unhandled promise rejection");
+});
+
 const ADMIN_EMAILS = ["domenicg@gmx.com"];
 
 async function ensureAdminRoles() {
