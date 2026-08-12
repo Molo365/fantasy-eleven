@@ -18,6 +18,7 @@ export const playersTable = pgTable("players", {
   assists: integer("assists").notNull().default(0),
   cleanSheets: integer("clean_sheets").notNull().default(0),
   imageUrl: text("image_url"),
+  crestUrl: text("crest_url"),
   cachedFromApi: boolean("cached_from_api").notNull().default(false),
   cachedAt: timestamp("cached_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

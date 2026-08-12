@@ -43,7 +43,8 @@ export const ListPlayersResponseItem = zod.object({
   "goalsScored": zod.number().optional(),
   "assists": zod.number().optional(),
   "cleanSheets": zod.number().optional(),
-  "imageUrl": zod.string().nullish()
+  "imageUrl": zod.string().nullish(),
+  "crestUrl": zod.string().nullish()
 })
 export const ListPlayersResponse = zod.array(ListPlayersResponseItem)
 
@@ -207,7 +208,8 @@ export const GetTeamPlayersResponseItem = zod.object({
   "goalsScored": zod.number().optional(),
   "assists": zod.number().optional(),
   "cleanSheets": zod.number().optional(),
-  "imageUrl": zod.string().nullish()
+  "imageUrl": zod.string().nullish(),
+  "crestUrl": zod.string().nullish()
 })
 })
 export const GetTeamPlayersResponse = zod.array(GetTeamPlayersResponseItem)

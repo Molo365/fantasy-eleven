@@ -35,6 +35,8 @@ export interface Player {
   cleanSheets?: number;
   /** @nullable */
   imageUrl?: string | null;
+  /** @nullable */
+  crestUrl?: string | null;
 }
 
 export interface Team {

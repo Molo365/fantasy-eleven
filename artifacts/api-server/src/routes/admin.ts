@@ -312,8 +312,9 @@ router.post("/admin/sync-zafronix", requireAdmin, async (req, res): Promise<void
 
 // ── Premier League (FPL) player sync ─────────────────────────────────────────
 
-type FplTeam = { id: number; name: string; short_name: string };
+type FplTeam = { id: number; name: string; short_name: string; code: number };
 type FplElement = {
+  code: number;           // player photo code (used in headshot URLs — NOT the same as id)
   id: number;
   first_name: string;
   second_name: string;
@@ -342,9 +343,9 @@ router.post("/admin/sync-fpl", requireAdmin, async (req, res): Promise<void> => 
       return;
     }
 
-    // Build teamId → { name, shortName } lookup
+    // Build teamId → { name, shortName, code } lookup
     const teamMap = new Map(
-      fplData.teams.map(t => [t.id, { name: t.name, short: t.short_name }])
+      fplData.teams.map(t => [t.id, { name: t.name, short: t.short_name, code: t.code }])
     );
 
     // Replace existing PL players only (cascade handles any squad entries)
@@ -374,6 +375,8 @@ router.post("/admin/sync-fpl", requireAdmin, async (req, res): Promise<void> => 
           nationality: "premier_league", // league tag — no league column in schema
           price: Math.round((el.now_cost / 10) * 10) / 10,
           totalPoints: el.total_points,
+          imageUrl: `https://resources.premierleague.com/premierleague/photos/players/110x140/p${el.code}.png`,
+          crestUrl: `https://resources.premierleague.com/premierleague/badges/70/t${team.code}.png`,
           cachedFromApi: true,
           cachedAt: now,
         });

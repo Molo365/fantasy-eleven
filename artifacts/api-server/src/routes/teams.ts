@@ -112,6 +112,7 @@ router.get("/teams/:id/players", async (req, res): Promise<void> => {
         assists: playersTable.assists,
         cleanSheets: playersTable.cleanSheets,
         imageUrl: playersTable.imageUrl,
+        crestUrl: playersTable.crestUrl,
       },
     })
     .from(teamPlayersTable)
