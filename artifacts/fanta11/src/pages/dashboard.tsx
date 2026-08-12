@@ -352,22 +352,29 @@ function SquadStrip({ teamId }: { teamId: number }) {
 
   if (!squad?.length) return null;
 
+  const squadList = squad as SquadPlayer[];
+
   return (
     <div style={{ ...CARD }}>
-      <div style={{ padding: "16px 16px 12px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+      <div style={{ padding: "16px 16px 12px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: "#94a3b8" }}>
           My Squad · Active Players This GW
         </span>
+        <span style={{ fontSize: 10, fontWeight: 700, color: "#475569" }}>
+          {squadList.length}/15
+        </span>
       </div>
 
-      <div
-        style={{
-          display: "flex", gap: 16, padding: 16,
-          overflowX: "auto", scrollbarWidth: "none",
-          WebkitOverflowScrolling: "touch",
-        } as React.CSSProperties}
-      >
-        {(squad as SquadPlayer[]).map((p) => {
+      {/* Wrapper provides the right-edge fade affordance for the hidden-scrollbar carousel */}
+      <div style={{ position: "relative" }}>
+        <div
+          style={{
+            display: "flex", gap: 16, padding: 16,
+            overflowX: "auto", scrollbarWidth: "none",
+            WebkitOverflowScrolling: "touch",
+          } as React.CSSProperties}
+        >
+          {squadList.map((p) => {
           const posColor = POS_COLORS[p.position] ?? "#64748b";
           const hasPoints = p.points > 0;
           const lastName = p.name.includes(" ") ? p.name.split(" ").slice(-1)[0] : p.name;
@@ -406,6 +413,18 @@ function SquadStrip({ teamId }: { teamId: number }) {
             </div>
           );
         })}
+        </div>
+
+        {/* Right-edge fade — signals horizontally scrollable content */}
+        <div
+          aria-hidden="true"
+          style={{
+            position: "absolute", top: 0, right: 0, bottom: 0, width: 48,
+            pointerEvents: "none",
+            background: "linear-gradient(to right, transparent, rgba(8,17,40,0.95))",
+            borderRadius: "0 0 16px 0",
+          }}
+        />
       </div>
     </div>
   );
