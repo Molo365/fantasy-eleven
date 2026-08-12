@@ -9,7 +9,7 @@ const API = "/api/admin";
 type Stats = { userCount: number; teamCount: number; processedCount: number };
 type AdminUser = { id: number; username: string; email: string; displayName: string; createdAt: string; squadSubmitted: boolean; totalPoints: number };
 type AdminPlayer = { id: number; name: string; club: string; clubShortName: string; position: string; price: number; totalPoints: number };
-type AdminGameweek = { id: number; number: number; name: string; round: string; status: string; startDate: string; endDate: string };
+type AdminGameweek = { id: number; number: number; name: string; round: string; status: string; startDate: string; endDate: string; fplGameweekNumber: number | null };
 type AdminLeague = { id: number; name: string; code: string; memberCount: number; createdAt: string };
 
 type Tab = "users" | "players" | "gameweeks" | "leagues";
@@ -235,7 +235,7 @@ function EditPlayerModal({
 
 // ─── Create Gameweek Modal ────────────────────────────────────────────────────
 
-type CreateGwForm = { name: string; startDate: string; endDate: string };
+type CreateGwForm = { name: string; startDate: string; endDate: string; fplGameweekNumber: string };
 
 function CreateGameweekModal({
   open, loading, error, form, onFormChange, onSubmit, onClose,
@@ -262,11 +262,28 @@ function CreateGameweekModal({
               style={S.input}
               type={field === "startDate" || field === "endDate" ? "date" : "text"}
               value={form[field]}
-              placeholder={field === "name" ? "e.g. Group Stage Round 1" : undefined}
+              placeholder={field === "name" ? "e.g. Gameweek 1" : undefined}
               onChange={e => onFormChange({ ...form, [field]: e.target.value })}
             />
           </div>
         ))}
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ fontSize: 11, color: "#64748b", fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: "0.06em", display: "block", marginBottom: 4 }}>
+            FPL Gameweek Number <span style={{ color: "#475569", fontWeight: 400, textTransform: "none" as const }}>(optional, 1–38)</span>
+          </label>
+          <input
+            style={S.input}
+            type="number"
+            min={1}
+            max={38}
+            value={form.fplGameweekNumber}
+            placeholder="e.g. 1"
+            onChange={e => onFormChange({ ...form, fplGameweekNumber: e.target.value })}
+          />
+          <p style={{ fontSize: 11, color: "#475569", marginTop: 4, marginBottom: 0 }}>
+            The FPL gameweek ID used to fetch live Premier League scores. Set once — required to use "Process FPL".
+          </p>
+        </div>
         {error && <p style={{ fontSize: 12, color: "#ef4444", marginBottom: 8 }}>{error}</p>}
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
           <button onClick={onClose} style={{ ...S.signOutBtn }}>Cancel</button>
@@ -315,11 +332,22 @@ export function AdminDashboard() {
   } | null>(null);
   const [processingGwId, setProcessingGwId] = useState<number | null>(null);
   const [createGwOpen, setCreateGwOpen] = useState(false);
-  const [createGwForm, setCreateGwForm] = useState<CreateGwForm>({ name: "", startDate: "", endDate: "" });
+  const [createGwForm, setCreateGwForm] = useState<CreateGwForm>({ name: "", startDate: "", endDate: "", fplGameweekNumber: "" });
   const [createGwLoading, setCreateGwLoading] = useState(false);
   const [createGwError, setCreateGwError] = useState<string | null>(null);
   const [autoCreating, setAutoCreating] = useState(false);
   const [autoCreateResult, setAutoCreateResult] = useState<{ created: number; skipped: number } | null>(null);
+  const [processingFplGwId, setProcessingFplGwId] = useState<number | null>(null);
+  const [fplScoringResult, setFplScoringResult] = useState<{
+    gwName: string;
+    fixturesProcessed: number;
+    playersUpdated: number;
+    teamsUpdated: number;
+    totalPointsAwarded: number;
+    warning?: string;
+  } | null>(null);
+  // Inline FPL GW# edits: gwId → pending string value
+  const [fplGwEdits, setFplGwEdits] = useState<Record<number, string>>({});
 
   // ── Auth guard ──────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -443,6 +471,7 @@ export function AdminDashboard() {
     setCreateGwLoading(true);
     setCreateGwError(null);
     try {
+      const fplNum = createGwForm.fplGameweekNumber.trim();
       const gw = await apiFetch("/gameweeks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -450,16 +479,58 @@ export function AdminDashboard() {
           name: createGwForm.name,
           startDate: new Date(createGwForm.startDate).toISOString(),
           endDate: new Date(createGwForm.endDate).toISOString(),
+          fplGameweekNumber: fplNum !== "" ? fplNum : undefined,
         }),
       }) as AdminGameweek;
       setGameweeks(gs => [...gs, gw].sort((a, b) => a.number - b.number));
       setCreateGwOpen(false);
-      setCreateGwForm({ name: "", startDate: "", endDate: "" });
+      setCreateGwForm({ name: "", startDate: "", endDate: "", fplGameweekNumber: "" });
     } catch (err) {
       setCreateGwError(String(err));
     } finally {
       setCreateGwLoading(false);
     }
+  };
+
+  const saveFplGwNumber = async (gwId: number, gwName: string) => {
+    const raw = fplGwEdits[gwId] ?? "";
+    const num = raw.trim() === "" ? null : parseInt(raw.trim(), 10);
+    if (num !== null && (isNaN(num) || num < 1 || num > 38)) {
+      alert("FPL gameweek number must be between 1 and 38");
+      return;
+    }
+    try {
+      const updated = await apiFetch(`/gameweeks/${gwId}/fpl-gameweek`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fplGameweekNumber: num }),
+      }) as AdminGameweek;
+      setGameweeks(gs => gs.map(g => g.id === gwId ? updated : g));
+      setFplGwEdits(e => { const n = { ...e }; delete n[gwId]; return n; });
+    } catch (err) {
+      alert(`Failed to save: ${String(err)}`);
+    }
+  };
+
+  const processFplGameweek = (id: number, name: string, fplGwNum: number) => {
+    setConfirm({
+      open: true,
+      title: "Process FPL Gameweek",
+      message: `Fetch live scores from FPL GW${fplGwNum}, award points to all Premier League players, and update every manager's score for "${name}"?`,
+      onConfirm: async () => {
+        setFplScoringResult(null);
+        setProcessingFplGwId(id);
+        try {
+          const result = await apiFetch(`/gameweeks/${id}/process-fpl`, { method: "POST" }) as {
+            scoring: { fixturesProcessed: number; playersUpdated: number; teamsUpdated: number; totalPointsAwarded: number; warning?: string };
+          };
+          setFplScoringResult({ gwName: name, ...result.scoring });
+          setTab("gameweeks");
+        } finally {
+          setProcessingFplGwId(null);
+        }
+      },
+    });
   };
 
   const autoCreateGameweeks = async () => {
@@ -868,6 +939,47 @@ export function AdminDashboard() {
                   </div>
                 )}
 
+                {/* FPL scoring result banner */}
+                {fplScoringResult && (
+                  <div style={{
+                    margin: "16px 16px 0",
+                    borderRadius: 10,
+                    border: fplScoringResult.warning && fplScoringResult.fixturesProcessed === 0
+                      ? "1px solid rgba(234,179,8,0.4)"
+                      : "1px solid rgba(74,222,128,0.4)",
+                    background: fplScoringResult.warning && fplScoringResult.fixturesProcessed === 0
+                      ? "rgba(234,179,8,0.06)"
+                      : "rgba(21,128,61,0.08)",
+                    padding: "14px 18px",
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, color: fplScoringResult.warning && fplScoringResult.fixturesProcessed === 0 ? "#eab308" : "#4ade80" }}>
+                        {fplScoringResult.warning && fplScoringResult.fixturesProcessed === 0 ? "⚠ FPL Scoring Notice" : "✓ FPL Gameweek Scored"}
+                      </span>
+                      <button style={{ ...S.trashBtn, color: "#475569" }} onClick={() => setFplScoringResult(null)}>
+                        <X size={14} />
+                      </button>
+                    </div>
+                    {fplScoringResult.warning ? (
+                      <p style={{ color: "#94a3b8", fontSize: 13, margin: 0 }}>{fplScoringResult.warning}</p>
+                    ) : (
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+                        {[
+                          { label: "Source", value: fplScoringResult.fixturesProcessed === 1 ? "FPL API" : fplScoringResult.fixturesProcessed },
+                          { label: "Players Scored", value: fplScoringResult.playersUpdated },
+                          { label: "Teams Updated", value: fplScoringResult.teamsUpdated },
+                          { label: "Total Pts Awarded", value: fplScoringResult.totalPointsAwarded },
+                        ].map(({ label, value }) => (
+                          <div key={label} style={{ textAlign: "center" as const, background: "rgba(255,255,255,0.04)", borderRadius: 8, padding: "10px 8px" }}>
+                            <div style={{ fontSize: 22, fontWeight: 800, color: "#4ade80", lineHeight: 1 }}>{value}</div>
+                            <div style={{ fontSize: 10, fontWeight: 600, color: "#64748b", letterSpacing: "0.08em", textTransform: "uppercase" as const, marginTop: 4 }}>{label}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Processing spinner */}
                 {processingGwId && (
                   <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", color: "#06b6d4", fontSize: 13 }}>
@@ -875,55 +987,113 @@ export function AdminDashboard() {
                     Fetching match data and calculating scores… this may take a minute.
                   </div>
                 )}
+                {processingFplGwId && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", color: "#4ade80", fontSize: 13 }}>
+                    <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} />
+                    Fetching live FPL data and scoring Premier League players…
+                  </div>
+                )}
 
                 <table style={S.table}>
                   <thead>
                     <tr style={{ background: "#0a1628" }}>
-                      {["GW", "Name", "Status", "Activate", "Process Gameweek"].map(h => (
+                      {["GW", "Name", "Status", "FPL GW#", "Activate", "Process Gameweek", "Process FPL"].map(h => (
                         <th key={h} style={S.th}>{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
-                    {gameweeks.map(g => (
-                      <tr key={g.id}>
-                        <td style={{ ...S.td, color: "#475569", fontFamily: "monospace" }}>{g.number}</td>
-                        <td style={{ ...S.td, fontWeight: 600 }}>{g.name}</td>
-                        <td style={S.td}>
-                          <span style={S.badge(g.status)}>{g.status}</span>
-                        </td>
-                        <td style={S.td}>
-                          {g.status !== "active" && g.status !== "finished" && (
-                            <button style={S.actionBtn("teal")} onClick={() => activateGameweek(g.id, g.name)}>
-                              <ChevronRight size={11} style={{ marginRight: 3 }} />Activate
+                    {gameweeks.map(g => {
+                      const editVal = fplGwEdits[g.id];
+                      const displayVal = editVal !== undefined ? editVal : (g.fplGameweekNumber?.toString() ?? "");
+                      const isDirty = editVal !== undefined && editVal !== (g.fplGameweekNumber?.toString() ?? "");
+                      return (
+                        <tr key={g.id}>
+                          <td style={{ ...S.td, color: "#475569", fontFamily: "monospace" }}>{g.number}</td>
+                          <td style={{ ...S.td, fontWeight: 600 }}>{g.name}</td>
+                          <td style={S.td}>
+                            <span style={S.badge(g.status)}>{g.status}</span>
+                          </td>
+                          {/* FPL GW# inline edit */}
+                          <td style={S.td}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                              <input
+                                type="number"
+                                min={1}
+                                max={38}
+                                value={displayVal}
+                                placeholder="—"
+                                onChange={e => setFplGwEdits(ev => ({ ...ev, [g.id]: e.target.value }))}
+                                style={{ ...S.input, width: 52, padding: "3px 6px", fontSize: 12, textAlign: "center" as const }}
+                              />
+                              {isDirty && (
+                                <button
+                                  style={{ ...S.actionBtn("teal"), fontSize: 10, padding: "3px 8px" }}
+                                  onClick={() => saveFplGwNumber(g.id, g.name)}
+                                >
+                                  Set
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                          <td style={S.td}>
+                            {g.status !== "active" && g.status !== "finished" && (
+                              <button style={S.actionBtn("teal")} onClick={() => activateGameweek(g.id, g.name)}>
+                                <ChevronRight size={11} style={{ marginRight: 3 }} />Activate
+                              </button>
+                            )}
+                            {g.status === "active" && (
+                              <span style={{ fontSize: 11, color: "#22c55e", fontWeight: 600 }}>● Active</span>
+                            )}
+                            {g.status === "finished" && (
+                              <span style={{ fontSize: 11, color: "#475569" }}>—</span>
+                            )}
+                          </td>
+                          <td style={S.td}>
+                            <button
+                              style={{
+                                ...S.actionBtn("gray"),
+                                opacity: processingGwId ? 0.5 : 1,
+                                cursor: processingGwId ? "not-allowed" : "pointer",
+                                display: "inline-flex", alignItems: "center", gap: 5,
+                              }}
+                              onClick={() => !processingGwId && processGameweek(g.id, g.name)}
+                              disabled={!!processingGwId}
+                            >
+                              {processingGwId === g.id
+                                ? <><Loader2 size={11} style={{ animation: "spin 1s linear infinite" }} />Scoring…</>
+                                : <>⚡ Process Gameweek</>
+                              }
                             </button>
-                          )}
-                          {g.status === "active" && (
-                            <span style={{ fontSize: 11, color: "#22c55e", fontWeight: 600 }}>● Active</span>
-                          )}
-                          {g.status === "finished" && (
-                            <span style={{ fontSize: 11, color: "#475569" }}>—</span>
-                          )}
-                        </td>
-                        <td style={S.td}>
-                          <button
-                            style={{
-                              ...S.actionBtn("gray"),
-                              opacity: processingGwId ? 0.5 : 1,
-                              cursor: processingGwId ? "not-allowed" : "pointer",
-                              display: "inline-flex", alignItems: "center", gap: 5,
-                            }}
-                            onClick={() => !processingGwId && processGameweek(g.id, g.name)}
-                            disabled={!!processingGwId}
-                          >
-                            {processingGwId === g.id
-                              ? <><Loader2 size={11} style={{ animation: "spin 1s linear infinite" }} />Scoring…</>
-                              : <>⚡ Process Gameweek</>
-                            }
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                          {/* Process FPL — only active when fplGameweekNumber is set */}
+                          <td style={S.td}>
+                            {g.fplGameweekNumber ? (
+                              <button
+                                style={{
+                                  ...S.actionBtn("gray"),
+                                  background: "rgba(21,128,61,0.15)",
+                                  borderColor: "rgba(74,222,128,0.3)",
+                                  color: "#4ade80",
+                                  opacity: processingFplGwId ? 0.5 : 1,
+                                  cursor: processingFplGwId ? "not-allowed" : "pointer",
+                                  display: "inline-flex", alignItems: "center", gap: 5,
+                                }}
+                                onClick={() => !processingFplGwId && processFplGameweek(g.id, g.name, g.fplGameweekNumber!)}
+                                disabled={!!processingFplGwId}
+                              >
+                                {processingFplGwId === g.id
+                                  ? <><Loader2 size={11} style={{ animation: "spin 1s linear infinite" }} />Scoring…</>
+                                  : <>🏴󠁧󠁢󠁥󠁮󠁧󠁿 Process FPL</>
+                                }
+                              </button>
+                            ) : (
+                              <span style={{ fontSize: 11, color: "#334155" }}>No FPL GW#</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </>

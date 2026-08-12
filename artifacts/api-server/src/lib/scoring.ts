@@ -1,5 +1,5 @@
 import { db, playersTable, teamsTable, teamPlayersTable, gameweeksTable, gameweekTeamScoresTable, usersTable } from "@workspace/db";
-import { eq, sql, sum } from "drizzle-orm";
+import { eq, sql, sum, inArray } from "drizzle-orm";
 import { logger } from "./logger";
 
 const API_BASE = "https://v3.football.api-sports.io";
@@ -55,6 +55,22 @@ type FixtureTeamStats = {
   players: PlayerStat[];
 };
 
+type FplLiveResponse = {
+  elements: Array<{
+    id: number;
+    stats: {
+      minutes: number;
+      goals_scored: number;
+      assists: number;
+      clean_sheets: number;
+      own_goals: number;
+      yellow_cards: number;
+      red_cards: number;
+      total_points: number;
+    };
+  }>;
+};
+
 // ─── Scoring logic ─────────────────────────────────────────────────────────────
 
 function scorePlayer(
@@ -94,7 +110,128 @@ export interface ScoringResult {
   warning?: string;
 }
 
-// ─── Main scoring function ─────────────────────────────────────────────────────
+// ─── Shared: captain-multiplier loop + persist ─────────────────────────────────
+//
+// Called by both processGameweekScoring (WC) and processFplGameweekScoring (PL).
+// Applies captain ×2 / VC ×2-if-captain-didn't-play, upserts gameweekTeamScores,
+// recomputes team totalPoints from history, and updates gameweek avg/highest.
+
+type PlayerEarned = Map<number, { pts: number; minutes: number; goals: number; assists: number; cleanSheets: number }>;
+
+async function scoreAndPersistTeams(
+  gameweekId: number,
+  playerEarned: PlayerEarned,
+  playerById: Map<number, string>,
+): Promise<{ teamsUpdated: number }> {
+  // Load team → username mapping for logging
+  const teamInfoRows = await db
+    .select({ teamId: teamsTable.id, username: usersTable.username })
+    .from(teamsTable)
+    .leftJoin(usersTable, eq(teamsTable.userId, usersTable.id));
+
+  const teamUsernames = new Map<number, string>();
+  for (const row of teamInfoRows) {
+    teamUsernames.set(row.teamId, row.username ?? `team#${row.teamId}`);
+  }
+
+  const allTeamPlayers = await db
+    .select({
+      teamId:        teamPlayersTable.teamId,
+      playerId:      teamPlayersTable.playerId,
+      isCaptain:     teamPlayersTable.isCaptain,
+      isViceCaptain: teamPlayersTable.isViceCaptain,
+    })
+    .from(teamPlayersTable);
+
+  // Group by team
+  const teamSquads = new Map<number, Array<{ playerId: number; isCaptain: boolean; isViceCaptain: boolean }>>();
+  for (const tp of allTeamPlayers) {
+    if (!teamSquads.has(tp.teamId)) teamSquads.set(tp.teamId, []);
+    teamSquads.get(tp.teamId)!.push({ playerId: tp.playerId, isCaptain: tp.isCaptain, isViceCaptain: tp.isViceCaptain });
+  }
+
+  let teamsUpdated = 0;
+
+  for (const [teamId, squad] of teamSquads) {
+    const captainEntry   = squad.find(p => p.isCaptain);
+    const captainEarned  = captainEntry ? playerEarned.get(captainEntry.playerId) : undefined;
+    const captainMinutes = captainEarned?.minutes ?? 0;
+    const captainPlayed  = captainMinutes > 0;
+    const captainName    = captainEntry ? (playerById.get(captainEntry.playerId) ?? "Unknown") : "None";
+    const captainRawPts  = captainEarned?.pts ?? 0;
+    const username       = teamUsernames.get(teamId) ?? `team#${teamId}`;
+
+    console.log(
+      `[SCORING] user=${username} | captain=${captainName} | minutes=${captainMinutes}` +
+      ` | raw_pts=${captainRawPts} | after_x2=${captainRawPts * 2}` +
+      ` | captain_played=${captainPlayed}`,
+    );
+
+    let gwPts = 0;
+    for (const { playerId, isCaptain, isViceCaptain } of squad) {
+      const earned = playerEarned.get(playerId);
+      if (!earned || earned.pts === 0) continue;
+      let multiplier = 1;
+      if (isCaptain) multiplier = 2;
+      else if (isViceCaptain && !captainPlayed) multiplier = 2;
+      gwPts += earned.pts * multiplier;
+    }
+
+    // Upsert this gameweek's score — idempotent on reprocess
+    await db
+      .insert(gameweekTeamScoresTable)
+      .values({ gameweekId, teamId, points: gwPts })
+      .onConflictDoUpdate({
+        target: [gameweekTeamScoresTable.gameweekId, gameweekTeamScoresTable.teamId],
+        set: { points: gwPts },
+      });
+
+    // Recompute totalPoints as the sum of ALL gameweek scores for this team
+    const [{ total }] = await db
+      .select({ total: sum(gameweekTeamScoresTable.points) })
+      .from(gameweekTeamScoresTable)
+      .where(eq(gameweekTeamScoresTable.teamId, teamId));
+
+    await db
+      .update(teamsTable)
+      .set({ gameweekPoints: gwPts, totalPoints: Number(total ?? 0) })
+      .where(eq(teamsTable.id, teamId));
+
+    if (gwPts > 0) teamsUpdated++;
+  }
+
+  // Update gameweek aggregate stats (avg / highest)
+  const gwPointsList = [...teamSquads.keys()].map(teamId => {
+    const squad = teamSquads.get(teamId)!;
+    const capEntry = squad.find(p => p.isCaptain);
+    const capPlayed = capEntry
+      ? (playerEarned.get(capEntry.playerId)?.pts ?? 0) > 0
+      : false;
+    let pts = 0;
+    for (const { playerId, isCaptain, isViceCaptain } of squad) {
+      const earned = playerEarned.get(playerId);
+      if (!earned) continue;
+      let mult = 1;
+      if (isCaptain) mult = 2;
+      else if (isViceCaptain && !capPlayed) mult = 2;
+      pts += earned.pts * mult;
+    }
+    return pts;
+  }).filter(p => p > 0);
+
+  if (gwPointsList.length > 0) {
+    const avg = Math.round(gwPointsList.reduce((a, b) => a + b, 0) / gwPointsList.length);
+    const highest = Math.max(...gwPointsList);
+    await db
+      .update(gameweeksTable)
+      .set({ averagePoints: avg, highestPoints: highest })
+      .where(eq(gameweeksTable.id, gameweekId));
+  }
+
+  return { teamsUpdated };
+}
+
+// ─── WC scoring (API-Sports) ───────────────────────────────────────────────────
 
 export async function processGameweekScoring(gameweekId: number): Promise<ScoringResult> {
   // 1. Load the gameweek for date range
@@ -165,11 +302,7 @@ export async function processGameweekScoring(gameweekId: number): Promise<Scorin
   for (const p of allPlayers) playerById.set(p.id, p.name);
 
   // 4. Process each fixture — collect per-player earned points
-  // dbPlayerId -> { pts, minutes, goals, assists, cleanSheets }
-  const playerEarned = new Map<number, {
-    pts: number; minutes: number; goals: number; assists: number; cleanSheets: number;
-  }>();
-
+  const playerEarned: PlayerEarned = new Map();
   let fixturesProcessed = 0;
 
   for (const fix of fixtures) {
@@ -241,7 +374,6 @@ export async function processGameweekScoring(gameweekId: number): Promise<Scorin
       })
       .where(eq(playersTable.id, playerId));
 
-    // Write fresh gameweek points to every team_players row for this player
     await db
       .update(teamPlayersTable)
       .set({ points: earned.pts })
@@ -251,117 +383,8 @@ export async function processGameweekScoring(gameweekId: number): Promise<Scorin
     totalPointsAwarded += earned.pts;
   }
 
-  // 6. Calculate and store each team's gameweek score
-  // Load team → username mapping for logging
-  const teamInfoRows = await db
-    .select({
-      teamId:   teamsTable.id,
-      username: usersTable.username,
-    })
-    .from(teamsTable)
-    .leftJoin(usersTable, eq(teamsTable.userId, usersTable.id));
-
-  const teamUsernames = new Map<number, string>();
-  for (const row of teamInfoRows) {
-    teamUsernames.set(row.teamId, row.username ?? `team#${row.teamId}`);
-  }
-
-  const allTeamPlayers = await db
-    .select({
-      teamId:        teamPlayersTable.teamId,
-      playerId:      teamPlayersTable.playerId,
-      isCaptain:     teamPlayersTable.isCaptain,
-      isViceCaptain: teamPlayersTable.isViceCaptain,
-    })
-    .from(teamPlayersTable);
-
-  // Group by team
-  const teamSquads = new Map<number, Array<{ playerId: number; isCaptain: boolean; isViceCaptain: boolean }>>();
-  for (const tp of allTeamPlayers) {
-    if (!teamSquads.has(tp.teamId)) teamSquads.set(tp.teamId, []);
-    teamSquads.get(tp.teamId)!.push({ playerId: tp.playerId, isCaptain: tp.isCaptain, isViceCaptain: tp.isViceCaptain });
-  }
-
-  let teamsUpdated = 0;
-
-  for (const [teamId, squad] of teamSquads) {
-    const captainEntry    = squad.find(p => p.isCaptain);
-    const captainEarned   = captainEntry ? playerEarned.get(captainEntry.playerId) : undefined;
-    const captainMinutes  = captainEarned?.minutes ?? 0;
-    const captainPlayed   = captainMinutes > 0;
-    const captainName     = captainEntry ? (playerById.get(captainEntry.playerId) ?? "Unknown") : "None";
-    const captainRawPts   = captainEarned?.pts ?? 0;
-    const username        = teamUsernames.get(teamId) ?? `team#${teamId}`;
-
-    console.log(
-      `[SCORING] user=${username} | captain=${captainName} | minutes=${captainMinutes}` +
-      ` | raw_pts=${captainRawPts} | after_x2=${captainRawPts * 2}` +
-      ` | captain_played=${captainPlayed}`,
-    );
-
-    let gwPts = 0;
-    for (const { playerId, isCaptain, isViceCaptain } of squad) {
-      const earned = playerEarned.get(playerId);
-      if (!earned || earned.pts === 0) continue;
-      let multiplier = 1;
-      if (isCaptain) multiplier = 2;
-      else if (isViceCaptain && !captainPlayed) multiplier = 2;
-      gwPts += earned.pts * multiplier;
-    }
-
-    // Upsert this gameweek's score for the team — idempotent on reprocess
-    await db
-      .insert(gameweekTeamScoresTable)
-      .values({ gameweekId, teamId, points: gwPts })
-      .onConflictDoUpdate({
-        target: [gameweekTeamScoresTable.gameweekId, gameweekTeamScoresTable.teamId],
-        set: { points: gwPts },
-      });
-
-    // Recompute totalPoints as the sum of ALL gameweek scores for this team
-    const [{ total }] = await db
-      .select({ total: sum(gameweekTeamScoresTable.points) })
-      .from(gameweekTeamScoresTable)
-      .where(eq(gameweekTeamScoresTable.teamId, teamId));
-
-    await db
-      .update(teamsTable)
-      .set({
-        gameweekPoints: gwPts,
-        totalPoints: Number(total ?? 0),
-      })
-      .where(eq(teamsTable.id, teamId));
-
-    if (gwPts > 0) teamsUpdated++;
-  }
-
-  // 7. Update gameweek aggregate stats
-  const gwPointsList = [...teamSquads.keys()].map(teamId => {
-    const squad = teamSquads.get(teamId)!;
-    const capEntry = squad.find(p => p.isCaptain);
-    const capPlayed = capEntry
-      ? (playerEarned.get(capEntry.playerId)?.pts ?? 0) > 0
-      : false;
-    let pts = 0;
-    for (const { playerId, isCaptain, isViceCaptain } of squad) {
-      const earned = playerEarned.get(playerId);
-      if (!earned) continue;
-      let mult = 1;
-      if (isCaptain) mult = 2;
-      else if (isViceCaptain && !capPlayed) mult = 2;
-      pts += earned.pts * mult;
-    }
-    return pts;
-  }).filter(p => p > 0);
-
-  if (gwPointsList.length > 0) {
-    const avg = Math.round(gwPointsList.reduce((a, b) => a + b, 0) / gwPointsList.length);
-    const highest = Math.max(...gwPointsList);
-    await db
-      .update(gameweeksTable)
-      .set({ averagePoints: avg, highestPoints: highest })
-      .where(eq(gameweeksTable.id, gameweekId));
-  }
+  // 6. Score teams using shared captain multiplier logic
+  const { teamsUpdated } = await scoreAndPersistTeams(gameweekId, playerEarned, playerById);
 
   logger.info(
     { gameweekId, fixturesProcessed, playersUpdated, teamsUpdated, totalPointsAwarded },
@@ -369,4 +392,125 @@ export async function processGameweekScoring(gameweekId: number): Promise<Scorin
   );
 
   return { fixturesProcessed, playersUpdated, teamsUpdated, totalPointsAwarded };
+}
+
+// ─── FPL live scoring (Premier League) ────────────────────────────────────────
+
+export async function processFplGameweekScoring(gameweekId: number): Promise<ScoringResult> {
+  // 1. Load gameweek — fplGameweekNumber must be set
+  const [gameweek] = await db
+    .select()
+    .from(gameweeksTable)
+    .where(eq(gameweeksTable.id, gameweekId));
+
+  if (!gameweek) throw new Error(`Gameweek ${gameweekId} not found`);
+  if (!gameweek.fplGameweekNumber) {
+    throw new Error(
+      `Gameweek ${gameweekId} has no FPL gameweek number set. ` +
+      `Edit the gameweek row in the admin panel to set it.`,
+    );
+  }
+
+  // 2. Load only Premier League players (tagged nationality = 'premier_league')
+  const plPlayers = await db
+    .select({
+      id:         playersTable.id,
+      externalId: playersTable.externalId,
+      name:       playersTable.name,
+      position:   playersTable.position,
+    })
+    .from(playersTable)
+    .where(eq(playersTable.nationality, "premier_league"));
+
+  const byExternalId = new Map<number, typeof plPlayers[0]>();
+  const playerById   = new Map<number, string>();
+  for (const p of plPlayers) {
+    if (p.externalId) byExternalId.set(p.externalId, p);
+    playerById.set(p.id, p.name);
+  }
+
+  // 3. Reset only PL player points (never touch WC player data)
+  const plPlayerIds = plPlayers.map(p => p.id);
+  if (plPlayerIds.length > 0) {
+    await db.update(playersTable).set({ totalPoints: 0 }).where(inArray(playersTable.id, plPlayerIds));
+    await db.update(teamPlayersTable).set({ points: 0 }).where(inArray(teamPlayersTable.playerId, plPlayerIds));
+  }
+
+  // 4. Fetch FPL live endpoint — no API key required
+  const fplUrl = `https://fantasy.premierleague.com/api/event/${gameweek.fplGameweekNumber}/live/`;
+  let fplData: FplLiveResponse;
+  try {
+    const res = await fetch(fplUrl);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    fplData = await res.json() as FplLiveResponse;
+  } catch (err) {
+    logger.warn({ err, fplUrl }, "Failed to fetch FPL live data");
+    return {
+      fixturesProcessed: 0,
+      playersUpdated: 0,
+      teamsUpdated: 0,
+      totalPointsAwarded: 0,
+      warning: `Could not reach FPL API (GW ${gameweek.fplGameweekNumber}): ${String(err)}`,
+    };
+  }
+
+  // 5. Build playerEarned map from FPL pre-calculated points
+  //    total_points = FPL's official score for this specific gameweek
+  //    minutes      = needed for the captain-played check in scoreAndPersistTeams
+  const playerEarned: PlayerEarned = new Map();
+
+  for (const element of fplData.elements) {
+    const dbPlayer = byExternalId.get(element.id);
+    if (!dbPlayer) continue;
+
+    const { total_points, minutes, goals_scored, assists, clean_sheets } = element.stats;
+    if (total_points === 0 && minutes === 0) continue;
+
+    playerEarned.set(dbPlayer.id, {
+      pts:         total_points,
+      minutes,
+      goals:       goals_scored,
+      assists,
+      cleanSheets: clean_sheets,
+    });
+  }
+
+  // 6. Write player + teamPlayers rows
+  let playersUpdated = 0;
+  let totalPointsAwarded = 0;
+
+  for (const [playerId, earned] of playerEarned) {
+    await db
+      .update(playersTable)
+      .set({
+        totalPoints: sql`${playersTable.totalPoints} + ${earned.pts}`,
+        goalsScored: sql`${playersTable.goalsScored} + ${earned.goals}`,
+        assists:     sql`${playersTable.assists}      + ${earned.assists}`,
+        cleanSheets: sql`${playersTable.cleanSheets}  + ${earned.cleanSheets}`,
+      })
+      .where(eq(playersTable.id, playerId));
+
+    await db
+      .update(teamPlayersTable)
+      .set({ points: earned.pts })
+      .where(eq(teamPlayersTable.playerId, playerId));
+
+    playersUpdated++;
+    totalPointsAwarded += earned.pts;
+  }
+
+  // 7. Score teams — reuses exact same captain multiplier logic as WC
+  const { teamsUpdated } = await scoreAndPersistTeams(gameweekId, playerEarned, playerById);
+
+  logger.info(
+    { gameweekId, fplGw: gameweek.fplGameweekNumber, playersUpdated, teamsUpdated, totalPointsAwarded },
+    "FPL gameweek scoring complete",
+  );
+
+  return {
+    fixturesProcessed: 1, // one FPL live endpoint call
+    playersUpdated,
+    teamsUpdated,
+    totalPointsAwarded,
+  };
 }

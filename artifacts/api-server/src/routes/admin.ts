@@ -6,7 +6,7 @@ import {
 } from "@workspace/db";
 import { logger } from "../lib/logger";
 import { clearAndSyncWorldCupPlayers, syncZafronixPlayers } from "../lib/apiSports";
-import { processGameweekScoring } from "../lib/scoring";
+import { processGameweekScoring, processFplGameweekScoring } from "../lib/scoring";
 
 const ADMIN_EMAIL = "domenicg@gmx.com";
 
@@ -176,7 +176,7 @@ const WC_2026_GAMEWEEKS = [
   { number: 7, name: "Final",               round: "final", startDate: "2026-07-19", endDate: "2026-07-19" },
 ];
 
-function serializeGwAdmin(g: { id: number; number: number; name: string; round: string; status: string; startDate: Date | string; endDate: Date | string; createdAt: Date | string; averagePoints: number | null; highestPoints: number | null }) {
+function serializeGwAdmin(g: { id: number; number: number; name: string; round: string; status: string; startDate: Date | string; endDate: Date | string; createdAt: Date | string; averagePoints: number | null; highestPoints: number | null; fplGameweekNumber: number | null }) {
   return {
     ...g,
     startDate: g.startDate instanceof Date ? g.startDate.toISOString() : g.startDate,
@@ -186,13 +186,14 @@ function serializeGwAdmin(g: { id: number; number: number; name: string; round: 
 }
 
 router.post("/admin/gameweeks", requireAdmin, async (req, res): Promise<void> => {
-  const { name, startDate, endDate, round = "group" } = req.body as Record<string, string>;
+  const { name, startDate, endDate, round = "group", fplGameweekNumber } = req.body as Record<string, string>;
   if (!name || !startDate || !endDate) {
     res.status(400).json({ error: "name, startDate, and endDate are required" });
     return;
   }
   const existing = await db.select({ n: gameweeksTable.number }).from(gameweeksTable);
   const maxNum = existing.reduce((m, r) => Math.max(m, r.n), 0);
+  const fplGwNum = fplGameweekNumber ? parseInt(fplGameweekNumber, 10) : null;
   const [gw] = await db.insert(gameweeksTable).values({
     number: maxNum + 1,
     name,
@@ -200,6 +201,7 @@ router.post("/admin/gameweeks", requireAdmin, async (req, res): Promise<void> =>
     status: "upcoming",
     startDate: new Date(startDate),
     endDate: new Date(endDate),
+    fplGameweekNumber: fplGwNum && !isNaN(fplGwNum) ? fplGwNum : null,
   }).returning();
   req.log.info({ gameweekId: gw.id, name }, "Admin created gameweek");
   res.status(201).json(serializeGwAdmin(gw));
@@ -225,6 +227,34 @@ router.post("/admin/gameweeks/auto-create", requireAdmin, async (req, res): Prom
   }
   req.log.info({ created, skipped }, "Admin auto-created WC 2026 gameweeks");
   res.json({ created, skipped, gameweeks: inserted });
+});
+
+router.patch("/admin/gameweeks/:id/fpl-gameweek", requireAdmin, async (req, res): Promise<void> => {
+  const id = parseInt(req.params["id"] as string);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const { fplGameweekNumber } = req.body as { fplGameweekNumber: number | null };
+  const fplGwNum = fplGameweekNumber != null ? Number(fplGameweekNumber) : null;
+  if (fplGwNum !== null && (isNaN(fplGwNum) || fplGwNum < 1 || fplGwNum > 38)) {
+    res.status(400).json({ error: "fplGameweekNumber must be 1–38 or null" });
+    return;
+  }
+  const [updated] = await db.update(gameweeksTable)
+    .set({ fplGameweekNumber: fplGwNum })
+    .where(eq(gameweeksTable.id, id))
+    .returning();
+  if (!updated) { res.status(404).json({ error: "Gameweek not found" }); return; }
+  req.log.info({ gameweekId: id, fplGameweekNumber: fplGwNum }, "Admin set FPL gameweek number");
+  res.json(serializeGwAdmin(updated));
+});
+
+router.post("/admin/gameweeks/:id/process-fpl", requireAdmin, async (req, res): Promise<void> => {
+  const id = parseInt(req.params["id"] as string);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const scoring = await processFplGameweekScoring(id);
+
+  req.log.info({ gameweekId: id, ...scoring }, "Admin processed FPL gameweek with live scoring");
+  res.json({ scoring });
 });
 
 router.post("/admin/gameweeks/:id/activate", requireAdmin, async (req, res): Promise<void> => {

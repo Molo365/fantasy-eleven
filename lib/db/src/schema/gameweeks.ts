@@ -12,6 +12,7 @@ export const gameweeksTable = pgTable("gameweeks", {
   endDate: timestamp("end_date", { withTimezone: true }).notNull(),
   averagePoints: integer("average_points"),
   highestPoints: integer("highest_points"),
+  fplGameweekNumber: integer("fpl_gameweek_number"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
