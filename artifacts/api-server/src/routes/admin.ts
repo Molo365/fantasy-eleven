@@ -356,12 +356,18 @@ router.post("/admin/sync-fpl", requireAdmin, async (req, res): Promise<void> => 
     await db.delete(playersTable).where(eq(playersTable.nationality, "premier_league"));
 
     let inserted = 0, skipped = 0;
+    let firstSkipReason = "";
+    let firstInsertError = "";
     const now = new Date();
 
     for (const el of fplData.elements) {
       const pos = FPL_POS[el.element_type];
       const team = teamMap.get(el.team);
-      if (!pos || !team) { skipped++; continue; }
+      if (!pos || !team) {
+        if (!firstSkipReason) firstSkipReason = `el.id=${el.id} element_type=${el.element_type} team=${el.team} pos=${pos} hasTeam=${!!team}`;
+        skipped++;
+        continue;
+      }
 
       const fullName = `${el.first_name} ${el.second_name}`.trim();
 
@@ -381,13 +387,17 @@ router.post("/admin/sync-fpl", requireAdmin, async (req, res): Promise<void> => 
           cachedAt: now,
         });
         inserted++;
-      } catch {
+      } catch (insertErr) {
+        if (!firstInsertError) {
+          firstInsertError = String(insertErr instanceof Error ? insertErr.stack ?? insertErr.message : insertErr);
+          req.log.error({ firstInsertError }, "FPL sync: first insert error");
+        }
         skipped++;
       }
     }
 
-    req.log.info({ cleared: Number(cleared), inserted, skipped }, "FPL Premier League player sync complete");
-    res.json({ ok: true, cleared: Number(cleared), inserted, skipped });
+    req.log.info({ cleared: Number(cleared), inserted, skipped, firstSkipReason, firstInsertError }, "FPL Premier League player sync complete");
+    res.json({ ok: true, cleared: Number(cleared), inserted, skipped, firstSkipReason: firstSkipReason || null, firstInsertError: firstInsertError || null });
   } catch (err) {
     req.log.error({ err }, "FPL player sync failed");
     res.status(500).json({ error: String(err) });
