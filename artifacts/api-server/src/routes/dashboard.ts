@@ -156,9 +156,10 @@ router.get("/dashboard/squad", asyncHandler(async (req, res) => {
       slot:          teamPlayersTable.slot,
       isCaptain:     teamPlayersTable.isCaptain,
       isViceCaptain: teamPlayersTable.isViceCaptain,
-      points:        teamPlayersTable.points,
+      // Use players.total_points (accumulated season points) — same source as Squad Builder.
+      // team_players.points is the per-GW tally which starts at 0 each gameweek.
+      points:        playersTable.totalPoints,
       name:          playersTable.name,
-      nationality:   playersTable.nationality,
       position:      playersTable.position,
     })
     .from(teamPlayersTable)

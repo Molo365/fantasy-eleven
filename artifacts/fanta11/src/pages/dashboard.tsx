@@ -378,7 +378,9 @@ function SquadStrip({ teamId }: { teamId: number }) {
           const posColor = POS_COLORS[p.position] ?? "#64748b";
           const hasPoints = p.points > 0;
           const lastName = p.name.includes(" ") ? p.name.split(" ").slice(-1)[0] : p.name;
-          const natCode = p.nationality ? p.nationality.slice(0, 3).toUpperCase() : "—";
+          // Show position (GK / DEF / MID / FWD) in the circle — nationality is "premier_league"
+          // for all PL players and would display as "PRE", which is meaningless to the user.
+          const posLabel = p.position ?? "—";
 
           return (
             <div key={p.playerId} style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0, minWidth: 56 }}>
@@ -392,7 +394,7 @@ function SquadStrip({ teamId }: { teamId: number }) {
                   fontSize: 11, color: posColor, letterSpacing: "0.04em",
                 }}
               >
-                {natCode}
+                {posLabel}
                 {p.isCaptain && (
                   <span style={{ position: "absolute", top: -4, right: -4, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "50%", fontWeight: 900, width: 16, height: 16, fontSize: 8, background: "#f59e0b", color: "#000" }}>
                     C
