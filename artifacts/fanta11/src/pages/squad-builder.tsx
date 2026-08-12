@@ -134,6 +134,7 @@ function PlayerPhoto({
         <img
           src={imageUrl}
           alt={label}
+          loading="lazy"
           onError={() => setFailed(true)}
           style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top center" }}
         />
@@ -142,6 +143,7 @@ function PlayerPhoto({
         <img
           src={crestUrl}
           alt=""
+          loading="lazy"
           style={{
             position: "absolute", bottom: -2, right: -2,
             width: badgeSize, height: badgeSize,
@@ -269,6 +271,7 @@ function PitchPhoto({
           <img
             src={imageUrl!}
             alt={label}
+            loading="lazy"
             onError={() => setFailed(true)}
             style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top center" }}
           />
@@ -282,6 +285,7 @@ function PitchPhoto({
         <img
           src={crestUrl}
           alt=""
+          loading="lazy"
           style={{
             position: "absolute", bottom: -2, right: -2,
             width: badgeSize, height: badgeSize,
