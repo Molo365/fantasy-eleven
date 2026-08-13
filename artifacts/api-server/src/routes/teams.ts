@@ -149,12 +149,20 @@ router.post("/teams/:id/players", asyncHandler(async (req, res) => {
     return;
   }
 
-  // Enforce max 3 players per club
+  // Fetch existing squad once — used for both duplicate and club-limit checks
   const existingPlayers = await db
-    .select({ club: playersTable.club })
+    .select({ club: playersTable.club, playerId: teamPlayersTable.playerId })
     .from(teamPlayersTable)
     .innerJoin(playersTable, eq(teamPlayersTable.playerId, playersTable.id))
     .where(eq(teamPlayersTable.teamId, params.data.id));
+
+  // Reject duplicate picks
+  if (existingPlayers.some((ep) => ep.playerId === parsed.data.playerId)) {
+    res.status(400).json({ error: "Player already in squad" });
+    return;
+  }
+
+  // Enforce max 3 players per club
   const nationCount = existingPlayers.filter((ep) => ep.club === player.club).length;
   if (nationCount >= 3) {
     res.status(400).json({ error: `Nation limit reached: max 3 players from ${player.club}` });

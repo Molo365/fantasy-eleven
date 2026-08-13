@@ -397,11 +397,13 @@ export function SquadBuilder() {
   }, []);
   const photoSize = Math.min(64, Math.max(44, Math.floor((vw - 540) / 5)));
 
-  /* Nation counts */
+  /* Nation counts + already-picked player IDs */
   const nationCounts: Record<string, number> = {};
+  const alreadyPickedIds = new Set<number>();
   for (const tp of teamPlayers ?? []) {
     const nation = tp.player.club;
     nationCounts[nation] = (nationCounts[nation] ?? 0) + 1;
+    alreadyPickedIds.add(tp.playerId);
   }
 
   if (loadingTeam || loadingPlayers) {
@@ -866,7 +868,7 @@ export function SquadBuilder() {
               <div className="text-center p-8 text-muted-foreground">No players found</div>
             ) : (
               <div className="space-y-1.5">
-                {available?.map((p) => {
+                {available?.filter((p) => !alreadyPickedIds.has(p.id)).map((p) => {
                   const pc = POS_COLOR[picker?.position ?? ""] ?? "#94a3b8";
                   const [kPri, kSec] = kitColors(p.club);
                   const nationFull = (nationCounts[p.club] ?? 0) >= 3;
