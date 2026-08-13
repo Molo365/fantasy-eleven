@@ -128,9 +128,9 @@ function TodayMatchesCard() {
 
       <div style={{ flex: 1, overflowY: "auto", maxHeight: 280 }}>
         {todayMatches.length === 0 ? (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 16px", textAlign: "center", gap: 8 }}>
-            <span style={{ fontSize: 22 }}>⚽</span>
-            <p style={{ fontSize: 12, color: "#5d7ba8" }}>No matches today</p>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 16px" }}>
+            <span style={{ fontSize: 14, lineHeight: 1 }}>⚽</span>
+            <p style={{ fontSize: 12, color: "#5d7ba8", margin: 0 }}>No matches today</p>
           </div>
         ) : (
           todayMatches.map((f: LiveFixture, i) => {
@@ -612,7 +612,7 @@ export function Dashboard() {
       {/* Content */}
       <div
         className="animate-in fade-in slide-in-from-bottom-4 duration-500"
-        style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", gap: 20, width: "100%", overflowX: "hidden" }}
+        style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", gap: 16, width: "100%", overflowX: "hidden" }}
       >
         {/* ── Hero header ── */}
         <div
@@ -643,7 +643,7 @@ export function Dashboard() {
             </div>
 
             {/* ── Stat cards ── */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, paddingBottom: 20 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, paddingBottom: 16 }}>
               {statCards.map(({ label, value, sub, subColor, Icon, variant, smallValue }) => {
                 const isGold    = variant === "gold";
                 const isCaptain = variant === "captain";
@@ -694,34 +694,34 @@ export function Dashboard() {
           </div>
         </div>
 
-        {/* ── 3-column grid ── */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <TodayMatchesCard />
-
-          {summary?.firstLeagueId != null ? (
-            <MyLeagueCard
-              leagueId={summary.firstLeagueId}
-              leagueName={summary.firstLeagueName ?? null}
-              teamId={teamId}
-            />
-          ) : (
-            <div style={{ ...CARD, display: "flex", alignItems: "center", justifyContent: "center", minHeight: 200 }}>
-              <div style={{ textAlign: "center", padding: "0 16px" }}>
-                <p style={{ fontSize: 12, color: "#5d7ba8", marginBottom: 8 }}>No league joined yet</p>
-                <Link href="/leagues" style={{ fontSize: 11, fontWeight: 700, color: "#7ab4ff" }}>Browse leagues →</Link>
-              </div>
-            </div>
-          )}
-
-          <TopPerformersCard />
-        </div>
-
-        {/* ── Squad strip or no-squad prompt ── */}
+        {/* ── My Squad ── */}
         {hasSquad && teamId ? (
           <SquadStrip teamId={teamId} />
         ) : (
           <NoSquadPrompt />
         )}
+
+        {/* ── My League ── */}
+        {summary?.firstLeagueId != null ? (
+          <MyLeagueCard
+            leagueId={summary.firstLeagueId}
+            leagueName={summary.firstLeagueName ?? null}
+            teamId={teamId}
+          />
+        ) : (
+          <div style={{ ...CARD, display: "flex", alignItems: "center", justifyContent: "center", minHeight: 200 }}>
+            <div style={{ textAlign: "center", padding: "0 16px" }}>
+              <p style={{ fontSize: 12, color: "#5d7ba8", marginBottom: 8 }}>No league joined yet</p>
+              <Link href="/leagues" style={{ fontSize: 11, fontWeight: 700, color: "#7ab4ff" }}>Browse leagues →</Link>
+            </div>
+          </div>
+        )}
+
+        {/* ── Top Performers ── */}
+        <TopPerformersCard />
+
+        {/* ── Today's Matches ── */}
+        <TodayMatchesCard />
 
       </div>
     </div>
