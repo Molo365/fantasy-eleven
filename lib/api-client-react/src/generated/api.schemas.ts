@@ -298,13 +298,13 @@ export interface TopPerformer {
 export interface SquadPlayer {
   playerId: number;
   name: string;
-  /** @nullable */
-  nationality?: string | null;
   position: string;
   slot: number;
   isCaptain: boolean;
   isViceCaptain: boolean;
   points: number;
+  imageUrl?: string | null;
+  crestUrl?: string | null;
 }
 
 export type ActivityItemType = typeof ActivityItemType[keyof typeof ActivityItemType];

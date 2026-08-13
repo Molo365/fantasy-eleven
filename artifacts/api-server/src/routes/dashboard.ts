@@ -161,6 +161,8 @@ router.get("/dashboard/squad", asyncHandler(async (req, res) => {
       points:        playersTable.totalPoints,
       name:          playersTable.name,
       position:      playersTable.position,
+      imageUrl:      playersTable.imageUrl,
+      crestUrl:      playersTable.crestUrl,
     })
     .from(teamPlayersTable)
     .innerJoin(playersTable, eq(teamPlayersTable.playerId, playersTable.id))

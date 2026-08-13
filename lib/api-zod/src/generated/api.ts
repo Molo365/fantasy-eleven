@@ -480,12 +480,13 @@ export const GetDashboardSquadQueryParams = zod.object({
 export const GetDashboardSquadResponseItem = zod.object({
   "playerId": zod.number(),
   "name": zod.string(),
-  "nationality": zod.string().nullish(),
   "position": zod.string(),
   "slot": zod.number(),
   "isCaptain": zod.boolean(),
   "isViceCaptain": zod.boolean(),
-  "points": zod.number()
+  "points": zod.number(),
+  "imageUrl": zod.string().nullish(),
+  "crestUrl": zod.string().nullish(),
 })
 export const GetDashboardSquadResponse = zod.array(GetDashboardSquadResponseItem)
 

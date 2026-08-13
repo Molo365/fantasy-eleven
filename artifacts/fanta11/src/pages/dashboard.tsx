@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   useGetDashboardSummary,
   getGetDashboardSummaryQueryKey,
@@ -343,6 +344,93 @@ function TopPerformersCard() {
   );
 }
 
+// ── Squad Player Card ─────────────────────────────────────────────────────────
+function SquadPlayerCard({ p }: { p: SquadPlayer }) {
+  const [imgFailed, setImgFailed] = useState(false);
+  const posColor  = POS_COLORS[p.position] ?? "#64748b";
+  const hasPoints = p.points > 0;
+  const lastName  = p.name.includes(" ") ? p.name.split(" ").slice(-1)[0] : p.name;
+  const showPhoto = !!p.imageUrl && !imgFailed;
+  const badgeSize = 18;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0, minWidth: 56 }}>
+      {/* Outer wrapper — not overflow-hidden so C/V badge can sit outside the circle */}
+      <div style={{ position: "relative", width: 52, height: 52 }}>
+        {/* Circle — overflow hidden to crop the photo */}
+        <div
+          style={{
+            width: 52, height: 52,
+            borderRadius: "50%",
+            border: `2.5px solid ${posColor}`,
+            overflow: "hidden",
+            background: showPhoto ? "#0a1628" : (hasPoints ? `${posColor}18` : "rgba(15,23,42,0.8)"),
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontWeight: 900, fontSize: 11, color: posColor, letterSpacing: "0.04em",
+          }}
+        >
+          {showPhoto ? (
+            <img
+              src={p.imageUrl!}
+              alt={p.name}
+              loading="lazy"
+              onError={() => setImgFailed(true)}
+              style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top center" }}
+            />
+          ) : (
+            p.position
+          )}
+        </div>
+
+        {/* Club crest badge — bottom-right of the circle */}
+        {showPhoto && p.crestUrl && (
+          <img
+            src={p.crestUrl}
+            alt=""
+            loading="lazy"
+            style={{
+              position: "absolute", bottom: -2, right: -2,
+              width: badgeSize, height: badgeSize,
+              objectFit: "contain",
+              background: "rgba(5,12,30,0.9)",
+              borderRadius: "50%",
+              padding: 2,
+              border: "1px solid rgba(255,255,255,0.12)",
+              boxShadow: "0 2px 5px rgba(0,0,0,0.6)",
+            }}
+          />
+        )}
+
+        {/* Captain badge */}
+        {p.isCaptain && (
+          <span style={{ position: "absolute", top: -4, right: -4, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "50%", fontWeight: 900, width: 16, height: 16, fontSize: 8, background: "#f59e0b", color: "#000", zIndex: 2 }}>
+            C
+          </span>
+        )}
+        {p.isViceCaptain && !p.isCaptain && (
+          <span style={{ position: "absolute", top: -4, right: -4, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "50%", fontWeight: 900, width: 16, height: 16, fontSize: 8, background: "#64748b", color: "#fff", zIndex: 2 }}>
+            V
+          </span>
+        )}
+      </div>
+
+      {/* Position badge — visible only when photo is shown (otherwise the circle already shows it) */}
+      {showPhoto && (
+        <span style={{ fontSize: 8, fontWeight: 800, color: posColor, marginTop: 3, letterSpacing: "0.08em" }}>
+          {p.position}
+        </span>
+      )}
+
+      <p className="truncate" style={{ marginTop: showPhoto ? 1 : 6, textAlign: "center", fontWeight: 600, fontSize: 10, color: "#cbd5e1", maxWidth: 56 }}>
+        {lastName}
+      </p>
+      <p style={{ fontWeight: 900, fontSize: 10, color: hasPoints ? "#22c55e" : "#475569", marginTop: 1 }}>
+        {p.points} pts
+      </p>
+    </div>
+  );
+}
+
 // ── Squad Strip ───────────────────────────────────────────────────────────────
 function SquadStrip({ teamId }: { teamId: number }) {
   const { data: squad } = useGetDashboardSquad(
@@ -374,47 +462,9 @@ function SquadStrip({ teamId }: { teamId: number }) {
             WebkitOverflowScrolling: "touch",
           } as React.CSSProperties}
         >
-          {squadList.map((p) => {
-          const posColor = POS_COLORS[p.position] ?? "#64748b";
-          const hasPoints = p.points > 0;
-          const lastName = p.name.includes(" ") ? p.name.split(" ").slice(-1)[0] : p.name;
-          // Show position (GK / DEF / MID / FWD) in the circle — nationality is "premier_league"
-          // for all PL players and would display as "PRE", which is meaningless to the user.
-          const posLabel = p.position ?? "—";
-
-          return (
-            <div key={p.playerId} style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0, minWidth: 56 }}>
-              <div
-                style={{
-                  position: "relative", display: "flex", alignItems: "center", justifyContent: "center",
-                  borderRadius: "50%", fontWeight: 900,
-                  width: 52, height: 52,
-                  background: hasPoints ? `${posColor}18` : "rgba(15,23,42,0.8)",
-                  border: `2.5px solid ${posColor}`,
-                  fontSize: 11, color: posColor, letterSpacing: "0.04em",
-                }}
-              >
-                {posLabel}
-                {p.isCaptain && (
-                  <span style={{ position: "absolute", top: -4, right: -4, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "50%", fontWeight: 900, width: 16, height: 16, fontSize: 8, background: "#f59e0b", color: "#000" }}>
-                    C
-                  </span>
-                )}
-                {p.isViceCaptain && !p.isCaptain && (
-                  <span style={{ position: "absolute", top: -4, right: -4, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "50%", fontWeight: 900, width: 16, height: 16, fontSize: 8, background: "#64748b", color: "#fff" }}>
-                    V
-                  </span>
-                )}
-              </div>
-              <p className="truncate" style={{ marginTop: 6, textAlign: "center", fontWeight: 600, fontSize: 10, color: "#cbd5e1", maxWidth: 56 }}>
-                {lastName}
-              </p>
-              <p style={{ fontWeight: 900, fontSize: 10, color: hasPoints ? "#22c55e" : "#475569", marginTop: 1 }}>
-                {p.points} pts
-              </p>
-            </div>
-          );
-        })}
+          {squadList.map((p) => (
+            <SquadPlayerCard key={p.playerId} p={p} />
+          ))}
         </div>
 
         {/* Right-edge fade — signals horizontally scrollable content */}
