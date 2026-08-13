@@ -1,0 +1,17 @@
+Redesign the Dashboard page's visual style using a navy-blue-and-gold color system pulled from the Fanta11 crest, replacing the current flat single-navy look. Apply these changes to the Dashboard page only for now (Squad Builder, Player Pool, Leaderboard will follow once this is approved):
+
+1. Hero header ("Command Center" section): Replace the current stadium photo background with a layered gradient — deep navy base (#0a1530 to #132348), with a soft gold radial glow in one corner (rgba(255,196,54,0.22)) and a soft blue radial glow in another corner (rgba(93,156,236,0.28)). Add a subtle border using rgba(122,180,255,0.3).
+
+2. Global Rank card: make this the visual focal point — gold gradient background (#ffd873 to #e8a627), dark text (#2a1900) for contrast, subtle gold glow shadow (box-shadow with rgba(255,196,54,0.5)).
+
+3. GW Points and Budget cards: use a royal-blue gradient background (#1a2c54 to #101d3a) with a subtle blue border (rgba(93,156,236,0.3)), icons in light blue (#7ab4ff), muted label text (#8fa3c9), white value text.
+
+4. Captain card: same royal-blue card background, but with a gold border (rgba(255,196,54,0.35)) and a gold gradient circular icon badge (same gold gradient as the rank card) to visually tie the captain to "gold-tier" importance. Show the captain's point total in gold (#ffc436).
+
+5. Top Performers section: add a two-tone gradient border (gold-to-blue diagonal, #ffc436 to #7ab4ff) around a callout/highlight card for the #1 top performer specifically, with a flame icon in gold.
+
+6. Bottom navigation bar: change the active tab's icon and label color to gold (#ffc436) instead of the current blue, inactive tabs stay a muted blue-gray (#5d7ba8).
+
+7. Empty states ("No matches today", "No league joined yet"): keep the existing card structure but ensure text/icon colors match this new palette (muted blue-gray, not plain gray), and make sure any CTA buttons use the blue accent background.
+
+Do not change any functionality, data, or layout structure — this is a visual/color-only pass on the Dashboard page. View the current Dashboard component styling first and confirm your plan before writing any code.
