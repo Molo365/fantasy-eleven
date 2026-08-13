@@ -1,6 +1,6 @@
 [build]
 builder = "nixpacks"
-installCommand = "pnpm install --no-frozen-lockfile"
+installCommand = "NODE_ENV=development pnpm install --no-frozen-lockfile"
 buildCommand = "pnpm run -C artifacts/fanta11 build && pnpm run -C artifacts/api-server build"
 
 [deploy]
@@ -8,3 +8,4 @@ startCommand = "node --enable-source-maps /app/artifacts/api-server/dist/index.m
 
 [variables]
 NIXPACKS_NODE_VERSION = "20"
+BASE_PATH = "/"
