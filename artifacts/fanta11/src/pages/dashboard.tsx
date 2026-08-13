@@ -130,7 +130,7 @@ function TodayMatchesCard() {
         {todayMatches.length === 0 ? (
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 16px", textAlign: "center", gap: 8 }}>
             <span style={{ fontSize: 22 }}>⚽</span>
-            <p style={{ fontSize: 12, color: "#475569" }}>No matches today</p>
+            <p style={{ fontSize: 12, color: "#5d7ba8" }}>No matches today</p>
           </div>
         ) : (
           todayMatches.map((f: LiveFixture, i) => {
@@ -236,7 +236,7 @@ function MyLeagueCard({ leagueId, leagueName, teamId }: { leagueId: number; leag
             ))}
           </div>
         ) : !rows?.length ? (
-          <p style={{ textAlign: "center", padding: "32px 0", fontSize: 12, color: "#475569" }}>No members yet.</p>
+          <p style={{ textAlign: "center", padding: "32px 0", fontSize: 12, color: "#5d7ba8" }}>No members yet.</p>
         ) : (
           (rows as LeaderboardEntry[]).map((row) => {
             const isMe = row.teamId === teamId;
@@ -285,15 +285,15 @@ function TopPerformersCard() {
   });
 
   const MEDAL_STYLES = [
-    { bg: "rgba(245,158,11,0.18)", border: "rgba(245,158,11,0.45)", pts: "#f59e0b" },
-    { bg: "rgba(255,255,255,0.08)", border: "rgba(255,255,255,0.18)", pts: "#e2e8f0" },
-    { bg: "rgba(255,255,255,0.05)", border: "rgba(255,255,255,0.10)", pts: "#94a3b8" },
+    { bg: "rgba(255,196,54,0.08)", pts: "#ffc436" },
+    { bg: "rgba(255,255,255,0.06)", pts: "#e2e8f0" },
+    { bg: "rgba(255,255,255,0.03)", pts: "#8fa3c9" },
   ];
 
   return (
     <div style={{ ...CARD, display: "flex", flexDirection: "column" }}>
       <div style={{ padding: "16px 16px 12px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-        <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: "#94a3b8" }}>
+        <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: "#8fa3c9" }}>
           Top Performers
         </span>
       </div>
@@ -302,33 +302,36 @@ function TopPerformersCard() {
         {!performers?.length ? (
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 0", gap: 8 }}>
             <span style={{ fontSize: 22 }}>🏆</span>
-            <p style={{ fontSize: 12, color: "#475569" }}>No scores yet</p>
+            <p style={{ fontSize: 12, color: "#5d7ba8" }}>No scores yet</p>
           </div>
         ) : (
           (performers as TopPerformer[]).map((p, i) => {
             const medal = MEDAL_STYLES[i] ?? MEDAL_STYLES[2];
-            return (
+            const isTop = i === 0;
+            const inner = (
               <div
-                key={p.id}
                 style={{
                   display: "flex", alignItems: "center", gap: 12,
-                  padding: "10px 12px", borderRadius: 8, marginBottom: 4,
-                  background: medal.bg, border: `1px solid ${medal.border}`,
+                  padding: "10px 12px", borderRadius: isTop ? 7 : 8,
+                  background: medal.bg,
+                  ...(isTop ? {} : { border: "1px solid rgba(255,255,255,0.08)" }),
                 }}
               >
                 <div
                   style={{
                     display: "flex", alignItems: "center", justifyContent: "center",
                     flexShrink: 0, borderRadius: "50%",
-                    width: 36, height: 36, background: "rgba(0,0,0,0.3)",
-                    border: `2px solid ${medal.border}`, fontSize: 16,
+                    width: 36, height: 36,
+                    background: isTop ? "linear-gradient(135deg, #ffd873, #e8a627)" : "rgba(0,0,0,0.3)",
+                    border: isTop ? "none" : "2px solid rgba(255,255,255,0.12)",
+                    fontSize: 16,
                   }}
                 >
-                  ⚽
+                  {isTop ? "🔥" : "⚽"}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p className="truncate" style={{ fontSize: 14, fontWeight: 700, color: "#f1f5f9" }}>{p.name}</p>
-                  <p style={{ fontSize: 10, color: "#64748b", marginTop: 1 }}>
+                  <p style={{ fontSize: 10, color: "#5d7ba8", marginTop: 1 }}>
                     {p.nationality ?? "—"} · {p.position}
                   </p>
                 </div>
@@ -336,6 +339,21 @@ function TopPerformersCard() {
                   {p.totalPoints}
                 </span>
               </div>
+            );
+
+            return isTop ? (
+              /* gradient border for #1 via 1px padding wrapper */
+              <div
+                key={p.id}
+                style={{
+                  padding: 1, borderRadius: 9, marginBottom: 4,
+                  background: "linear-gradient(135deg, #ffc436, #7ab4ff)",
+                }}
+              >
+                {inner}
+              </div>
+            ) : (
+              <div key={p.id} style={{ marginBottom: 4 }}>{inner}</div>
             );
           })
         )}
@@ -493,7 +511,7 @@ function NoSquadPrompt() {
           <ShieldHalf size={28} style={{ color: "#3b82f6" }} />
         </div>
         <h2 style={{ fontSize: 20, fontWeight: 900, marginBottom: 8, color: "#f1f5f9" }}>No squad picked yet</h2>
-        <p style={{ color: "#64748b", fontSize: 13, marginBottom: 20 }}>Build your team of 11 players to compete.</p>
+        <p style={{ color: "#5d7ba8", fontSize: 13, marginBottom: 20 }}>Build your team of 11 players to compete.</p>
         <Link href="/squad">
           <button
             style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 20px", borderRadius: 12, fontWeight: 700, fontSize: 14, background: "linear-gradient(135deg, #2563eb, #3b82f6)", color: "#fff", boxShadow: "0 4px 20px rgba(59,130,246,0.35)", border: "none", cursor: "pointer" }}
@@ -550,35 +568,34 @@ export function Dashboard() {
       label: "GW Points",
       value: String(summary?.gameweekPoints ?? 0),
       sub: summary?.gameweekPoints ? "↑ Active GW" : "",
-      subColor: "#22c55e",
+      subColor: "#8fa3c9",
       Icon: TrendingUp,
-      accent: "#06b6d4",
+      variant: "blue" as const,
     },
     {
       label: "Global Rank",
       value: summary?.globalRank != null ? `#${summary.globalRank.toLocaleString()}` : "—",
       sub: summary?.globalRank != null ? `of ${summary.leagueCount > 0 ? `${summary.leagueCount + 1} managers` : "managers"}` : "Pending",
-      subColor: "#f59e0b",
+      subColor: "#7a5200",
       Icon: Trophy,
-      accent: "#f59e0b",
-      bigAccent: true,
+      variant: "gold" as const,
     },
     {
       label: "Captain",
       value: summary?.captainName ?? "None",
-      sub: `${summary?.captainPoints ?? 0} pts · ${summary?.captainName ? "ENG" : "—"}`,
-      subColor: "#94a3b8",
+      sub: `${summary?.captainPoints ?? 0} pts`,
+      subColor: "#ffc436",
       Icon: Users,
-      accent: "#a78bfa",
+      variant: "captain" as const,
       smallValue: true,
     },
     {
       label: "Budget",
       value: `£${(summary?.budgetRemaining ?? 100).toFixed(1)}m`,
       sub: "Available",
-      subColor: "#94a3b8",
+      subColor: "#8fa3c9",
       Icon: Wallet,
-      accent: "#22c55e",
+      variant: "blue" as const,
     },
   ];
 
@@ -586,18 +603,12 @@ export function Dashboard() {
     <div
       style={{
         position: "relative",
-        backgroundImage: "url('/stadium-bg.jpg')",
-        backgroundSize: "cover",
-        backgroundPosition: "center top",
-        backgroundAttachment: "fixed",
+        background: "linear-gradient(180deg, #0a1530 0%, #132348 100%)",
         width: "100%",
         maxWidth: "100%",
         overflowX: "hidden",
       }}
     >
-      {/* Dark overlay */}
-      <div style={{ position: "absolute", inset: 0, background: "rgba(4,8,20,0.72)", pointerEvents: "none", zIndex: 0 }} />
-
       {/* Content */}
       <div
         className="animate-in fade-in slide-in-from-bottom-4 duration-500"
@@ -607,18 +618,21 @@ export function Dashboard() {
         <div
           style={{
             position: "relative", borderRadius: 16, overflow: "hidden",
-            backgroundImage: "url('/stadium-bg.jpg')", backgroundSize: "cover",
-            backgroundPosition: "center 30%", minHeight: 140,
+            background: "linear-gradient(135deg, #0a1530 0%, #132348 100%)",
+            border: "1px solid rgba(122,180,255,0.3)",
+            minHeight: 140,
           }}
         >
-          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(4,10,24,0.55) 0%, rgba(4,10,24,0.85) 60%, rgba(4,10,24,0.97) 100%)" }} />
-          <div style={{ position: "absolute", inset: 0, pointerEvents: "none", background: "radial-gradient(ellipse at 50% 0%, rgba(239,68,68,0.10) 0%, transparent 70%)" }} />
+          {/* Gold radial glow — top-right */}
+          <div style={{ position: "absolute", inset: 0, pointerEvents: "none", background: "radial-gradient(ellipse at 90% 10%, rgba(255,196,54,0.22) 0%, transparent 55%)" }} />
+          {/* Blue radial glow — bottom-left */}
+          <div style={{ position: "absolute", inset: 0, pointerEvents: "none", background: "radial-gradient(ellipse at 10% 90%, rgba(93,156,236,0.28) 0%, transparent 55%)" }} />
 
           <div style={{ position: "relative", zIndex: 10, padding: "24px 16px 0" }}>
             <div style={{ marginBottom: 20 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                <Zap size={13} color="#06b6d4" style={{ filter: "drop-shadow(0 0 5px #06b6d4)" }} />
-                <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.16em", textTransform: "uppercase", color: "#06b6d4" }}>
+                <Zap size={13} color="#ffc436" style={{ filter: "drop-shadow(0 0 5px rgba(255,196,54,0.7))" }} />
+                <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.16em", textTransform: "uppercase", color: "#ffc436" }}>
                   Live Overview
                 </span>
               </div>
@@ -630,37 +644,52 @@ export function Dashboard() {
 
             {/* ── Stat cards ── */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, paddingBottom: 20 }}>
-              {statCards.map(({ label, value, sub, subColor, Icon, accent, smallValue, bigAccent }) => (
-                <div
-                  key={label}
-                  style={{
-                    position: "relative", overflow: "hidden", borderRadius: 10,
-                    background: "rgba(8,17,40,0.76)",
-                    backdropFilter: "blur(16px)",
-                    border: `1px solid ${accent}28`,
-                    boxShadow: `0 2px 12px rgba(0,0,0,0.35), 0 0 10px ${accent}0e`,
-                    minHeight: 100,
-                  }}
-                >
-                  <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 1, background: `linear-gradient(90deg, transparent, ${accent}77, transparent)` }} />
-                  <div style={{ position: "absolute", top: -14, right: -14, width: 48, height: 48, borderRadius: "50%", opacity: 0.15, pointerEvents: "none", background: accent, filter: "blur(14px)" }} />
-                  <div style={{ padding: "10px 12px", position: "relative", zIndex: 10 }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                      <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.10em", textTransform: "uppercase", color: "#475569" }}>{label}</span>
-                      <div style={{ width: 22, height: 22, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", background: `${accent}18`, border: `1px solid ${accent}30` }}>
-                        <Icon size={11} style={{ color: accent }} />
+              {statCards.map(({ label, value, sub, subColor, Icon, variant, smallValue }) => {
+                const isGold    = variant === "gold";
+                const isCaptain = variant === "captain";
+                const isBlue    = variant === "blue";
+
+                const cardBg     = isGold ? "linear-gradient(135deg, #ffd873 0%, #e8a627 100%)" : "linear-gradient(135deg, #1a2c54 0%, #101d3a 100%)";
+                const cardBorder = isGold ? "1px solid rgba(255,196,54,0.5)" : isCaptain ? "1px solid rgba(255,196,54,0.35)" : "1px solid rgba(93,156,236,0.3)";
+                const cardShadow = isGold ? "0 4px 20px rgba(255,196,54,0.35)" : "0 2px 12px rgba(0,0,0,0.4)";
+                const labelColor = isGold ? "#7a5200" : "#8fa3c9";
+                const valueColor = isGold ? "#2a1900" : "#f1f5f9";
+
+                const iconBg     = isGold ? "rgba(0,0,0,0.15)" : isCaptain ? "linear-gradient(135deg, #ffd873, #e8a627)" : "rgba(122,180,255,0.12)";
+                const iconBorder = isGold ? "1px solid rgba(0,0,0,0.2)" : isCaptain ? "1px solid rgba(255,196,54,0.4)" : "1px solid rgba(122,180,255,0.25)";
+                const iconColor  = isGold ? "#2a1900" : isCaptain ? "#2a1900" : "#7ab4ff";
+
+                return (
+                  <div
+                    key={label}
+                    style={{
+                      position: "relative", overflow: "hidden", borderRadius: 10,
+                      background: cardBg,
+                      border: cardBorder,
+                      boxShadow: cardShadow,
+                      minHeight: 100,
+                    }}
+                  >
+                    {/* Subtle top-edge shimmer for non-gold cards */}
+                    {!isGold && <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 1, background: isCaptain ? "linear-gradient(90deg, transparent, rgba(255,196,54,0.5), transparent)" : "linear-gradient(90deg, transparent, rgba(122,180,255,0.4), transparent)" }} />}
+                    <div style={{ padding: "10px 12px", position: "relative", zIndex: 10 }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                        <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.10em", textTransform: "uppercase", color: labelColor }}>{label}</span>
+                        <div style={{ width: 22, height: 22, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", background: iconBg, border: iconBorder }}>
+                          <Icon size={11} style={{ color: iconColor }} />
+                        </div>
                       </div>
+                      <div
+                        className="font-black leading-none tracking-tight"
+                        style={{ fontSize: smallValue ? 14 : 20, fontFamily: smallValue ? "inherit" : "monospace", color: valueColor }}
+                      >
+                        {value}
+                      </div>
+                      <div style={{ fontSize: 9, color: subColor ?? "#8fa3c9", marginTop: 4, fontWeight: 600 }}>{sub}</div>
                     </div>
-                    <div
-                      className="font-black leading-none tracking-tight"
-                      style={{ fontSize: smallValue ? 14 : 20, fontFamily: smallValue ? "inherit" : "monospace", color: bigAccent ? accent : "#f1f5f9" }}
-                    >
-                      {value}
-                    </div>
-                    <div style={{ fontSize: 9, color: subColor ?? "#94a3b8", marginTop: 4, fontWeight: 600 }}>{sub}</div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
@@ -678,8 +707,8 @@ export function Dashboard() {
           ) : (
             <div style={{ ...CARD, display: "flex", alignItems: "center", justifyContent: "center", minHeight: 200 }}>
               <div style={{ textAlign: "center", padding: "0 16px" }}>
-                <p style={{ fontSize: 12, color: "#475569", marginBottom: 8 }}>No league joined yet</p>
-                <Link href="/leagues" style={{ fontSize: 11, fontWeight: 700, color: "#06b6d4" }}>Browse leagues →</Link>
+                <p style={{ fontSize: 12, color: "#5d7ba8", marginBottom: 8 }}>No league joined yet</p>
+                <Link href="/leagues" style={{ fontSize: 11, fontWeight: 700, color: "#7ab4ff" }}>Browse leagues →</Link>
               </div>
             </div>
           )}

@@ -308,11 +308,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <a
               key={href}
               href={href}
-              className={`flex-1 flex flex-col items-center justify-center py-2 gap-0.5 text-[10px] font-medium transition-colors ${
-                active ? "text-primary" : "text-blue-200/50"
-              }`}
+              className="flex-1 flex flex-col items-center justify-center py-2 gap-0.5 text-[10px] font-medium transition-colors"
+              style={{ color: active ? "#ffc436" : "#5d7ba8" }}
             >
-              <Icon size={20} />
+              <Icon size={20} style={{ color: active ? "#ffc436" : "#5d7ba8" }} />
               <span>{label}</span>
             </a>
           );
