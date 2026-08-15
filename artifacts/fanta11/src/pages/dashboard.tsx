@@ -1,4 +1,5 @@
 import { useState } from "react";
+import grassImg from "@/assets/Grass.jpg";
 import {
   useGetDashboardSummary,
   getGetDashboardSummaryQueryKey,
@@ -618,7 +619,9 @@ export function Dashboard() {
         <div
           style={{
             position: "relative", borderRadius: 16, overflow: "hidden",
-            background: "linear-gradient(135deg, #0a1530 0%, #132348 100%)",
+            backgroundImage: `linear-gradient(135deg, rgba(10,21,48,0.55) 0%, rgba(19,35,72,0.60) 100%), url(${grassImg})`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
             border: "1px solid rgba(122,180,255,0.3)",
             minHeight: 140,
           }}
