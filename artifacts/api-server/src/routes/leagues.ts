@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { eq, count, inArray } from "drizzle-orm";
-import { db, leaguesTable, leagueTeamsTable, teamsTable, usersTable } from "@workspace/db";
+import { and, eq, count, inArray } from "drizzle-orm";
+import { db, leaguesTable, leagueTeamsTable, teamsTable, usersTable, gameweeksTable, gameweekTeamScoresTable } from "@workspace/db";
 import {
   CreateLeagueBody,
   GetLeagueParams,
@@ -104,6 +104,14 @@ router.get("/leagues/:id/leaderboard", async (req, res): Promise<void> => {
     res.json([]);
     return;
   }
+  // Find the active gameweek so we can show its per-team score in the GW Pts column.
+  // If no gameweek is active (e.g. between rounds) the column falls back to 0.
+  const [activeGw] = await db
+    .select({ id: gameweeksTable.id })
+    .from(gameweeksTable)
+    .where(eq(gameweeksTable.status, "active"))
+    .limit(1);
+
   const rows = await db
     .select({
       id:              teamsTable.id,
@@ -112,20 +120,28 @@ router.get("/leagues/:id/leaderboard", async (req, res): Promise<void> => {
       managerName:     teamsTable.managerName,
       userDisplayName: usersTable.displayName,
       username:        usersTable.username,
+      gameweekPoints:  gameweekTeamScoresTable.points,
     })
     .from(teamsTable)
     .leftJoin(usersTable, eq(teamsTable.userId, usersTable.id))
+    .leftJoin(
+      gameweekTeamScoresTable,
+      and(
+        eq(gameweekTeamScoresTable.teamId, teamsTable.id),
+        activeGw ? eq(gameweekTeamScoresTable.gameweekId, activeGw.id) : eq(gameweekTeamScoresTable.gameweekId, -1),
+      ),
+    )
     .where(inArray(teamsTable.id, teamIds));
 
   const ranked = rows
     .sort((a, b) => b.totalPoints - a.totalPoints)
     .map((t, i) => ({
-      rank:          i + 1,
-      teamId:        t.id,
-      teamName:      t.userDisplayName ?? t.teamName,
-      managerName:   t.username        ?? t.managerName,
-      totalPoints:   t.totalPoints,
-      gameweekPoints: 0,
+      rank:           i + 1,
+      teamId:         t.id,
+      teamName:       t.userDisplayName ?? t.teamName,
+      managerName:    t.username        ?? t.managerName,
+      totalPoints:    t.totalPoints,
+      gameweekPoints: t.gameweekPoints  ?? 0,
     }));
   res.json(GetLeagueLeaderboardResponse.parse(ranked));
 });
