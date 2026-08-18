@@ -2,6 +2,7 @@ import app from "./app";
 import { logger } from "./lib/logger";
 import { db, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import { startScheduler } from "./lib/scheduler";
 
 // Catch async errors that escape Express (e.g. route handlers without try/catch
 // that haven't been wrapped with asyncHandler yet) so the full Postgres error
@@ -49,4 +50,6 @@ app.listen(port, (err) => {
   ensureAdminRoles().catch((e) =>
     logger.error({ err: e }, "Failed to ensure admin roles"),
   );
+
+  startScheduler();
 });
