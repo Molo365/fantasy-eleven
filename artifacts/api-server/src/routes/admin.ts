@@ -348,16 +348,28 @@ router.post("/admin/sync-fpl", requireAdmin, async (req, res): Promise<void> => 
       fplData.teams.map(t => [t.id, { name: t.name, short: t.short_name, code: t.code }])
     );
 
-    // Replace existing PL players only (cascade handles any squad entries)
-    const [{ cleared }] = await db
-      .select({ cleared: count() })
+    // ── UPSERT strategy ────────────────────────────────────────────────────────
+    // We never DELETE premier_league player rows. Deleting triggers ON DELETE
+    // CASCADE on team_players, wiping every user's squad. Instead we:
+    //   • UPDATE existing rows in-place by their DB primary key (id never changes)
+    //   • INSERT only genuinely new players (new FPL externalId not yet in the DB)
+    // Retired players that no longer appear in the FPL feed are left untouched —
+    // stale data is harmless, squad references are intact.
+
+    // Build a Map of externalId → existing DB row id for all PL players.
+    const existingRows = await db
+      .select({ id: playersTable.id, externalId: playersTable.externalId })
       .from(playersTable)
       .where(eq(playersTable.nationality, "premier_league"));
-    await db.delete(playersTable).where(eq(playersTable.nationality, "premier_league"));
 
-    let inserted = 0, skipped = 0;
+    const existingMap = new Map<number, number>(); // externalId → db id
+    for (const row of existingRows) {
+      if (row.externalId != null) existingMap.set(row.externalId, row.id);
+    }
+
+    let updated = 0, inserted = 0, skipped = 0;
     let firstSkipReason = "";
-    let firstInsertError = "";
+    let firstError = "";
     const now = new Date();
 
     for (const el of fplData.elements) {
@@ -370,34 +382,59 @@ router.post("/admin/sync-fpl", requireAdmin, async (req, res): Promise<void> => 
       }
 
       const fullName = `${el.first_name} ${el.second_name}`.trim();
+      const imageUrl = `https://resources.premierleague.com/premierleague/photos/players/110x140/p${el.code}.png`;
+      const crestUrl = `https://resources.premierleague.com/premierleague/badges/70/t${team.code}.png`;
+      const price    = Math.round((el.now_cost / 10) * 10) / 10;
 
       try {
-        await db.insert(playersTable).values({
-          externalId: el.id,
-          name: fullName,
-          position: pos,
-          club: team.name,
-          clubShortName: team.short,
-          nationality: "premier_league", // league tag — no league column in schema
-          price: Math.round((el.now_cost / 10) * 10) / 10,
-          totalPoints: el.total_points,
-          imageUrl: `https://resources.premierleague.com/premierleague/photos/players/110x140/p${el.code}.png`,
-          crestUrl: `https://resources.premierleague.com/premierleague/badges/70/t${team.code}.png`,
-          cachedFromApi: true,
-          cachedAt: now,
-        });
-        inserted++;
-      } catch (insertErr) {
-        if (!firstInsertError) {
-          firstInsertError = String(insertErr instanceof Error ? insertErr.stack ?? insertErr.message : insertErr);
-          req.log.error({ firstInsertError }, "FPL sync: first insert error");
+        const existingDbId = existingMap.get(el.id);
+
+        if (existingDbId != null) {
+          // Player already in DB — update in place. Primary key (id) is unchanged,
+          // so team_players references are never invalidated.
+          await db.update(playersTable)
+            .set({
+              name: fullName,
+              position: pos,
+              club: team.name,
+              clubShortName: team.short,
+              price,
+              totalPoints: el.total_points,
+              imageUrl,
+              crestUrl,
+              cachedAt: now,
+            })
+            .where(eq(playersTable.id, existingDbId));
+          updated++;
+        } else {
+          // Genuinely new player — safe to insert.
+          await db.insert(playersTable).values({
+            externalId: el.id,
+            name: fullName,
+            position: pos,
+            club: team.name,
+            clubShortName: team.short,
+            nationality: "premier_league",
+            price,
+            totalPoints: el.total_points,
+            imageUrl,
+            crestUrl,
+            cachedFromApi: true,
+            cachedAt: now,
+          });
+          inserted++;
+        }
+      } catch (err) {
+        if (!firstError) {
+          firstError = String(err instanceof Error ? err.stack ?? err.message : err);
+          req.log.error({ firstError }, "FPL sync: first upsert error");
         }
         skipped++;
       }
     }
 
-    req.log.info({ cleared: Number(cleared), inserted, skipped, firstSkipReason, firstInsertError }, "FPL Premier League player sync complete");
-    res.json({ ok: true, cleared: Number(cleared), inserted, skipped, firstSkipReason: firstSkipReason || null, firstInsertError: firstInsertError || null });
+    req.log.info({ updated, inserted, skipped, firstSkipReason, firstError }, "FPL Premier League player sync complete (upsert)");
+    res.json({ ok: true, updated, inserted, skipped, firstSkipReason: firstSkipReason || null, firstError: firstError || null });
   } catch (err) {
     req.log.error({ err }, "FPL player sync failed");
     res.status(500).json({ error: String(err) });
