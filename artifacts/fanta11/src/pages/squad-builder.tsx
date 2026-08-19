@@ -847,13 +847,16 @@ export function SquadBuilder() {
 
       {/* ── Player picker dialog (shared) ── */}
       <Dialog open={!!picker} onOpenChange={(open) => { if (!open) setPicker(null); }}>
-        <DialogContent className="sm:max-w-[520px]">
+        <DialogContent
+          className="!flex !h-[calc(100dvh-1rem)] !max-h-[calc(100dvh-1rem)] !w-[calc(100vw-1rem)] !max-w-[calc(100vw-1rem)] min-h-0 flex-col gap-3 overflow-hidden p-4 sm:!h-auto sm:!max-h-[calc(100vh-2rem)] sm:!w-full sm:!max-w-[520px] sm:p-6"
+        >
           <DialogHeader>
             <DialogTitle>Select {picker?.position}</DialogTitle>
           </DialogHeader>
-          <div className="relative mt-2">
+          <div className="relative mt-2 shrink-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
+              data-testid="input-player-search"
               placeholder="Search player…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -861,7 +864,7 @@ export function SquadBuilder() {
               autoFocus
             />
           </div>
-          <ScrollArea className="h-[min(360px,45vh)] mt-3 pr-3">
+          <ScrollArea className="min-h-0 flex-1 mt-3 pr-3 overscroll-contain">
             {loadingAvail ? (
               <div className="flex justify-center p-8"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
             ) : (available?.length ?? 0) === 0 ? (
@@ -875,6 +878,7 @@ export function SquadBuilder() {
                   return (
                     <div
                       key={p.id}
+                      data-testid={`player-row-${p.id}`}
                       className="flex items-center justify-between p-2.5 rounded-lg border border-border hover:bg-secondary/40 transition-colors"
                       style={nationFull ? { opacity: 0.55 } : undefined}
                     >
@@ -905,6 +909,7 @@ export function SquadBuilder() {
                           <div className="text-xs font-mono" style={{ color: pc }}>{p.totalPoints} pts</div>
                         </div>
                         <Button
+                          data-testid={`button-add-player-${p.id}`}
                           size="sm"
                           disabled={addMut.isPending || nationFull}
                           onClick={() => {
