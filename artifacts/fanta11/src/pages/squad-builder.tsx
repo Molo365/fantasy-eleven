@@ -848,7 +848,7 @@ export function SquadBuilder() {
       {/* ── Player picker dialog (shared) ── */}
       <Dialog open={!!picker} onOpenChange={(open) => { if (!open) setPicker(null); }}>
         <DialogContent
-          className="!flex !h-[calc(100dvh-1rem)] !max-h-[calc(100dvh-1rem)] !w-[calc(100vw-1rem)] !max-w-[calc(100vw-1rem)] min-h-0 flex-col gap-3 overflow-hidden p-4 sm:!h-auto sm:!max-h-[calc(100vh-2rem)] sm:!w-full sm:!max-w-[520px] sm:p-6"
+          className="!flex !h-[calc(100dvh-1rem)] !max-h-[calc(100dvh-1rem)] !w-[calc(100vw-1rem)] !max-w-[calc(100vw-1rem)] min-h-0 flex-col gap-3 overflow-hidden p-4 sm:!h-[min(680px,calc(100vh-2rem))] sm:!max-h-[calc(100vh-2rem)] sm:!w-full sm:!max-w-[520px] sm:p-6"
         >
           <DialogHeader>
             <DialogTitle>Select {picker?.position}</DialogTitle>
