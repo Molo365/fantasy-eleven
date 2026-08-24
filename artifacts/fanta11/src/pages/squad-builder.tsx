@@ -110,34 +110,51 @@ function EmptyJersey({ posColor, size = 54 }: { posColor: string; size?: number 
   );
 }
 
-/* ─── Player photo with Jersey fallback ──────────────────────────── */
+function playerInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+}
+
+/* ─── Player photo with initials fallback ───────────────────────── */
 function PlayerPhoto({
-  imageUrl, crestUrl, primary, secondary, label, size = 62,
+  imageUrl, crestUrl, primary, secondary, label, name, position, size = 62,
 }: {
   imageUrl?: string | null;
   crestUrl?: string | null;
-  primary: string; secondary: string; label: string; size?: number;
+  primary: string; secondary: string; label: string; name: string; position: string; size?: number;
 }) {
   const [failed, setFailed] = useState(false);
   const badgeSize = Math.round(size * 0.38);
-  if (!imageUrl || failed) {
-    return <Jersey primary={primary} secondary={secondary} label={label} size={size} />;
-  }
+  const showImage = !!imageUrl && !failed;
+  const positionColor = POS_COLOR[position] ?? primary;
   return (
     <div style={{ position: "relative", width: size, height: size, flexShrink: 0 }}>
       <div style={{
         width: size, height: size, borderRadius: "50%", overflow: "hidden",
-        border: `2px solid ${primary}55`,
+        border: `2px solid ${showImage ? `${primary}55` : positionColor}`,
         boxShadow: "0 4px 14px rgba(0,0,0,0.55)",
-        background: "#0a1628",
+        background: showImage ? "#0a1628" : `${positionColor}2e`,
+        display: "flex", alignItems: "center", justifyContent: "center",
       }}>
-        <img
-          src={imageUrl}
-          alt={label}
-          loading="lazy"
-          onError={() => setFailed(true)}
-          style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top center" }}
-        />
+        {showImage ? (
+          <img
+            src={imageUrl!}
+            alt={name}
+            loading="lazy"
+            onError={() => setFailed(true)}
+            style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top center" }}
+          />
+        ) : (
+          <span style={{
+            color: positionColor, fontWeight: 900,
+            fontSize: Math.max(11, Math.round(size * 0.28)),
+            letterSpacing: "0.04em",
+          }}>
+            {playerInitials(name)}
+          </span>
+        )}
       </div>
       {crestUrl && (
         <img
@@ -249,11 +266,11 @@ function PitchLines() {
 
 /* ─── Circular player photo with thick position-coloured ring (desktop pitch) ─ */
 function PitchPhoto({
-  imageUrl, crestUrl, posColor, kitPri, kitSec, label, size = 64,
+  imageUrl, crestUrl, posColor, kitPri, kitSec, label, name, size = 64,
 }: {
   imageUrl?: string | null;
   crestUrl?: string | null;
-  posColor: string; kitPri: string; kitSec: string; label: string; size?: number;
+  posColor: string; kitPri: string; kitSec: string; label: string; name: string; size?: number;
 }) {
   const [failed, setFailed] = useState(false);
   const showImg = imageUrl && !failed;
@@ -276,8 +293,8 @@ function PitchPhoto({
             style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top center" }}
           />
         ) : (
-          <span style={{ color: kitSec, fontWeight: 900, fontSize: Math.round(size * 0.3), letterSpacing: "0.02em" }}>
-            {label}
+          <span style={{ color: posColor, fontWeight: 900, fontSize: Math.round(size * 0.3), letterSpacing: "0.02em" }}>
+            {playerInitials(name)}
           </span>
         )}
       </div>
@@ -499,7 +516,7 @@ export function SquadBuilder() {
                         }}
                       >
                         <div className="flex-shrink-0 cursor-pointer" onClick={() => setInfoPlayer(rec)}>
-                          <PlayerPhoto imageUrl={rec.player.imageUrl} crestUrl={rec.player.crestUrl} primary={kPri} secondary={kSec} label={rec.player.clubShortName ?? ""} size={40} />
+                          <PlayerPhoto imageUrl={rec.player.imageUrl} crestUrl={rec.player.crestUrl} primary={kPri} secondary={kSec} label={rec.player.clubShortName ?? ""} name={rec.player.name} position={rec.player.position} size={40} />
                         </div>
                         <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setInfoPlayer(rec)}>
                           <div className="flex items-center gap-1.5 flex-wrap">
@@ -574,7 +591,7 @@ export function SquadBuilder() {
                   style={{ background: "rgba(8,17,40,0.72)", border: "1px solid rgba(245,158,11,0.2)", boxShadow: "0 2px 12px rgba(0,0,0,0.25)" }}
                 >
                   <div className="flex-shrink-0 cursor-pointer" onClick={() => setInfoPlayer(benchRec)}>
-                    <PlayerPhoto imageUrl={benchRec.player.imageUrl} crestUrl={benchRec.player.crestUrl} primary={kPri} secondary={kSec} label={benchRec.player.clubShortName ?? ""} size={40} />
+                    <PlayerPhoto imageUrl={benchRec.player.imageUrl} crestUrl={benchRec.player.crestUrl} primary={kPri} secondary={kSec} label={benchRec.player.clubShortName ?? ""} name={benchRec.player.name} position={benchRec.player.position} size={40} />
                   </div>
                   <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setInfoPlayer(benchRec)}>
                     <div className="flex items-center gap-1.5">
@@ -697,7 +714,7 @@ export function SquadBuilder() {
                                 <span style={{ fontSize: 8, fontWeight: 900, color: isCaptain ? "#000" : "#f59e0b", lineHeight: 1 }}>C</span>
                               </button>
                               <div className="cursor-pointer transition-transform group-hover:scale-110" onClick={() => setInfoPlayer(rec)}>
-                                <PitchPhoto imageUrl={rec.player.imageUrl} crestUrl={rec.player.crestUrl} posColor={pc} kitPri={kPri} kitSec={kSec} label={rec.player.clubShortName ?? ""} size={photoSize} />
+                                <PitchPhoto imageUrl={rec.player.imageUrl} crestUrl={rec.player.crestUrl} posColor={pc} kitPri={kPri} kitSec={kSec} label={rec.player.clubShortName ?? ""} name={rec.player.name} size={photoSize} />
                               </div>
                             </div>
                             <PitchName name={rec.player.name} isCaptain={isCaptain} isVice={isVice} maxWidth={photoSize + 18} />
@@ -791,7 +808,7 @@ export function SquadBuilder() {
                           <span style={{ fontSize: 7, fontWeight: 900, color: isCaptain ? "#000" : "#f59e0b", lineHeight: 1 }}>C</span>
                         </button>
                         <div className="cursor-pointer transition-transform group-hover:scale-110" onClick={() => setInfoPlayer(benchRec)}>
-                          <PlayerPhoto imageUrl={benchRec.player.imageUrl} crestUrl={benchRec.player.crestUrl} primary={kPri} secondary={kSec} label={benchRec.player.clubShortName ?? ""} size={44} />
+                          <PlayerPhoto imageUrl={benchRec.player.imageUrl} crestUrl={benchRec.player.crestUrl} primary={kPri} secondary={kSec} label={benchRec.player.clubShortName ?? ""} name={benchRec.player.name} position={benchRec.player.position} size={44} />
                         </div>
                         <PlayerLabel name={benchRec.player.name} price={benchRec.player.price} isCaptain={isCaptain} isVice={isVice} />
                       </div>
@@ -884,7 +901,7 @@ export function SquadBuilder() {
                     >
                       <div className="flex items-center gap-2.5">
                         <div style={{ width: 28, flexShrink: 0 }}>
-                          <PlayerPhoto imageUrl={p.imageUrl} crestUrl={p.crestUrl} primary={kPri} secondary={kSec} label={p.clubShortName ?? ""} size={28} />
+                          <PlayerPhoto imageUrl={p.imageUrl} crestUrl={p.crestUrl} primary={kPri} secondary={kSec} label={p.clubShortName ?? ""} name={p.name} position={p.position} size={28} />
                         </div>
                         <div>
                           <div className="font-bold text-sm leading-tight">{p.name}</div>
@@ -946,7 +963,7 @@ export function SquadBuilder() {
                   <DialogTitle>{rec.player.name}</DialogTitle>
                 </DialogHeader>
                 <div style={{ display: "flex", gap: 16, alignItems: "flex-start", marginTop: 8 }}>
-                  <PlayerPhoto imageUrl={rec.player.imageUrl} crestUrl={rec.player.crestUrl} primary={kPri} secondary={kSec} label={rec.player.clubShortName ?? ""} size={72} />
+                  <PlayerPhoto imageUrl={rec.player.imageUrl} crestUrl={rec.player.crestUrl} primary={kPri} secondary={kSec} label={rec.player.clubShortName ?? ""} name={rec.player.name} position={rec.player.position} size={72} />
                   <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 4 }}>
                     <StatRow label="Nation"   value={rec.player.club} />
                     <StatRow label="Position" value={rec.player.position} />

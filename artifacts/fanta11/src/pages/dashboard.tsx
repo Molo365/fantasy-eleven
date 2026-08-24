@@ -85,6 +85,13 @@ const POS_COLORS: Record<string, string> = {
   FWD: "#22c55e",
 };
 
+function playerInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+}
+
 const STATUS_SORT: Record<string, number> = { live: 0, scheduled: 1, finished: 2 };
 
 const CARD: React.CSSProperties = {
@@ -383,7 +390,7 @@ function SquadPlayerCard({ p }: { p: SquadPlayer }) {
             borderRadius: "50%",
             border: `2.5px solid ${posColor}`,
             overflow: "hidden",
-            background: showPhoto ? "#0a1628" : (hasPoints ? `${posColor}18` : "rgba(15,23,42,0.8)"),
+             background: showPhoto ? "#0a1628" : `${posColor}2e`,
             display: "flex", alignItems: "center", justifyContent: "center",
             fontWeight: 900, fontSize: 11, color: posColor, letterSpacing: "0.04em",
           }}
@@ -397,12 +404,12 @@ function SquadPlayerCard({ p }: { p: SquadPlayer }) {
               style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top center" }}
             />
           ) : (
-            p.position
+            <span style={{ color: posColor }}>{playerInitials(p.name)}</span>
           )}
         </div>
 
         {/* Club crest badge — bottom-right of the circle */}
-        {showPhoto && p.crestUrl && (
+        {p.crestUrl && (
           <img
             src={p.crestUrl}
             alt=""
