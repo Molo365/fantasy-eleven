@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, boolean, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, boolean, timestamp, unique } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { teamsTable } from "./teams";
@@ -13,7 +13,10 @@ export const teamPlayersTable = pgTable("team_players", {
   isViceCaptain: boolean("is_vice_captain").notNull().default(false),
   points: integer("points").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => [
+  unique().on(t.teamId, t.slot),
+  unique().on(t.teamId, t.playerId),
+]);
 
 export const insertTeamPlayerSchema = createInsertSchema(teamPlayersTable).omit({ id: true, createdAt: true });
 export type InsertTeamPlayer = z.infer<typeof insertTeamPlayerSchema>;

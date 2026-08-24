@@ -1,12 +1,12 @@
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
-import { eq, count, sql, isNotNull } from "drizzle-orm";
+import { and, eq, count, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import {
   db, usersTable, playersTable, gameweeksTable, fixturesTable,
   teamsTable, teamPlayersTable, leaguesTable, leagueTeamsTable, activityTable,
 } from "@workspace/db";
 import { logger } from "../lib/logger";
 import { clearAndSyncWorldCupPlayers, syncZafronixPlayers } from "../lib/apiSports";
-import { processGameweekScoring, processFplGameweekScoring } from "../lib/scoring";
+import { GameweekScoringConflictError, processGameweekScoring, processFplGameweekScoring } from "../lib/scoring";
 
 const ADMIN_EMAIL = "domenicg@gmx.com";
 
@@ -162,6 +162,7 @@ router.get("/admin/gameweeks", requireAdmin, async (_req, res): Promise<void> =>
     ...g,
     startDate: g.startDate instanceof Date ? g.startDate.toISOString() : g.startDate,
     endDate: g.endDate instanceof Date ? g.endDate.toISOString() : g.endDate,
+    lockedAt: g.lockedAt instanceof Date ? g.lockedAt.toISOString() : g.lockedAt,
     createdAt: g.createdAt instanceof Date ? g.createdAt.toISOString() : g.createdAt,
   })));
 });
@@ -176,13 +177,43 @@ const WC_2026_GAMEWEEKS = [
   { number: 7, name: "Final",               round: "final", startDate: "2026-07-19", endDate: "2026-07-19" },
 ];
 
-function serializeGwAdmin(g: { id: number; number: number; name: string; round: string; status: string; startDate: Date | string; endDate: Date | string; createdAt: Date | string; averagePoints: number | null; highestPoints: number | null; fplGameweekNumber: number | null }) {
+function serializeGwAdmin(g: {
+  id: number;
+  number: number;
+  name: string;
+  round: string;
+  status: string;
+  lockedAt: Date | string | null;
+  startDate: Date | string;
+  endDate: Date | string;
+  createdAt: Date | string;
+  averagePoints: number | null;
+  highestPoints: number | null;
+  fplGameweekNumber: number | null;
+}) {
   return {
     ...g,
     startDate: g.startDate instanceof Date ? g.startDate.toISOString() : g.startDate,
     endDate: g.endDate instanceof Date ? g.endDate.toISOString() : g.endDate,
+    lockedAt: g.lockedAt instanceof Date ? g.lockedAt.toISOString() : g.lockedAt,
     createdAt: g.createdAt instanceof Date ? g.createdAt.toISOString() : g.createdAt,
   };
+}
+
+async function rejectLockedGameweek(id: number, res: Response): Promise<boolean> {
+  const [gameweek] = await db
+    .select({ status: gameweeksTable.status, lockedAt: gameweeksTable.lockedAt })
+    .from(gameweeksTable)
+    .where(eq(gameweeksTable.id, id));
+  if (!gameweek) {
+    res.status(404).json({ error: "Gameweek not found" });
+    return true;
+  }
+  if (gameweek.lockedAt || gameweek.status === "finished") {
+    res.status(409).json({ error: "This gameweek is locked and cannot be changed." });
+    return true;
+  }
+  return false;
 }
 
 router.post("/admin/gameweeks", requireAdmin, async (req, res): Promise<void> => {
@@ -232,6 +263,7 @@ router.post("/admin/gameweeks/auto-create", requireAdmin, async (req, res): Prom
 router.patch("/admin/gameweeks/:id/fpl-gameweek", requireAdmin, async (req, res): Promise<void> => {
   const id = parseInt(req.params["id"] as string);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  if (await rejectLockedGameweek(id, res)) return;
   const { fplGameweekNumber } = req.body as { fplGameweekNumber: number | null };
   const fplGwNum = fplGameweekNumber != null ? Number(fplGameweekNumber) : null;
   if (fplGwNum !== null && (isNaN(fplGwNum) || fplGwNum < 1 || fplGwNum > 38)) {
@@ -240,9 +272,17 @@ router.patch("/admin/gameweeks/:id/fpl-gameweek", requireAdmin, async (req, res)
   }
   const [updated] = await db.update(gameweeksTable)
     .set({ fplGameweekNumber: fplGwNum })
-    .where(eq(gameweeksTable.id, id))
+    .where(and(
+      eq(gameweeksTable.id, id),
+      isNull(gameweeksTable.lockedAt),
+      ne(gameweeksTable.status, "finished"),
+    ))
     .returning();
-  if (!updated) { res.status(404).json({ error: "Gameweek not found" }); return; }
+  if (!updated) {
+    if (await rejectLockedGameweek(id, res)) return;
+    res.status(409).json({ error: "Gameweek could not be updated because it is no longer mutable." });
+    return;
+  }
   req.log.info({ gameweekId: id, fplGameweekNumber: fplGwNum }, "Admin set FPL gameweek number");
   res.json(serializeGwAdmin(updated));
 });
@@ -251,42 +291,65 @@ router.post("/admin/gameweeks/:id/process-fpl", requireAdmin, async (req, res): 
   const id = parseInt(req.params["id"] as string);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
 
-  const scoring = await processFplGameweekScoring(id);
-
-  req.log.info({ gameweekId: id, ...scoring }, "Admin processed FPL gameweek with live scoring");
-  res.json({ scoring });
+  try {
+    const scoring = await processFplGameweekScoring(id, { finalize: true });
+    const [gameweek] = await db.select().from(gameweeksTable).where(eq(gameweeksTable.id, id));
+    req.log.info({ gameweekId: id, ...scoring }, "Admin finalized and locked FPL gameweek");
+    res.json({ gameweek: gameweek ? serializeGwAdmin(gameweek) : null, scoring });
+  } catch (err) {
+    if (err instanceof GameweekScoringConflictError) {
+      res.status(409).json({ error: err.message });
+      return;
+    }
+    throw err;
+  }
 });
 
 router.post("/admin/gameweeks/:id/activate", requireAdmin, async (req, res): Promise<void> => {
   const id = parseInt(req.params["id"] as string);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
-  // Deactivate all, then activate the target
-  await db.update(gameweeksTable)
-    .set({ status: "upcoming" })
-    .where(eq(gameweeksTable.status, "active"));
-  const [updated] = await db.update(gameweeksTable)
-    .set({ status: "active" })
-    .where(eq(gameweeksTable.id, id))
-    .returning();
+  if (await rejectLockedGameweek(id, res)) return;
+  const updated = await db.transaction(async (tx) => {
+    const [target] = await tx.update(gameweeksTable)
+      .set({ status: "active" })
+      .where(and(
+        eq(gameweeksTable.id, id),
+        isNull(gameweeksTable.lockedAt),
+        ne(gameweeksTable.status, "finished"),
+      ))
+      .returning();
+    if (!target) return null;
+
+    await tx.update(gameweeksTable)
+      .set({ status: "upcoming" })
+      .where(and(eq(gameweeksTable.status, "active"), ne(gameweeksTable.id, id)));
+    return target;
+  });
+  if (!updated) {
+    if (await rejectLockedGameweek(id, res)) return;
+    res.status(409).json({ error: "Gameweek could not be activated because it is no longer mutable." });
+    return;
+  }
   req.log.info({ gameweekId: id }, "Admin activated gameweek");
-  res.json(updated);
+  res.json(serializeGwAdmin(updated));
 });
 
 router.post("/admin/gameweeks/:id/process", requireAdmin, async (req, res): Promise<void> => {
   const id = parseInt(req.params["id"] as string);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
 
-  // Run the scoring engine first
-  const scoring = await processGameweekScoring(id);
-
-  // Mark the gameweek as finished
-  const [updated] = await db.update(gameweeksTable)
-    .set({ status: "finished" })
-    .where(eq(gameweeksTable.id, id))
-    .returning();
-
-  req.log.info({ gameweekId: id, ...scoring }, "Admin processed gameweek with scoring");
-  res.json({ gameweek: updated, scoring });
+  try {
+    const scoring = await processGameweekScoring(id, { finalize: true });
+    const [gameweek] = await db.select().from(gameweeksTable).where(eq(gameweeksTable.id, id));
+    req.log.info({ gameweekId: id, ...scoring }, "Admin finalized and locked gameweek");
+    res.json({ gameweek: gameweek ? serializeGwAdmin(gameweek) : null, scoring });
+  } catch (err) {
+    if (err instanceof GameweekScoringConflictError) {
+      res.status(409).json({ error: err.message });
+      return;
+    }
+    throw err;
+  }
 });
 
 // ── Danger Zone ───────────────────────────────────────────────────────────────

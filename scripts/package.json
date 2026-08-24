@@ -10,6 +10,7 @@
     "seed-espn-fixtures": "tsx ./src/seed-espn-fixtures.ts",
     "seed-wc-players": "tsx ./seed-wc-players.ts",
     "sync-wc-2026": "tsx ./src/sync-wc-2026.ts",
+    "migrate:locked-gameweek-scoring": "tsx ./src/migrate-locked-gameweek-scoring.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

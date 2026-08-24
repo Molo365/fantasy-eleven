@@ -151,7 +151,7 @@ router.post("/teams/:id/players", asyncHandler(async (req, res) => {
 
   // Fetch existing squad once — used for both duplicate and club-limit checks
   const existingPlayers = await db
-    .select({ club: playersTable.club, playerId: teamPlayersTable.playerId })
+    .select({ club: playersTable.club, playerId: teamPlayersTable.playerId, slot: teamPlayersTable.slot })
     .from(teamPlayersTable)
     .innerJoin(playersTable, eq(teamPlayersTable.playerId, playersTable.id))
     .where(eq(teamPlayersTable.teamId, params.data.id));
@@ -159,6 +159,10 @@ router.post("/teams/:id/players", asyncHandler(async (req, res) => {
   // Reject duplicate picks
   if (existingPlayers.some((ep) => ep.playerId === parsed.data.playerId)) {
     res.status(400).json({ error: "Player already in squad" });
+    return;
+  }
+  if (existingPlayers.some((ep) => ep.slot === parsed.data.slot)) {
+    res.status(400).json({ error: "This squad slot is already occupied" });
     return;
   }
 
@@ -175,7 +179,11 @@ router.post("/teams/:id/players", asyncHandler(async (req, res) => {
     slot:          parsed.data.slot,
     isCaptain:     parsed.data.isCaptain ?? false,
     isViceCaptain: parsed.data.isViceCaptain ?? false,
-  }).returning();
+  }).onConflictDoNothing().returning();
+  if (!tp) {
+    res.status(409).json({ error: "The squad changed before this player could be added. Please try again." });
+    return;
+  }
 
   await db
     .update(teamsTable)

@@ -9,7 +9,17 @@ const API = "/api/admin";
 type Stats = { userCount: number; teamCount: number; processedCount: number };
 type AdminUser = { id: number; username: string; email: string; displayName: string; createdAt: string; squadSubmitted: boolean; totalPoints: number };
 type AdminPlayer = { id: number; name: string; club: string; clubShortName: string; position: string; price: number; totalPoints: number };
-type AdminGameweek = { id: number; number: number; name: string; round: string; status: string; startDate: string; endDate: string; fplGameweekNumber: number | null };
+type AdminGameweek = {
+  id: number;
+  number: number;
+  name: string;
+  round: string;
+  status: string;
+  lockedAt: string | null;
+  startDate: string;
+  endDate: string;
+  fplGameweekNumber: number | null;
+};
 type AdminLeague = { id: number; name: string; code: string; memberCount: number; createdAt: string };
 
 type Tab = "users" | "players" | "gameweeks" | "leagues";
@@ -281,7 +291,7 @@ function CreateGameweekModal({
             onChange={e => onFormChange({ ...form, fplGameweekNumber: e.target.value })}
           />
           <p style={{ fontSize: 11, color: "#475569", marginTop: 4, marginBottom: 0 }}>
-            The FPL gameweek ID used to fetch live Premier League scores. Set once — required to use "Process FPL".
+            The FPL gameweek ID used to fetch live Premier League scores. Set it before the final scoring run.
           </p>
         </div>
         {error && <p style={{ fontSize: 12, color: "#ef4444", marginBottom: 8 }}>{error}</p>}
@@ -442,8 +452,8 @@ export function AdminDashboard() {
   const processGameweek = (id: number, name: string) => {
     setConfirm({
       open: true,
-      title: "Process Gameweek",
-      message: `Fetch live scores from API-Sports, award points to all players, and update every manager's score for "${name}"?`,
+      title: "Finalize Gameweek",
+      message: `Fetch the latest scores for "${name}", finalize every manager's frozen lineup, and lock this gameweek permanently? It cannot be processed again.`,
       onConfirm: async () => {
         setScoringResult(null);
         setProcessingGwId(id);
@@ -452,7 +462,7 @@ export function AdminDashboard() {
             gameweek: AdminGameweek;
             scoring: { fixturesProcessed: number; playersUpdated: number; teamsUpdated: number; totalPointsAwarded: number; warning?: string };
           };
-          setGameweeks(gs => gs.map(g => g.id === id ? { ...g, status: "finished" } : g));
+          setGameweeks(gs => gs.map(g => g.id === id ? result.gameweek : g));
           setStats(s => s ? { ...s, processedCount: s.processedCount + 1 } : s);
           setScoringResult({ gwName: name, ...result.scoring });
           setTab("gameweeks");
@@ -515,15 +525,18 @@ export function AdminDashboard() {
   const processFplGameweek = (id: number, name: string, fplGwNum: number) => {
     setConfirm({
       open: true,
-      title: "Process FPL Gameweek",
-      message: `Fetch live scores from FPL GW${fplGwNum}, award points to all Premier League players, and update every manager's score for "${name}"?`,
+      title: "Finalize FPL Gameweek",
+      message: `Fetch the latest FPL GW${fplGwNum} scores, finalize every manager's frozen lineup for "${name}", and lock it permanently? It cannot be processed again.`,
       onConfirm: async () => {
         setFplScoringResult(null);
         setProcessingFplGwId(id);
         try {
           const result = await apiFetch(`/gameweeks/${id}/process-fpl`, { method: "POST" }) as {
+            gameweek: AdminGameweek;
             scoring: { fixturesProcessed: number; playersUpdated: number; teamsUpdated: number; totalPointsAwarded: number; warning?: string };
           };
+          setGameweeks(gs => gs.map(g => g.id === id ? result.gameweek : g));
+          setStats(s => s ? { ...s, processedCount: s.processedCount + 1 } : s);
           setFplScoringResult({ gwName: name, ...result.scoring });
           setTab("gameweeks");
         } finally {
@@ -913,7 +926,7 @@ export function AdminDashboard() {
                   }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
                       <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, color: scoringResult.warning && scoringResult.fixturesProcessed === 0 ? "#eab308" : "#22c55e" }}>
-                        {scoringResult.warning && scoringResult.fixturesProcessed === 0 ? "⚠ Scoring Notice" : "✓ Gameweek Processed"}
+                        {scoringResult.warning && scoringResult.fixturesProcessed === 0 ? "⚠ Scoring Notice" : "✓ Gameweek Locked"}
                       </span>
                       <button style={{ ...S.trashBtn, color: "#475569" }} onClick={() => setScoringResult(null)}>
                         <X size={14} />
@@ -954,7 +967,7 @@ export function AdminDashboard() {
                   }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
                       <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, color: fplScoringResult.warning && fplScoringResult.fixturesProcessed === 0 ? "#eab308" : "#4ade80" }}>
-                        {fplScoringResult.warning && fplScoringResult.fixturesProcessed === 0 ? "⚠ FPL Scoring Notice" : "✓ FPL Gameweek Scored"}
+                        {fplScoringResult.warning && fplScoringResult.fixturesProcessed === 0 ? "⚠ FPL Scoring Notice" : "✓ FPL Gameweek Locked"}
                       </span>
                       <button style={{ ...S.trashBtn, color: "#475569" }} onClick={() => setFplScoringResult(null)}>
                         <X size={14} />
@@ -984,20 +997,20 @@ export function AdminDashboard() {
                 {processingGwId && (
                   <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", color: "#06b6d4", fontSize: 13 }}>
                     <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} />
-                    Fetching match data and calculating scores… this may take a minute.
+                    Fetching match data and finalizing scores… this may take a minute.
                   </div>
                 )}
                 {processingFplGwId && (
                   <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", color: "#4ade80", fontSize: 13 }}>
                     <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} />
-                    Fetching live FPL data and scoring Premier League players…
+                    Fetching live FPL data and finalizing Premier League scores…
                   </div>
                 )}
 
                 <table style={S.table}>
                   <thead>
                     <tr style={{ background: "#0a1628" }}>
-                      {["GW", "Name", "Status", "FPL GW#", "Activate", "Process Gameweek", "Process FPL"].map(h => (
+                      {["GW", "Name", "Status", "FPL GW#", "Activate", "Finalize Gameweek", "Finalize FPL"].map(h => (
                         <th key={h} style={S.th}>{h}</th>
                       ))}
                     </tr>
@@ -1007,6 +1020,7 @@ export function AdminDashboard() {
                       const editVal = fplGwEdits[g.id];
                       const displayVal = editVal !== undefined ? editVal : (g.fplGameweekNumber?.toString() ?? "");
                       const isDirty = editVal !== undefined && editVal !== (g.fplGameweekNumber?.toString() ?? "");
+                      const isLocked = g.status === "finished" || g.lockedAt !== null;
                       return (
                         <tr key={g.id}>
                           <td style={{ ...S.td, color: "#475569", fontFamily: "monospace" }}>{g.number}</td>
@@ -1023,10 +1037,11 @@ export function AdminDashboard() {
                                 max={38}
                                 value={displayVal}
                                 placeholder="—"
+                                disabled={isLocked}
                                 onChange={e => setFplGwEdits(ev => ({ ...ev, [g.id]: e.target.value }))}
-                                style={{ ...S.input, width: 52, padding: "3px 6px", fontSize: 12, textAlign: "center" as const }}
+                                style={{ ...S.input, width: 52, padding: "3px 6px", fontSize: 12, textAlign: "center" as const, opacity: isLocked ? 0.5 : 1 }}
                               />
-                              {isDirty && (
+                              {isDirty && !isLocked && (
                                 <button
                                   style={{ ...S.actionBtn("teal"), fontSize: 10, padding: "3px 8px" }}
                                   onClick={() => saveFplGwNumber(g.id, g.name)}
@@ -1037,7 +1052,7 @@ export function AdminDashboard() {
                             </div>
                           </td>
                           <td style={S.td}>
-                            {g.status !== "active" && g.status !== "finished" && (
+                            {g.status !== "active" && !isLocked && (
                               <button style={S.actionBtn("teal")} onClick={() => activateGameweek(g.id, g.name)}>
                                 <ChevronRight size={11} style={{ marginRight: 3 }} />Activate
                               </button>
@@ -1045,28 +1060,28 @@ export function AdminDashboard() {
                             {g.status === "active" && (
                               <span style={{ fontSize: 11, color: "#22c55e", fontWeight: 600 }}>● Active</span>
                             )}
-                            {g.status === "finished" && (
-                              <span style={{ fontSize: 11, color: "#475569" }}>—</span>
+                            {isLocked && (
+                              <span style={{ fontSize: 11, color: "#475569" }}>Locked</span>
                             )}
                           </td>
                           <td style={S.td}>
                             <button
                               style={{
                                 ...S.actionBtn("gray"),
-                                opacity: processingGwId ? 0.5 : 1,
-                                cursor: processingGwId ? "not-allowed" : "pointer",
+                                opacity: processingGwId || g.status !== "active" || isLocked ? 0.5 : 1,
+                                cursor: processingGwId || g.status !== "active" || isLocked ? "not-allowed" : "pointer",
                                 display: "inline-flex", alignItems: "center", gap: 5,
                               }}
-                              onClick={() => !processingGwId && processGameweek(g.id, g.name)}
-                              disabled={!!processingGwId}
+                              onClick={() => !processingGwId && g.status === "active" && !isLocked && processGameweek(g.id, g.name)}
+                              disabled={!!processingGwId || g.status !== "active" || isLocked}
                             >
                               {processingGwId === g.id
                                 ? <><Loader2 size={11} style={{ animation: "spin 1s linear infinite" }} />Scoring…</>
-                                : <>⚡ Process Gameweek</>
+                                : <>⚡ Finalize</>
                               }
                             </button>
                           </td>
-                          {/* Process FPL — only active when fplGameweekNumber is set */}
+                          {/* Finalize FPL — available only for the active, unlocked gameweek */}
                           <td style={S.td}>
                             {g.fplGameweekNumber ? (
                               <button
@@ -1075,16 +1090,16 @@ export function AdminDashboard() {
                                   background: "rgba(21,128,61,0.15)",
                                   borderColor: "rgba(74,222,128,0.3)",
                                   color: "#4ade80",
-                                  opacity: processingFplGwId ? 0.5 : 1,
-                                  cursor: processingFplGwId ? "not-allowed" : "pointer",
+                                  opacity: processingFplGwId || g.status !== "active" || isLocked ? 0.5 : 1,
+                                  cursor: processingFplGwId || g.status !== "active" || isLocked ? "not-allowed" : "pointer",
                                   display: "inline-flex", alignItems: "center", gap: 5,
                                 }}
-                                onClick={() => !processingFplGwId && processFplGameweek(g.id, g.name, g.fplGameweekNumber!)}
-                                disabled={!!processingFplGwId}
+                                onClick={() => !processingFplGwId && g.status === "active" && !isLocked && processFplGameweek(g.id, g.name, g.fplGameweekNumber!)}
+                                disabled={!!processingFplGwId || g.status !== "active" || isLocked}
                               >
                                 {processingFplGwId === g.id
                                   ? <><Loader2 size={11} style={{ animation: "spin 1s linear infinite" }} />Scoring…</>
-                                  : <>🏴󠁧󠁢󠁥󠁮󠁧󠁿 Process FPL</>
+                                  : <>🏴󠁧󠁢󠁥󠁮󠁧󠁿 Finalize FPL</>
                                 }
                               </button>
                             ) : (

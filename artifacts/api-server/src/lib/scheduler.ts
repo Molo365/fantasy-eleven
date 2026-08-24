@@ -1,4 +1,4 @@
-import { and, eq, isNotNull } from "drizzle-orm";
+import { and, eq, isNotNull, isNull } from "drizzle-orm";
 import { db, gameweeksTable } from "@workspace/db";
 import { logger } from "./logger";
 import { processFplGameweekScoring } from "./scoring";
@@ -17,11 +17,15 @@ async function runFplScoring(): Promise<void> {
   const startedAt = new Date().toISOString();
 
   try {
-    // Find all gameweeks that are active AND have an FPL gameweek number set
+    // Only active, unlocked gameweeks receive provisional FPL refreshes.
     const activeGws = await db
       .select({ id: gameweeksTable.id, fplGameweekNumber: gameweeksTable.fplGameweekNumber })
       .from(gameweeksTable)
-      .where(and(eq(gameweeksTable.status, "active"), isNotNull(gameweeksTable.fplGameweekNumber)));
+      .where(and(
+        eq(gameweeksTable.status, "active"),
+        isNull(gameweeksTable.lockedAt),
+        isNotNull(gameweeksTable.fplGameweekNumber),
+      ));
 
     if (activeGws.length === 0) {
       logger.info({ startedAt }, "scheduler: no active FPL gameweeks found — skipping");

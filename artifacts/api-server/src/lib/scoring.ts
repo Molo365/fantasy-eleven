@@ -1,5 +1,5 @@
-import { db, playersTable, teamsTable, teamPlayersTable, gameweeksTable, gameweekTeamScoresTable, usersTable } from "@workspace/db";
-import { eq, sql, sum, inArray } from "drizzle-orm";
+import { db, playersTable, teamsTable, teamPlayersTable, gameweeksTable, gameweekTeamLineupPlayersTable, gameweekTeamScoresTable, usersTable } from "@workspace/db";
+import { and, eq, isNotNull, sql, sum, inArray } from "drizzle-orm";
 import { logger } from "./logger";
 
 const API_BASE = "https://v3.football.api-sports.io";
@@ -110,11 +110,35 @@ export interface ScoringResult {
   warning?: string;
 }
 
+export class GameweekScoringConflictError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "GameweekScoringConflictError";
+  }
+}
+
+export type ScoringOptions = {
+  finalize?: boolean;
+};
+
+function assertGameweekCanBeScored(gameweek: typeof gameweeksTable.$inferSelect): void {
+  if (gameweek.lockedAt || gameweek.status === "finished") {
+    throw new GameweekScoringConflictError(
+      `Gameweek ${gameweek.number} is locked and cannot be scored again.`,
+    );
+  }
+  if (gameweek.status !== "active") {
+    throw new GameweekScoringConflictError(
+      `Gameweek ${gameweek.number} must be active before it can be scored.`,
+    );
+  }
+}
+
 // ─── Shared: captain-multiplier loop + persist ─────────────────────────────────
 //
 // Called by both processGameweekScoring (WC) and processFplGameweekScoring (PL).
-// Applies captain ×2 / VC ×2-if-captain-didn't-play, upserts gameweekTeamScores,
-// recomputes team totalPoints from history, and updates gameweek avg/highest.
+// Captures a lineup once, applies captain ×2 / VC ×2-if-captain-didn't-play,
+// upserts provisional scores, and only totals locked historical gameweeks.
 
 type PlayerEarned = Map<number, { pts: number; minutes: number; goals: number; assists: number; cleanSheets: number }>;
 
@@ -122,118 +146,190 @@ async function scoreAndPersistTeams(
   gameweekId: number,
   playerEarned: PlayerEarned,
   playerById: Map<number, string>,
+  options: ScoringOptions = {},
 ): Promise<{ teamsUpdated: number }> {
-  // Load team → username mapping for logging
-  const teamInfoRows = await db
-    .select({ teamId: teamsTable.id, username: usersTable.username })
-    .from(teamsTable)
-    .leftJoin(usersTable, eq(teamsTable.userId, usersTable.id));
+  return db.transaction(async (tx) => {
+    // Serialize snapshot creation/finalization so concurrent scheduler and admin
+    // requests cannot race into different lineups or overwrite locked scores.
+    const [gameweek] = await tx
+      .select()
+      .from(gameweeksTable)
+      .where(eq(gameweeksTable.id, gameweekId))
+      .for("update");
 
-  const teamUsernames = new Map<number, string>();
-  for (const row of teamInfoRows) {
-    teamUsernames.set(row.teamId, row.username ?? `team#${row.teamId}`);
-  }
+    if (!gameweek) throw new Error(`Gameweek ${gameweekId} not found`);
+    assertGameweekCanBeScored(gameweek);
 
-  const allTeamPlayers = await db
-    .select({
-      teamId:        teamPlayersTable.teamId,
-      playerId:      teamPlayersTable.playerId,
-      isCaptain:     teamPlayersTable.isCaptain,
-      isViceCaptain: teamPlayersTable.isViceCaptain,
-    })
-    .from(teamPlayersTable);
+    if (!gameweek.lineupSnapshottedAt) {
+      const [capturedTeams, currentSquad] = await Promise.all([
+        tx.select({ teamId: teamsTable.id }).from(teamsTable),
+        tx
+          .select({
+            teamId: teamPlayersTable.teamId,
+            playerId: teamPlayersTable.playerId,
+            slot: teamPlayersTable.slot,
+            captainId: teamsTable.captainId,
+            viceCaptainId: teamsTable.viceCaptainId,
+          })
+          .from(teamPlayersTable)
+          .innerJoin(teamsTable, eq(teamPlayersTable.teamId, teamsTable.id)),
+      ]);
 
-  // Group by team
-  const teamSquads = new Map<number, Array<{ playerId: number; isCaptain: boolean; isViceCaptain: boolean }>>();
-  for (const tp of allTeamPlayers) {
-    if (!teamSquads.has(tp.teamId)) teamSquads.set(tp.teamId, []);
-    teamSquads.get(tp.teamId)!.push({ playerId: tp.playerId, isCaptain: tp.isCaptain, isViceCaptain: tp.isViceCaptain });
-  }
+      if (currentSquad.length > 0) {
+        const occupiedSlots = new Set<string>();
+        const selectedPlayers = new Set<string>();
+        for (const entry of currentSquad) {
+          const slotKey = `${entry.teamId}:${entry.slot}`;
+          const playerKey = `${entry.teamId}:${entry.playerId}`;
+          if (occupiedSlots.has(slotKey) || selectedPlayers.has(playerKey)) {
+            throw new GameweekScoringConflictError(
+              `Team ${entry.teamId} has an invalid squad with duplicate slots or players and cannot be snapshotted.`,
+            );
+          }
+          occupiedSlots.add(slotKey);
+          selectedPlayers.add(playerKey);
+        }
 
-  let teamsUpdated = 0;
+        await tx
+          .insert(gameweekTeamLineupPlayersTable)
+          .values(currentSquad.map((entry) => ({
+            gameweekId,
+            teamId: entry.teamId,
+            playerId: entry.playerId,
+            slot: entry.slot,
+            isCaptain: entry.playerId === entry.captainId,
+            isViceCaptain: entry.playerId === entry.viceCaptainId,
+          })))
+          .onConflictDoNothing();
+      }
 
-  for (const [teamId, squad] of teamSquads) {
-    const captainEntry   = squad.find(p => p.isCaptain);
-    const captainEarned  = captainEntry ? playerEarned.get(captainEntry.playerId) : undefined;
-    const captainMinutes = captainEarned?.minutes ?? 0;
-    const captainPlayed  = captainMinutes > 0;
-    const captainName    = captainEntry ? (playerById.get(captainEntry.playerId) ?? "Unknown") : "None";
-    const captainRawPts  = captainEarned?.pts ?? 0;
-    const username       = teamUsernames.get(teamId) ?? `team#${teamId}`;
+      // Zero-score rows preserve the fact that every current team was included in
+      // this first snapshot, even when it had no squad entries at the time.
+      if (capturedTeams.length > 0) {
+        await tx
+          .insert(gameweekTeamScoresTable)
+          .values(capturedTeams.map((team) => ({ gameweekId, teamId: team.teamId, points: 0 })))
+          .onConflictDoNothing();
+      }
 
-    console.log(
-      `[SCORING] user=${username} | captain=${captainName} | minutes=${captainMinutes}` +
-      ` | raw_pts=${captainRawPts} | after_x2=${captainRawPts * 2}` +
-      ` | captain_played=${captainPlayed}`,
-    );
-
-    let gwPts = 0;
-    for (const { playerId, isCaptain, isViceCaptain } of squad) {
-      const earned = playerEarned.get(playerId);
-      if (!earned || earned.pts === 0) continue;
-      let multiplier = 1;
-      if (isCaptain) multiplier = 2;
-      else if (isViceCaptain && !captainPlayed) multiplier = 2;
-      gwPts += earned.pts * multiplier;
+      await tx
+        .update(gameweeksTable)
+        .set({ lineupSnapshottedAt: new Date() })
+        .where(eq(gameweeksTable.id, gameweekId));
     }
 
-    // Upsert this gameweek's score — idempotent on reprocess
-    await db
-      .insert(gameweekTeamScoresTable)
-      .values({ gameweekId, teamId, points: gwPts })
-      .onConflictDoUpdate({
-        target: [gameweekTeamScoresTable.gameweekId, gameweekTeamScoresTable.teamId],
-        set: { points: gwPts },
-      });
+    const [teamInfoRows, lineupRows] = await Promise.all([
+      tx
+        .select({ teamId: teamsTable.id, username: usersTable.username })
+        .from(teamsTable)
+        .leftJoin(usersTable, eq(teamsTable.userId, usersTable.id)),
+      tx
+        .select({
+          teamId: gameweekTeamLineupPlayersTable.teamId,
+          playerId: gameweekTeamLineupPlayersTable.playerId,
+          isCaptain: gameweekTeamLineupPlayersTable.isCaptain,
+          isViceCaptain: gameweekTeamLineupPlayersTable.isViceCaptain,
+        })
+        .from(gameweekTeamLineupPlayersTable)
+        .where(eq(gameweekTeamLineupPlayersTable.gameweekId, gameweekId)),
+    ]);
 
-    // Recompute totalPoints as the sum of ALL gameweek scores for this team
-    const [{ total }] = await db
-      .select({ total: sum(gameweekTeamScoresTable.points) })
+    const teamUsernames = new Map<number, string>();
+    for (const row of teamInfoRows) {
+      teamUsernames.set(row.teamId, row.username ?? `team#${row.teamId}`);
+    }
+
+    const capturedTeamRows = await tx
+      .select({ teamId: gameweekTeamScoresTable.teamId })
       .from(gameweekTeamScoresTable)
-      .where(eq(gameweekTeamScoresTable.teamId, teamId));
-
-    await db
-      .update(teamsTable)
-      .set({ gameweekPoints: gwPts, totalPoints: Number(total ?? 0) })
-      .where(eq(teamsTable.id, teamId));
-
-    if (gwPts > 0) teamsUpdated++;
-  }
-
-  // Update gameweek aggregate stats (avg / highest)
-  const gwPointsList = [...teamSquads.keys()].map(teamId => {
-    const squad = teamSquads.get(teamId)!;
-    const capEntry = squad.find(p => p.isCaptain);
-    const capPlayed = capEntry
-      ? (playerEarned.get(capEntry.playerId)?.pts ?? 0) > 0
-      : false;
-    let pts = 0;
-    for (const { playerId, isCaptain, isViceCaptain } of squad) {
-      const earned = playerEarned.get(playerId);
-      if (!earned) continue;
-      let mult = 1;
-      if (isCaptain) mult = 2;
-      else if (isViceCaptain && !capPlayed) mult = 2;
-      pts += earned.pts * mult;
+      .where(eq(gameweekTeamScoresTable.gameweekId, gameweekId));
+    const teamSquads = new Map<number, Array<{ playerId: number; isCaptain: boolean; isViceCaptain: boolean }>>(
+      capturedTeamRows.map((team) => [team.teamId, []]),
+    );
+    for (const lineup of lineupRows) {
+      teamSquads.get(lineup.teamId)!.push(lineup);
     }
-    return pts;
-  }).filter(p => p > 0);
 
-  if (gwPointsList.length > 0) {
-    const avg = Math.round(gwPointsList.reduce((a, b) => a + b, 0) / gwPointsList.length);
-    const highest = Math.max(...gwPointsList);
-    await db
+    const scoredTeams: Array<{ teamId: number; points: number }> = [];
+    for (const [teamId, squad] of teamSquads) {
+      const captainEntry = squad.find((player) => player.isCaptain);
+      const captainEarned = captainEntry ? playerEarned.get(captainEntry.playerId) : undefined;
+      const captainMinutes = captainEarned?.minutes ?? 0;
+      const captainPlayed = captainMinutes > 0;
+      const captainName = captainEntry ? (playerById.get(captainEntry.playerId) ?? "Unknown") : "None";
+      const captainRawPoints = captainEarned?.pts ?? 0;
+
+      logger.info({
+        gameweekId,
+        teamId,
+        username: teamUsernames.get(teamId) ?? `team#${teamId}`,
+        captain: captainName,
+        captainMinutes,
+        captainRawPoints,
+        captainPlayed,
+      }, "Scoring team from frozen gameweek lineup");
+
+      let points = 0;
+      for (const player of squad) {
+        const earned = playerEarned.get(player.playerId);
+        if (!earned) continue;
+        const multiplier = player.isCaptain || (player.isViceCaptain && !captainPlayed) ? 2 : 1;
+        points += earned.pts * multiplier;
+      }
+
+      await tx
+        .insert(gameweekTeamScoresTable)
+        .values({ gameweekId, teamId, points })
+        .onConflictDoUpdate({
+          target: [gameweekTeamScoresTable.gameweekId, gameweekTeamScoresTable.teamId],
+          set: { points },
+        });
+      scoredTeams.push({ teamId, points });
+    }
+
+    const pointValues = scoredTeams.map((team) => team.points);
+    const averagePoints = pointValues.length > 0
+      ? Math.round(pointValues.reduce((total, points) => total + points, 0) / pointValues.length)
+      : 0;
+    const highestPoints = pointValues.length > 0 ? Math.max(...pointValues) : 0;
+
+    await tx
       .update(gameweeksTable)
-      .set({ averagePoints: avg, highestPoints: highest })
+      .set({
+        averagePoints,
+        highestPoints,
+        ...(options.finalize ? { status: "finished", lockedAt: new Date() } : {}),
+      })
       .where(eq(gameweeksTable.id, gameweekId));
-  }
 
-  return { teamsUpdated };
+    // Run after the lock state has been written so a final score is included in
+    // season totals, while active provisional scores remain separate.
+    for (const scoredTeam of scoredTeams) {
+      const [{ total }] = await tx
+        .select({ total: sum(gameweekTeamScoresTable.points) })
+        .from(gameweekTeamScoresTable)
+        .innerJoin(gameweeksTable, eq(gameweekTeamScoresTable.gameweekId, gameweeksTable.id))
+        .where(and(
+          eq(gameweekTeamScoresTable.teamId, scoredTeam.teamId),
+          isNotNull(gameweeksTable.lockedAt),
+        ));
+
+      await tx
+        .update(teamsTable)
+        .set({ gameweekPoints: scoredTeam.points, totalPoints: Number(total ?? 0) })
+        .where(eq(teamsTable.id, scoredTeam.teamId));
+    }
+
+    return { teamsUpdated: scoredTeams.filter((team) => team.points > 0).length };
+  });
 }
 
 // ─── WC scoring (API-Sports) ───────────────────────────────────────────────────
 
-export async function processGameweekScoring(gameweekId: number): Promise<ScoringResult> {
+export async function processGameweekScoring(
+  gameweekId: number,
+  options: ScoringOptions = {},
+): Promise<ScoringResult> {
   // 1. Load the gameweek for date range
   const [gameweek] = await db
     .select()
@@ -241,10 +337,7 @@ export async function processGameweekScoring(gameweekId: number): Promise<Scorin
     .where(eq(gameweeksTable.id, gameweekId));
 
   if (!gameweek) throw new Error(`Gameweek ${gameweekId} not found`);
-
-  // 1b. Reset in order: players first, then team_players
-  await db.update(playersTable).set({ totalPoints: 0 });
-  await db.update(teamPlayersTable).set({ points: 0 });
+  assertGameweekCanBeScored(gameweek);
 
   // 2. Pre-load all our players for position lookup (external id + name)
   const allPlayers = await db
@@ -283,7 +376,7 @@ export async function processGameweekScoring(gameweekId: number): Promise<Scorin
       playersUpdated: 0,
       teamsUpdated: 0,
       totalPointsAwarded: 0,
-      warning: "Could not reach API-Sports. Gameweek marked as finished without live scoring.",
+      warning: "Could not reach API-Sports. The gameweek remains active and unlocked.",
     };
   }
 
@@ -359,7 +452,15 @@ export async function processGameweekScoring(gameweekId: number): Promise<Scorin
     fixturesProcessed++;
   }
 
-  // 5. Update player rows in DB
+  // 5. Freeze/persist the team scores before touching current player displays.
+  // A concurrent finalization will reject this operation before mutable player
+  // values can be reset, leaving the locked gameweek untouched.
+  const { teamsUpdated } = await scoreAndPersistTeams(gameweekId, playerEarned, playerById, options);
+
+  // 6. Update current player rows for the dashboard and squad views.
+  await db.update(playersTable).set({ totalPoints: 0 });
+  await db.update(teamPlayersTable).set({ points: 0 });
+
   let playersUpdated = 0;
   let totalPointsAwarded = 0;
 
@@ -383,9 +484,6 @@ export async function processGameweekScoring(gameweekId: number): Promise<Scorin
     totalPointsAwarded += earned.pts;
   }
 
-  // 6. Score teams using shared captain multiplier logic
-  const { teamsUpdated } = await scoreAndPersistTeams(gameweekId, playerEarned, playerById);
-
   logger.info(
     { gameweekId, fixturesProcessed, playersUpdated, teamsUpdated, totalPointsAwarded },
     "Gameweek scoring complete",
@@ -396,7 +494,10 @@ export async function processGameweekScoring(gameweekId: number): Promise<Scorin
 
 // ─── FPL live scoring (Premier League) ────────────────────────────────────────
 
-export async function processFplGameweekScoring(gameweekId: number): Promise<ScoringResult> {
+export async function processFplGameweekScoring(
+  gameweekId: number,
+  options: ScoringOptions = {},
+): Promise<ScoringResult> {
   // 1. Load gameweek — fplGameweekNumber must be set
   const [gameweek] = await db
     .select()
@@ -404,6 +505,7 @@ export async function processFplGameweekScoring(gameweekId: number): Promise<Sco
     .where(eq(gameweeksTable.id, gameweekId));
 
   if (!gameweek) throw new Error(`Gameweek ${gameweekId} not found`);
+  assertGameweekCanBeScored(gameweek);
   if (!gameweek.fplGameweekNumber) {
     throw new Error(
       `Gameweek ${gameweekId} has no FPL gameweek number set. ` +
@@ -429,14 +531,7 @@ export async function processFplGameweekScoring(gameweekId: number): Promise<Sco
     playerById.set(p.id, p.name);
   }
 
-  // 3. Reset only PL player points (never touch WC player data)
-  const plPlayerIds = plPlayers.map(p => p.id);
-  if (plPlayerIds.length > 0) {
-    await db.update(playersTable).set({ totalPoints: 0 }).where(inArray(playersTable.id, plPlayerIds));
-    await db.update(teamPlayersTable).set({ points: 0 }).where(inArray(teamPlayersTable.playerId, plPlayerIds));
-  }
-
-  // 4. Fetch FPL live endpoint — no API key required
+  // 3. Fetch FPL live endpoint — no API key required
   const fplUrl = `https://fantasy.premierleague.com/api/event/${gameweek.fplGameweekNumber}/live/`;
   let fplData: FplLiveResponse;
   try {
@@ -454,7 +549,7 @@ export async function processFplGameweekScoring(gameweekId: number): Promise<Sco
     };
   }
 
-  // 5. Build playerEarned map from FPL pre-calculated points
+  // 4. Build playerEarned map from FPL pre-calculated points
   //    total_points = FPL's official score for this specific gameweek
   //    minutes      = needed for the captain-played check in scoreAndPersistTeams
   const playerEarned: PlayerEarned = new Map();
@@ -475,7 +570,18 @@ export async function processFplGameweekScoring(gameweekId: number): Promise<Sco
     });
   }
 
-  // 6. Write player + teamPlayers rows
+  // 5. Persist frozen gameweek scores before mutating current player displays.
+  // The score transaction re-checks the gameweek lock after the FPL response
+  // has been fetched, protecting against a concurrent admin finalization.
+  const { teamsUpdated } = await scoreAndPersistTeams(gameweekId, playerEarned, playerById, options);
+
+  // 6. Write current PL player + teamPlayers rows.
+  const plPlayerIds = plPlayers.map(p => p.id);
+  if (plPlayerIds.length > 0) {
+    await db.update(playersTable).set({ totalPoints: 0 }).where(inArray(playersTable.id, plPlayerIds));
+    await db.update(teamPlayersTable).set({ points: 0 }).where(inArray(teamPlayersTable.playerId, plPlayerIds));
+  }
+
   let playersUpdated = 0;
   let totalPointsAwarded = 0;
 
@@ -498,9 +604,6 @@ export async function processFplGameweekScoring(gameweekId: number): Promise<Sco
     playersUpdated++;
     totalPointsAwarded += earned.pts;
   }
-
-  // 7. Score teams — reuses exact same captain multiplier logic as WC
-  const { teamsUpdated } = await scoreAndPersistTeams(gameweekId, playerEarned, playerById);
 
   logger.info(
     { gameweekId, fplGw: gameweek.fplGameweekNumber, playersUpdated, teamsUpdated, totalPointsAwarded },
