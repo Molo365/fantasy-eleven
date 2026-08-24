@@ -965,7 +965,7 @@ export function SquadBuilder() {
                 <div style={{ display: "flex", gap: 16, alignItems: "flex-start", marginTop: 8 }}>
                   <PlayerPhoto imageUrl={rec.player.imageUrl} crestUrl={rec.player.crestUrl} primary={kPri} secondary={kSec} label={rec.player.clubShortName ?? ""} name={rec.player.name} position={rec.player.position} size={72} />
                   <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 4 }}>
-                    <StatRow label="Nation"   value={rec.player.club} />
+                    <StatRow label="Club"     value={rec.player.club} />
                     <StatRow label="Position" value={rec.player.position} />
                     <StatRow label="Price"    value={`£${rec.player.price.toFixed(1)}m`} accent />
                     <StatRow label="Points"   value={`${rec.player.totalPoints} pts`} />
