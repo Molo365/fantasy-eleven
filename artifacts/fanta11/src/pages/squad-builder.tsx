@@ -119,7 +119,7 @@ function playerInitials(name: string): string {
 
 /* ─── Player photo with initials fallback ───────────────────────── */
 function PlayerPhoto({
-  imageUrl, crestUrl, primary, secondary, label, name, position, size = 62,
+  imageUrl, crestUrl, primary, name, position, size = 62,
 }: {
   imageUrl?: string | null;
   crestUrl?: string | null;
@@ -266,7 +266,7 @@ function PitchLines() {
 
 /* ─── Circular player photo with thick position-coloured ring (desktop pitch) ─ */
 function PitchPhoto({
-  imageUrl, crestUrl, posColor, kitPri, kitSec, label, name, size = 64,
+  imageUrl, crestUrl, posColor, kitPri, label, name, size = 64,
 }: {
   imageUrl?: string | null;
   crestUrl?: string | null;
@@ -281,7 +281,7 @@ function PitchPhoto({
         width: size, height: size, borderRadius: "50%", overflow: "hidden",
         border: `3px solid ${posColor}`,
         boxShadow: `0 5px 16px rgba(0,0,0,0.6), 0 0 0 1.5px rgba(0,0,0,0.45)`,
-        background: kitPri,
+        background: showImg ? kitPri : `${posColor}2e`,
         display: "flex", alignItems: "center", justifyContent: "center",
       }}>
         {showImg ? (

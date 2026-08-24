@@ -390,7 +390,7 @@ function SquadPlayerCard({ p }: { p: SquadPlayer }) {
             borderRadius: "50%",
             border: `2.5px solid ${posColor}`,
             overflow: "hidden",
-             background: showPhoto ? "#0a1628" : `${posColor}2e`,
+            background: showPhoto ? "#0a1628" : `${posColor}2e`,
             display: "flex", alignItems: "center", justifyContent: "center",
             fontWeight: 900, fontSize: 11, color: posColor, letterSpacing: "0.04em",
           }}
