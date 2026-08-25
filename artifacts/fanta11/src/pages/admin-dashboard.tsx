@@ -617,7 +617,7 @@ export function AdminDashboard() {
     setSyncingFPL(true);
     setSyncResultFPL(null);
     try {
-      const json = await apiFetch("/sync-fpl", { method: "POST" }) as { ok: boolean; cleared: number; inserted: number; skipped: number };
+      const json = await apiFetch("/sync-fpl", { method: "POST" }) as { ok: boolean; deactivated: number; inserted: number; skipped: number };
       setSyncResultFPL(`✓ Synced ${json.inserted} Premier League players (deactivated ${json.deactivated} departed, skipped ${json.skipped})`);
       await loadAll();
     } catch (e) {
