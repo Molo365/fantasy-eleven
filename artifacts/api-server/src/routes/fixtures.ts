@@ -12,12 +12,13 @@ const router: IRouter = Router();
 // On a typical refresh only /api/fixtures/ hits the network (~50 KB vs ~800 KB
 // for bootstrap-static), eliminating the main source of 10–20 s load times.
 
-type FplTeam    = { id: number; name: string; short_name: string };
+type FplTeam    = { id: number; name: string; short_name: string; code: number };
 type FplFixture = {
   id: number;
   event: number | null;
   kickoff_time: string | null;
   finished: boolean;
+  finished_provisional: boolean;
   started: boolean;
   team_h: number;
   team_a: number;
@@ -25,22 +26,25 @@ type FplFixture = {
   team_a_score: number | null;
 };
 
-// Team-name cache: 24-hour TTL
-let teamNameCache: { at: number; map: Map<number, string> } | null = null;
+// Team metadata cache: 24-hour TTL
+let teamNameCache: {
+  at: number;
+  map: Map<number, { name: string; code: number }>;
+} | null = null;
 const TEAM_NAME_TTL_MS = 24 * 60 * 60 * 1000;
 
 // Mapped-fixtures cache: 5-minute TTL
 let fixtureCache: { at: number; data: unknown[] } | null = null;
 const FIXTURE_TTL_MS = 5 * 60 * 1000;
 
-async function getTeamNames(): Promise<Map<number, string>> {
+async function getTeamNames(): Promise<Map<number, { name: string; code: number }>> {
   if (teamNameCache && Date.now() - teamNameCache.at < TEAM_NAME_TTL_MS) {
     return teamNameCache.map;
   }
   const res = await fetch("https://fantasy.premierleague.com/api/bootstrap-static/");
   if (!res.ok) throw new Error(`FPL bootstrap HTTP ${res.status}`);
   const { teams } = await res.json() as { teams: FplTeam[] };
-  const map = new Map(teams.map(t => [t.id, t.name]));
+  const map = new Map(teams.map(t => [t.id, { name: t.name, code: t.code }]));
   teamNameCache = { at: Date.now(), map };
   return map;
 }
@@ -69,9 +73,12 @@ async function fetchFplFixtures(): Promise<unknown[]> {
       const date = kickoff.slice(0, 10);
 
       let status: "scheduled" | "live" | "finished";
-      if (f.finished)      status = "finished";
+      if (f.finished || f.finished_provisional) status = "finished";
       else if (f.started)  status = "live";
       else                 status = "scheduled";
+
+      const homeTeam = teamById.get(f.team_h);
+      const awayTeam = teamById.get(f.team_a);
 
       return {
         id: f.id,
@@ -81,10 +88,14 @@ async function fetchFplFixtures(): Promise<unknown[]> {
         round: f.event != null ? `Gameweek ${f.event}` : "TBC",
         venue: null,
         elapsed: null,
-        homeTeam: teamById.get(f.team_h) ?? `Team ${f.team_h}`,
-        awayTeam: teamById.get(f.team_a) ?? `Team ${f.team_a}`,
-        homeLogo: null,
-        awayLogo: null,
+        homeTeam: homeTeam?.name ?? `Team ${f.team_h}`,
+        awayTeam: awayTeam?.name ?? `Team ${f.team_a}`,
+        homeLogo: homeTeam
+          ? `https://resources.premierleague.com/premierleague/badges/70/t${homeTeam.code}.png`
+          : null,
+        awayLogo: awayTeam
+          ? `https://resources.premierleague.com/premierleague/badges/70/t${awayTeam.code}.png`
+          : null,
         homeScore: f.team_h_score ?? null,
         awayScore: f.team_a_score ?? null,
       };
