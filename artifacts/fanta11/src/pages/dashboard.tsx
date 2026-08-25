@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import grassImg from "@/assets/Grass.jpg";
 import {
   useGetDashboardSummary,
@@ -20,6 +20,7 @@ import { Trophy, TrendingUp, Users, Wallet, Zap, ShieldHalf } from "lucide-react
 import { useAuth } from "@/contexts/auth";
 import { Link } from "wouter";
 import { format } from "date-fns";
+import { getPremierLeaguePhotoUrl } from "@/lib/player-photo";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -372,11 +373,18 @@ function TopPerformersCard() {
 
 // ── Squad Player Card ─────────────────────────────────────────────────────────
 function SquadPlayerCard({ p }: { p: SquadPlayer }) {
-  const [imgFailed, setImgFailed] = useState(false);
+  const [photoState, setPhotoState] = useState<"primary" | "premier-league" | "failed">("primary");
+  useEffect(() => setPhotoState("primary"), [p.imageUrl]);
+  const premierLeagueUrl = getPremierLeaguePhotoUrl(p.imageUrl);
+  const photoSrc = photoState === "primary"
+    ? p.imageUrl
+    : photoState === "premier-league"
+      ? premierLeagueUrl
+      : null;
   const posColor  = POS_COLORS[p.position] ?? "#64748b";
   const hasPoints = p.points > 0;
   const lastName  = p.name.includes(" ") ? p.name.split(" ").slice(-1)[0] : p.name;
-  const showPhoto = !!p.imageUrl && !imgFailed;
+  const showPhoto = !!photoSrc;
   const badgeSize = 18;
 
   return (
@@ -397,10 +405,12 @@ function SquadPlayerCard({ p }: { p: SquadPlayer }) {
         >
           {showPhoto ? (
             <img
-              src={p.imageUrl!}
+              src={photoSrc!}
               alt={p.name}
               loading="lazy"
-              onError={() => setImgFailed(true)}
+              onError={() => setPhotoState((current) =>
+                current === "primary" && premierLeagueUrl ? "premier-league" : "failed"
+              )}
               style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top center" }}
             />
           ) : (

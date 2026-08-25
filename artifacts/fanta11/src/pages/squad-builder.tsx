@@ -13,6 +13,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Loader2, Search, X, Info, Star } from "lucide-react";
 import { ListPlayersPosition } from "@workspace/api-client-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { getPremierLeaguePhotoUrl } from "@/lib/player-photo";
 
 /* ─── National team kit colours ─────────────────────────────────── */
 const KIT: Record<string, [string, string]> = {
@@ -125,9 +126,16 @@ function PlayerPhoto({
   crestUrl?: string | null;
   primary: string; secondary: string; label: string; name: string; position: string; size?: number;
 }) {
-  const [failed, setFailed] = useState(false);
+  const [photoState, setPhotoState] = useState<"primary" | "premier-league" | "failed">("primary");
+  useEffect(() => setPhotoState("primary"), [imageUrl]);
+  const premierLeagueUrl = getPremierLeaguePhotoUrl(imageUrl);
+  const photoSrc = photoState === "primary"
+    ? imageUrl
+    : photoState === "premier-league"
+      ? premierLeagueUrl
+      : null;
   const badgeSize = Math.round(size * 0.38);
-  const showImage = !!imageUrl && !failed;
+  const showImage = !!photoSrc;
   const positionColor = POS_COLOR[position] ?? primary;
   return (
     <div style={{ position: "relative", width: size, height: size, flexShrink: 0 }}>
@@ -140,10 +148,12 @@ function PlayerPhoto({
       }}>
         {showImage ? (
           <img
-            src={imageUrl!}
+            src={photoSrc!}
             alt={name}
             loading="lazy"
-            onError={() => setFailed(true)}
+            onError={() => setPhotoState((current) =>
+              current === "primary" && premierLeagueUrl ? "premier-league" : "failed"
+            )}
             style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top center" }}
           />
         ) : (
@@ -272,8 +282,15 @@ function PitchPhoto({
   crestUrl?: string | null;
   posColor: string; kitPri: string; kitSec: string; label: string; name: string; size?: number;
 }) {
-  const [failed, setFailed] = useState(false);
-  const showImg = imageUrl && !failed;
+  const [photoState, setPhotoState] = useState<"primary" | "premier-league" | "failed">("primary");
+  useEffect(() => setPhotoState("primary"), [imageUrl]);
+  const premierLeagueUrl = getPremierLeaguePhotoUrl(imageUrl);
+  const photoSrc = photoState === "primary"
+    ? imageUrl
+    : photoState === "premier-league"
+      ? premierLeagueUrl
+      : null;
+  const showImg = !!photoSrc;
   const badgeSize = Math.round(size * 0.36);
   return (
     <div style={{ position: "relative", width: size, height: size, flexShrink: 0 }}>
@@ -286,10 +303,12 @@ function PitchPhoto({
       }}>
         {showImg ? (
           <img
-            src={imageUrl!}
+            src={photoSrc!}
             alt={label}
             loading="lazy"
-            onError={() => setFailed(true)}
+            onError={() => setPhotoState((current) =>
+              current === "primary" && premierLeagueUrl ? "premier-league" : "failed"
+            )}
             style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top center" }}
           />
         ) : (
