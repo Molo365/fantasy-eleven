@@ -21,7 +21,8 @@ router.get("/players/top", asyncHandler(async (req, res) => {
     return;
   }
   const { position, limit = 10 } = parsed.data;
-  const conditions = position ? [eq(playersTable.position, position)] : [];
+  const conditions = [eq(playersTable.active, true)];
+  if (position) conditions.push(eq(playersTable.position, position));
   const rows = await db
     .select()
     .from(playersTable)
@@ -49,6 +50,7 @@ router.get("/players", asyncHandler(async (req, res) => {
   }
   const { position, club, search, limit = 50, offset = 0 } = parsed.data;
   const conditions = [];
+  conditions.push(eq(playersTable.active, true));
   if (position) conditions.push(eq(playersTable.position, position));
   if (club)     conditions.push(eq(playersTable.club, club));
   if (search)   conditions.push(ilike(playersTable.name, `%${search}%`));
@@ -67,6 +69,7 @@ router.get("/players/nations", asyncHandler(async (_req, res) => {
   const rows = await db
     .selectDistinct({ club: playersTable.club })
     .from(playersTable)
+    .where(eq(playersTable.active, true))
     .orderBy(asc(playersTable.club));
   res.json(rows.map(r => r.club));
 }));

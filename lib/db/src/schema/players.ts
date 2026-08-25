@@ -20,6 +20,7 @@ export const playersTable = pgTable("players", {
   imageUrl:      text("image_url"),
   crestUrl:      text("crest_url"),
   cachedFromApi: boolean("cached_from_api").notNull().default(false),
+  active:        boolean("active").notNull().default(true),
   cachedAt:      timestamp("cached_at", { withTimezone: true }),
   createdAt:     timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [

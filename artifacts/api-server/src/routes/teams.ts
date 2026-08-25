@@ -134,9 +134,12 @@ router.post("/teams/:id/players", asyncHandler(async (req, res) => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const [player] = await db.select().from(playersTable).where(eq(playersTable.id, parsed.data.playerId));
+  const [player] = await db.select().from(playersTable).where(and(
+    eq(playersTable.id, parsed.data.playerId),
+    eq(playersTable.active, true),
+  ));
   if (!player) {
-    res.status(404).json({ error: "Player not found" });
+    res.status(404).json({ error: "Player not found or no longer available" });
     return;
   }
   const [team] = await db.select().from(teamsTable).where(eq(teamsTable.id, params.data.id));

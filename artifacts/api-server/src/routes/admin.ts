@@ -1,5 +1,5 @@
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
-import { and, eq, count, isNotNull, isNull, ne, sql } from "drizzle-orm";
+import { and, eq, count, isNotNull, isNull, ne, notInArray, or, sql } from "drizzle-orm";
 import {
   db, usersTable, playersTable, gameweeksTable, fixturesTable,
   teamsTable, teamPlayersTable, leaguesTable, leagueTeamsTable, activityTable,
@@ -416,8 +416,8 @@ router.post("/admin/sync-fpl", requireAdmin, async (req, res): Promise<void> => 
     // CASCADE on team_players, wiping every user's squad. Instead we:
     //   • UPDATE existing rows in-place by their DB primary key (id never changes)
     //   • INSERT only genuinely new players (new FPL externalId not yet in the DB)
-    // Retired players that no longer appear in the FPL feed are left untouched —
-    // stale data is harmless, squad references are intact.
+    // Retired players that no longer appear in the FPL feed are marked inactive —
+    // stale rows and squad references remain intact.
 
     // Build a Map of externalId → existing DB row id for all PL players.
     const existingRows = await db
@@ -465,6 +465,7 @@ router.post("/admin/sync-fpl", requireAdmin, async (req, res): Promise<void> => 
               totalPoints: el.total_points,
               imageUrl,
               crestUrl,
+              active: true,
               cachedAt: now,
             })
             .where(eq(playersTable.id, existingDbId));
@@ -483,6 +484,7 @@ router.post("/admin/sync-fpl", requireAdmin, async (req, res): Promise<void> => 
             imageUrl,
             crestUrl,
             cachedFromApi: true,
+            active: true,
             cachedAt: now,
           });
           inserted++;
@@ -496,8 +498,24 @@ router.post("/admin/sync-fpl", requireAdmin, async (req, res): Promise<void> => 
       }
     }
 
-    req.log.info({ updated, inserted, skipped, firstSkipReason, firstError }, "FPL Premier League player sync complete (upsert)");
-    res.json({ ok: true, updated, inserted, skipped, firstSkipReason: firstSkipReason || null, firstError: firstError || null });
+    const latestExternalIds = fplData.elements.map((el) => el.id);
+    const deactivated = await db
+      .update(playersTable)
+      .set({ active: false })
+      .where(and(
+        eq(playersTable.nationality, "premier_league"),
+        or(
+          isNull(playersTable.externalId),
+          latestExternalIds.length > 0
+            ? notInArray(playersTable.externalId, latestExternalIds)
+            : undefined,
+        ),
+        eq(playersTable.active, true),
+      ))
+      .returning({ id: playersTable.id });
+
+    req.log.info({ updated, inserted, deactivated: deactivated.length, skipped, firstSkipReason, firstError }, "FPL Premier League player sync complete (upsert)");
+    res.json({ ok: true, updated, inserted, deactivated: deactivated.length, skipped, firstSkipReason: firstSkipReason || null, firstError: firstError || null });
   } catch (err) {
     req.log.error({ err }, "FPL player sync failed");
     res.status(500).json({ error: String(err) });
