@@ -237,50 +237,52 @@ function MyLeagueCard({ leagueId, leagueName, teamId }: { leagueId: number; leag
         </Link>
       </div>
 
-      <div style={{ flex: 1, padding: "8px" }}>
+      <div style={{ flex: 1, padding: 16 }}>
         {isLoading ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: 8 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 16 }}>
             {[1, 2, 3].map((i) => (
-              <div key={i} className="animate-pulse" style={{ height: 36, borderRadius: 8, background: "rgba(255,255,255,0.05)" }} />
+              <div key={i} className="animate-pulse" style={{ height: 112, borderRadius: 12, background: "rgba(255,255,255,0.05)" }} />
             ))}
           </div>
         ) : !rows?.length ? (
           <p style={{ textAlign: "center", padding: "32px 0", fontSize: 12, color: "#5d7ba8" }}>No members yet.</p>
         ) : (
-          (rows as LeaderboardEntry[]).map((row) => {
-            const isMe = row.teamId === teamId;
-            const isFirst = row.rank === 1;
-            return (
-              <div
-                key={row.teamId}
-                style={{
-                  display: "flex", alignItems: "center", gap: 12,
-                  padding: "10px 12px", borderRadius: 8, marginBottom: 4,
-                  background: isMe ? "rgba(6,182,212,0.10)" : isFirst ? "rgba(245,158,11,0.06)" : "transparent",
-                  border: isMe ? "1px solid rgba(6,182,212,0.22)" : "1px solid transparent",
-                }}
-              >
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 16 }}>
+            {(rows as LeaderboardEntry[]).map((row) => {
+              const isMe = row.teamId === teamId;
+              const isFirst = row.rank === 1;
+              return (
                 <div
+                  key={row.teamId}
                   style={{
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    flexShrink: 0, borderRadius: "50%", fontWeight: 900,
-                    width: 26, height: 26, fontSize: 11,
-                    background: isFirst ? "#f59e0b" : "rgba(255,255,255,0.08)",
-                    color: isFirst ? "#000" : "#64748b",
+                    display: "flex", flexDirection: "column", gap: 8,
+                    minHeight: 112, padding: 16, borderRadius: 12,
+                    background: isFirst
+                      ? "linear-gradient(135deg, #ffd873 0%, #e8a627 100%)"
+                      : "linear-gradient(135deg, #1a2c54 0%, #101d3a 100%)",
+                    border: isMe ? "1px solid rgba(6,182,212,0.7)" : isFirst ? "1px solid rgba(255,196,54,0.5)" : "1px solid rgba(93,156,236,0.3)",
+                    boxShadow: isFirst ? "0 4px 20px rgba(255,196,54,0.25)" : "0 2px 12px rgba(0,0,0,0.3)",
                   }}
                 >
-                  {row.rank}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <span style={{ fontSize: 11, fontWeight: 900, color: isFirst ? "#2a1900" : "#7ab4ff" }}>
+                      {isFirst ? "🥇" : `#${row.rank}`}
+                    </span>
+                    <span className="tabular-nums" style={{ fontSize: 18, fontWeight: 900, color: isFirst ? "#2a1900" : isMe ? "#06b6d4" : "#f1f5f9" }}>
+                      {row.totalPoints}
+                    </span>
+                  </div>
+                  <span className="truncate" style={{ fontSize: 14, fontWeight: 700, color: isFirst ? "#2a1900" : "#e2e8f0" }}>
+                    {row.managerName}
+                    {isMe && <span style={{ marginLeft: 6, fontSize: 11, color: isFirst ? "#7a5200" : "#06b6d4" }}>(you)</span>}
+                  </span>
+                  <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: isFirst ? "#7a5200" : "#5d7ba8" }}>
+                    Points
+                  </span>
                 </div>
-                <span className="truncate" style={{ flex: 1, fontSize: 14, fontWeight: 600, color: isMe ? "#e2e8f0" : "#94a3b8" }}>
-                  {row.managerName}
-                  {isMe && <span style={{ marginLeft: 6, fontSize: 12, color: "#06b6d4" }}>(you)</span>}
-                </span>
-                <span className="tabular-nums" style={{ fontSize: 14, fontWeight: 900, color: isMe ? "#06b6d4" : isFirst ? "#f59e0b" : "#cbd5e1" }}>
-                  {row.totalPoints}
-                </span>
-              </div>
-            );
-          })
+              );
+            })}
+          </div>
         )}
       </div>
     </div>
@@ -307,23 +309,26 @@ function TopPerformersCard() {
         </span>
       </div>
 
-      <div style={{ flex: 1, padding: 8 }}>
+      <div style={{ flex: 1, padding: 16 }}>
         {!performers?.length ? (
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 0", gap: 8 }}>
             <span style={{ fontSize: 22 }}>🏆</span>
             <p style={{ fontSize: 12, color: "#5d7ba8" }}>No scores yet</p>
           </div>
         ) : (
-          (performers as TopPerformer[]).map((p, i) => {
-            const medal = MEDAL_STYLES[i] ?? MEDAL_STYLES[2];
-            const isTop = i === 0;
-            const inner = (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 16 }}>
+            {(performers as TopPerformer[]).map((p, i) => {
+              const medal = MEDAL_STYLES[i] ?? MEDAL_STYLES[2];
+              const isTop = i === 0;
+              return (
               <div
+                key={p.id}
                 style={{
-                  display: "flex", alignItems: "center", gap: 12,
-                  padding: "10px 12px", borderRadius: isTop ? 7 : 8,
-                  background: medal.bg,
-                  ...(isTop ? {} : { border: "1px solid rgba(255,255,255,0.08)" }),
+                  display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 10,
+                  minHeight: 132, padding: 16, borderRadius: 12,
+                  background: isTop ? "linear-gradient(135deg, #ffd873 0%, #e8a627 100%)" : "linear-gradient(135deg, #1a2c54 0%, #101d3a 100%)",
+                  border: isTop ? "1px solid rgba(255,196,54,0.5)" : "1px solid rgba(93,156,236,0.3)",
+                  boxShadow: isTop ? "0 4px 20px rgba(255,196,54,0.25)" : "0 2px 12px rgba(0,0,0,0.3)",
                 }}
               >
                 <div
@@ -331,47 +336,31 @@ function TopPerformersCard() {
                     display: "flex", alignItems: "center", justifyContent: "center",
                     flexShrink: 0, borderRadius: "50%",
                     width: 36, height: 36,
-                    background: isTop ? "linear-gradient(135deg, #ffd873, #e8a627)" : "rgba(0,0,0,0.3)",
-                    border: isTop ? "none" : "2px solid rgba(255,255,255,0.12)",
+                    background: isTop ? "rgba(0,0,0,0.15)" : "rgba(0,0,0,0.3)",
+                    border: isTop ? "1px solid rgba(0,0,0,0.2)" : "2px solid rgba(255,255,255,0.12)",
                     fontSize: 16,
                   }}
                 >
                   {isTop ? "🔥" : "⚽"}
                 </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p className="truncate" style={{ fontSize: 14, fontWeight: 700, color: "#f1f5f9" }}>{p.name}</p>
-                  <p style={{ fontSize: 10, color: "#5d7ba8", marginTop: 1 }}>
-                    {p.nationality ?? "—"} · {p.position}
-                  </p>
+                <div style={{ width: "100%", minWidth: 0 }}>
+                  <p className="truncate" style={{ fontSize: 13, fontWeight: 800, color: isTop ? "#2a1900" : "#f1f5f9" }}>{p.name}</p>
+                  <p style={{ fontSize: 10, color: isTop ? "#7a5200" : "#5d7ba8", marginTop: 3, fontWeight: 700 }}>{p.position}</p>
                 </div>
-                <span className="tabular-nums" style={{ fontSize: 18, fontWeight: 900, color: medal.pts }}>
+                <span className="tabular-nums" style={{ fontSize: 12, fontWeight: 900, color: isTop ? "#7a5200" : medal.pts }}>
                   {p.totalPoints}
                 </span>
               </div>
-            );
-
-            return isTop ? (
-              /* gradient border for #1 via 1px padding wrapper */
-              <div
-                key={p.id}
-                style={{
-                  padding: 1, borderRadius: 9, marginBottom: 4,
-                  background: "linear-gradient(135deg, #ffc436, #7ab4ff)",
-                }}
-              >
-                {inner}
-              </div>
-            ) : (
-              <div key={p.id} style={{ marginBottom: 4 }}>{inner}</div>
-            );
-          })
+              );
+            })}
+          </div>
         )}
       </div>
     </div>
   );
 }
 
-// ── Squad Player Card ─────────────────────────────────────────────────────────
+// ── Squad Player Row ───────────────────────────────────────────────────────────
 function SquadPlayerCard({ p }: { p: SquadPlayer }) {
   const [photoState, setPhotoState] = useState<"primary" | "premier-league" | "failed">("primary");
   useEffect(() => setPhotoState("primary"), [p.imageUrl]);
@@ -382,25 +371,28 @@ function SquadPlayerCard({ p }: { p: SquadPlayer }) {
       ? premierLeagueUrl
       : null;
   const posColor  = POS_COLORS[p.position] ?? "#64748b";
-  const hasPoints = p.points > 0;
-  const lastName  = p.name.includes(" ") ? p.name.split(" ").slice(-1)[0] : p.name;
   const showPhoto = !!photoSrc;
-  const badgeSize = 18;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0, minWidth: 56 }}>
-      {/* Outer wrapper — not overflow-hidden so C/V badge can sit outside the circle */}
-      <div style={{ position: "relative", width: 52, height: 52 }}>
-        {/* Circle — overflow hidden to crop the photo */}
+    <div
+      style={{
+        display: "flex", alignItems: "center", gap: 12, minHeight: 48,
+        padding: "8px 12px", borderRadius: 10,
+        background: "rgba(26,44,84,0.42)",
+        border: "1px solid rgba(255,255,255,0.06)",
+      }}
+    >
+      {/* Photo and status badges */}
+      <div style={{ position: "relative", width: 32, height: 32, flexShrink: 0 }}>
         <div
           style={{
-            width: 52, height: 52,
+            width: 32, height: 32,
             borderRadius: "50%",
-            border: `2.5px solid ${posColor}`,
+            border: `2px solid ${posColor}`,
             overflow: "hidden",
             background: showPhoto ? "#0a1628" : `${posColor}2e`,
             display: "flex", alignItems: "center", justifyContent: "center",
-            fontWeight: 900, fontSize: 11, color: posColor, letterSpacing: "0.04em",
+            fontWeight: 900, fontSize: 9, color: posColor, letterSpacing: "0.04em",
           }}
         >
           {showPhoto ? (
@@ -418,15 +410,15 @@ function SquadPlayerCard({ p }: { p: SquadPlayer }) {
           )}
         </div>
 
-        {/* Club crest badge — bottom-right of the circle */}
+        {/* Club crest badge */}
         {p.crestUrl && (
           <img
             src={p.crestUrl}
             alt=""
             loading="lazy"
             style={{
-              position: "absolute", bottom: -2, right: -2,
-              width: badgeSize, height: badgeSize,
+              position: "absolute", bottom: -3, right: -4,
+              width: 15, height: 15,
               objectFit: "contain",
               background: "rgba(5,12,30,0.9)",
               borderRadius: "50%",
@@ -439,35 +431,33 @@ function SquadPlayerCard({ p }: { p: SquadPlayer }) {
 
         {/* Captain badge */}
         {p.isCaptain && (
-          <span style={{ position: "absolute", top: -4, right: -4, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "50%", fontWeight: 900, width: 16, height: 16, fontSize: 8, background: "#f59e0b", color: "#000", zIndex: 2 }}>
+          <span style={{ position: "absolute", top: -5, right: -5, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "50%", fontWeight: 900, width: 15, height: 15, fontSize: 7, background: "#f59e0b", color: "#000", zIndex: 2 }}>
             C
           </span>
         )}
         {p.isViceCaptain && !p.isCaptain && (
-          <span style={{ position: "absolute", top: -4, right: -4, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "50%", fontWeight: 900, width: 16, height: 16, fontSize: 8, background: "#64748b", color: "#fff", zIndex: 2 }}>
+          <span style={{ position: "absolute", top: -5, right: -5, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "50%", fontWeight: 900, width: 15, height: 15, fontSize: 7, background: "#64748b", color: "#fff", zIndex: 2 }}>
             V
           </span>
         )}
       </div>
 
-      {/* Position badge — visible only when photo is shown (otherwise the circle already shows it) */}
-      {showPhoto && (
-        <span style={{ fontSize: 8, fontWeight: 800, color: posColor, marginTop: 3, letterSpacing: "0.08em" }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p className="truncate" style={{ margin: 0, fontWeight: 700, fontSize: 12, color: "#e2e8f0" }}>
+          {p.name}
+        </p>
+        <p style={{ margin: "3px 0 0", fontWeight: 800, fontSize: 9, color: posColor, letterSpacing: "0.08em" }}>
           {p.position}
-        </span>
-      )}
-
-      <p className="truncate" style={{ marginTop: showPhoto ? 1 : 6, textAlign: "center", fontWeight: 600, fontSize: 10, color: "#cbd5e1", maxWidth: 56 }}>
-        {lastName}
-      </p>
-      <p style={{ fontWeight: 900, fontSize: 10, color: hasPoints ? "#22c55e" : "#475569", marginTop: 1 }}>
+        </p>
+      </div>
+      <span className="tabular-nums" style={{ fontWeight: 900, fontSize: 12, color: p.points > 0 ? "#22c55e" : "#8fa3c9" }}>
         {p.points} pts
-      </p>
+      </span>
     </div>
   );
 }
 
-// ── Squad Strip ───────────────────────────────────────────────────────────────
+// ── Squad List ─────────────────────────────────────────────────────────────────
 function SquadStrip({ teamId }: { teamId: number }) {
   const { data: squad } = useGetDashboardSquad(
     { teamId },
@@ -489,30 +479,16 @@ function SquadStrip({ teamId }: { teamId: number }) {
         </span>
       </div>
 
-      {/* Wrapper provides the right-edge fade affordance for the hidden-scrollbar carousel */}
-      <div style={{ position: "relative" }}>
-        <div
-          style={{
-            display: "flex", gap: 16, padding: 16,
-            overflowX: "auto", scrollbarWidth: "none",
-            WebkitOverflowScrolling: "touch",
-          } as React.CSSProperties}
-        >
-          {squadList.map((p) => (
-            <SquadPlayerCard key={p.playerId} p={p} />
-          ))}
-        </div>
-
-        {/* Right-edge fade — signals horizontally scrollable content */}
-        <div
-          aria-hidden="true"
-          style={{
-            position: "absolute", top: 0, right: 0, bottom: 0, width: 48,
-            pointerEvents: "none",
-            background: "linear-gradient(to right, transparent, rgba(8,17,40,0.95))",
-            borderRadius: "0 0 16px 0",
-          }}
-        />
+      <div
+        style={{
+          display: "flex", flexDirection: "column", gap: 16, padding: 16,
+          maxHeight: 280, overflowY: "auto",
+          scrollbarWidth: "thin",
+        }}
+      >
+        {squadList.map((p) => (
+          <SquadPlayerCard key={p.playerId} p={p} />
+        ))}
       </div>
     </div>
   );
