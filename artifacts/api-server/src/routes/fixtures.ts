@@ -8,7 +8,8 @@ const router: IRouter = Router();
 // Team names (from bootstrap-static) almost never change mid-season: cache
 // them for 24 h so they are fetched at most once per server instance.
 //
-// Mapped fixture results change every few minutes: 5-min TTL as before.
+// Mapped fixture results change during live play: a 60-second TTL matches the
+// client polling cadence so status and score transitions do not remain stale.
 // On a typical refresh only /api/fixtures/ hits the network (~50 KB vs ~800 KB
 // for bootstrap-static), eliminating the main source of 10–20 s load times.
 
@@ -26,6 +27,23 @@ type FplFixture = {
   team_a_score: number | null;
 };
 
+type FixtureLeague = {
+  key: string;
+  name: string;
+  provider: "fpl";
+};
+
+// Keep provider-specific details behind a league registry so adding another
+// league later does not require changing the route or the response shape.
+const fixtureLeagues: Record<string, FixtureLeague> = {
+  "premier-league": {
+    key: "premier-league",
+    name: "Premier League",
+    provider: "fpl",
+  },
+};
+const DEFAULT_LEAGUE_KEY = "premier-league";
+
 // Team metadata cache: 24-hour TTL
 let teamNameCache: {
   at: number;
@@ -33,9 +51,9 @@ let teamNameCache: {
 } | null = null;
 const TEAM_NAME_TTL_MS = 24 * 60 * 60 * 1000;
 
-// Mapped-fixtures cache: 5-minute TTL
-let fixtureCache: { at: number; data: unknown[] } | null = null;
-const FIXTURE_TTL_MS = 5 * 60 * 1000;
+// Mapped-fixtures cache: 60-second TTL per league
+const fixtureCache = new Map<string, { at: number; data: unknown[] }>();
+const FIXTURE_TTL_MS = 60 * 1000;
 
 async function getTeamNames(): Promise<Map<number, { name: string; code: number }>> {
   if (teamNameCache && Date.now() - teamNameCache.at < TEAM_NAME_TTL_MS) {
@@ -49,9 +67,10 @@ async function getTeamNames(): Promise<Map<number, { name: string; code: number 
   return map;
 }
 
-async function fetchFplFixtures(): Promise<unknown[]> {
-  if (fixtureCache && Date.now() - fixtureCache.at < FIXTURE_TTL_MS) {
-    return fixtureCache.data;
+async function fetchFplFixtures(league: FixtureLeague): Promise<unknown[]> {
+  const cached = fixtureCache.get(league.key);
+  if (cached && Date.now() - cached.at < FIXTURE_TTL_MS) {
+    return cached.data;
   }
 
   // Team names and raw fixtures fetched in parallel.
@@ -85,6 +104,8 @@ async function fetchFplFixtures(): Promise<unknown[]> {
         date,
         kickoff,
         status,
+        leagueKey: league.key,
+        gameweekNumber: f.event,
         round: f.event != null ? `Gameweek ${f.event}` : "TBC",
         venue: null,
         elapsed: null,
@@ -101,15 +122,31 @@ async function fetchFplFixtures(): Promise<unknown[]> {
       };
     });
 
-  fixtureCache = { at: Date.now(), data: mapped };
+  fixtureCache.set(league.key, { at: Date.now(), data: mapped });
   return mapped;
+}
+
+async function fetchFixturesForLeague(league: FixtureLeague): Promise<unknown[]> {
+  switch (league.provider) {
+    case "fpl":
+      return fetchFplFixtures(league);
+  }
 }
 
 // ─── Route ──────────────────────────────────────────────────────────────────
 
 router.get("/fixtures", async (req, res): Promise<void> => {
   try {
-    const fixtures = await fetchFplFixtures();
+    const requestedLeagueKey = typeof req.query.leagueKey === "string"
+      ? req.query.leagueKey
+      : DEFAULT_LEAGUE_KEY;
+    const league = fixtureLeagues[requestedLeagueKey];
+    if (!league) {
+      res.status(400).json({ error: `Unknown fixture league: ${requestedLeagueKey}` });
+      return;
+    }
+
+    const fixtures = await fetchFixturesForLeague(league);
     res.json(GetLiveFixturesResponse.parse(fixtures));
   } catch (err) {
     req.log.error({ err }, "Failed to fetch fixtures from FPL API");

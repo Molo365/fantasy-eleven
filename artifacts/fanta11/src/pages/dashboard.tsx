@@ -106,8 +106,9 @@ const CARD: React.CSSProperties = {
 // ── Today's Matches column ────────────────────────────────────────────────────
 function TodayMatchesCard() {
   const today = format(new Date(), "yyyy-MM-dd");
-  const { data: fixtures } = useGetLiveFixtures({
-    query: { queryKey: getGetLiveFixturesQueryKey(), refetchInterval: 60_000 },
+  const fixtureParams = { leagueKey: "premier-league" };
+  const { data: fixtures } = useGetLiveFixtures(fixtureParams, {
+    query: { queryKey: getGetLiveFixturesQueryKey(fixtureParams), refetchInterval: 60_000 },
   });
 
   const todayMatches = (fixtures ?? [])

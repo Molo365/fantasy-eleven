@@ -21,6 +21,7 @@ export * from './gameweekHistoryTeam';
 export * from './gameweekStatus';
 export * from './getDashboardSquadParams';
 export * from './getDashboardSummaryParams';
+export * from './getLiveFixturesParams';
 export * from './getRecentActivityParams';
 export * from './getTopPlayersParams';
 export * from './getTopPlayersPosition';

@@ -477,13 +477,21 @@ export const GetGameweekFixturesResponse = zod.array(GetGameweekFixturesResponse
 
 
 /**
- * @summary Get World Cup fixtures live from API-Sports
+ * @summary Get league-scoped fixtures from the configured provider
  */
+export const getLiveFixturesQueryLeagueKeyDefault = `premier-league`;
+
+export const GetLiveFixturesQueryParams = zod.object({
+  "leagueKey": zod.coerce.string().default(getLiveFixturesQueryLeagueKeyDefault)
+})
+
 export const GetLiveFixturesResponseItem = zod.object({
   "id": zod.number(),
   "date": zod.string(),
   "kickoff": zod.string(),
   "status": zod.enum(['scheduled', 'live', 'finished']),
+  "leagueKey": zod.string().describe('Internal league scope used by fixture providers and clients'),
+  "gameweekNumber": zod.number().nullable(),
   "statusShort": zod.string().optional(),
   "elapsed": zod.number().nullish(),
   "round": zod.string(),

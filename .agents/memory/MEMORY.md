@@ -2,6 +2,7 @@
 - [Orval query options require queryKey](orval-query-options.md) — passing `query` opts to a generated useGet* hook forces also passing `getGet<Name>QueryKey()`; import generated row types directly.
 - [Zafronix WC API contract](zafronix-api.md) — use `/teams?tournament=YYYY` (has squad[]); `/players` returns useless 1930 data; positions GK/DF/MF/FW, no price field.
 - [ESPN player-photo coverage](espn-player-photo-coverage.md) — ESPN roster IDs are matchable but roster headshots are sparse; do not treat ESPN CDN paths as a universal fallback.
+- [Live fixture clock sources](live-fixture-clock-sources.md) — do not show match minutes from FPL or ESPN until a real in-progress payload is verified; status-only LIVE is the safe default.
 - [Premier League photo source](premierleague-photo-source.md) — official 500px portraits are strong for matched FPL codes, but roster pagination is undocumented and incomplete for name-only resolution.
 - [Railway vs dev DB separation](railway-db-separation.md) — Railway production and Replit dev are entirely separate Postgres instances with different team IDs; always confirm which DB a psql fix targets before assuming it applies to both.
 - [Team budget cascade gap](team-budget-cascade.md) — ON DELETE CASCADE on team_players bypasses the API budget recalculation; any direct player DELETE (sync wipe, admin reset) leaves team.budget stale and requires a manual UPDATE.

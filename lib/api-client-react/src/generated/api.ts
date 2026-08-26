@@ -28,6 +28,7 @@ import type {
   GameweekHistory,
   GetDashboardSquadParams,
   GetDashboardSummaryParams,
+  GetLiveFixturesParams,
   GetRecentActivityParams,
   GetTopPlayersParams,
   HealthStatus,
@@ -1735,20 +1736,27 @@ export function useGetGameweekFixtures<TData = Awaited<ReturnType<typeof getGame
 
 
 
-export const getGetLiveFixturesUrl = () => {
+export const getGetLiveFixturesUrl = (params?: GetLiveFixturesParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/fixtures`
+  return stringifiedParams.length > 0 ? `/api/fixtures?${stringifiedParams}` : `/api/fixtures`
 }
 
 /**
- * @summary Get World Cup fixtures live from API-Sports
+ * @summary Get league-scoped fixtures from the configured provider
  */
-export const getLiveFixtures = async ( options?: RequestInit): Promise<LiveFixture[]> => {
+export const getLiveFixtures = async (params?: GetLiveFixturesParams, options?: RequestInit): Promise<LiveFixture[]> => {
 
-  return customFetch<LiveFixture[]>(getGetLiveFixturesUrl(),
+  return customFetch<LiveFixture[]>(getGetLiveFixturesUrl(params),
   {
     ...options,
     method: 'GET'
@@ -1761,23 +1769,23 @@ export const getLiveFixtures = async ( options?: RequestInit): Promise<LiveFixtu
 
 
 
-export const getGetLiveFixturesQueryKey = () => {
+export const getGetLiveFixturesQueryKey = (params?: GetLiveFixturesParams,) => {
     return [
-    `/api/fixtures`
+    `/api/fixtures`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getGetLiveFixturesQueryOptions = <TData = Awaited<ReturnType<typeof getLiveFixtures>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLiveFixtures>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getGetLiveFixturesQueryOptions = <TData = Awaited<ReturnType<typeof getLiveFixtures>>, TError = ErrorType<unknown>>(params?: GetLiveFixturesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLiveFixtures>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetLiveFixturesQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getGetLiveFixturesQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getLiveFixtures>>> = ({ signal }) => getLiveFixtures({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getLiveFixtures>>> = ({ signal }) => getLiveFixtures(params, { signal, ...requestOptions });
 
 
 
@@ -1791,15 +1799,15 @@ export type GetLiveFixturesQueryError = ErrorType<unknown>
 
 
 /**
- * @summary Get World Cup fixtures live from API-Sports
+ * @summary Get league-scoped fixtures from the configured provider
  */
 
 export function useGetLiveFixtures<TData = Awaited<ReturnType<typeof getLiveFixtures>>, TError = ErrorType<unknown>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLiveFixtures>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ params?: GetLiveFixturesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLiveFixtures>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getGetLiveFixturesQueryOptions(options)
+  const queryOptions = getGetLiveFixturesQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

@@ -12,6 +12,10 @@ export interface LiveFixture {
   date: string;
   kickoff: string;
   status: LiveFixtureStatus;
+  /** Internal league scope used by fixture providers and clients */
+  leagueKey: string;
+  /** @nullable */
+  gameweekNumber: number | null;
   statusShort?: string;
   /** @nullable */
   elapsed?: number | null;

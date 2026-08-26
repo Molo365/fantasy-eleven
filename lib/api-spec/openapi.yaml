@@ -464,7 +464,14 @@ paths:
     get:
       operationId: getLiveFixtures
       tags: [fixtures]
-      summary: Get World Cup fixtures live from API-Sports
+      summary: Get league-scoped fixtures from the configured provider
+      parameters:
+        - name: leagueKey
+          in: query
+          required: false
+          schema:
+            type: string
+            default: premier-league
       responses:
         "200":
           description: Live fixtures
@@ -901,7 +908,7 @@ components:
 
     LiveFixture:
       type: object
-      required: [id, date, kickoff, status, round, homeTeam, awayTeam]
+      required: [id, date, kickoff, status, leagueKey, gameweekNumber, round, homeTeam, awayTeam]
       properties:
         id:
           type: integer
@@ -912,6 +919,11 @@ components:
         status:
           type: string
           enum: [scheduled, live, finished]
+        leagueKey:
+          type: string
+          description: Internal league scope used by fixture providers and clients
+        gameweekNumber:
+          type: ["integer", "null"]
         statusShort:
           type: string
         elapsed:
