@@ -239,7 +239,7 @@ function MyLeagueCard({ leagueId, leagueName, teamId }: { leagueId: number; leag
 
       <div style={{ flex: 1, padding: 16 }}>
         {isLoading ? (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 16 }}>
+          <div className="grid grid-cols-2 gap-4 md:flex md:flex-col">
             {[1, 2, 3].map((i) => (
               <div key={i} className="animate-pulse" style={{ height: 112, borderRadius: 12, background: "rgba(255,255,255,0.05)" }} />
             ))}
@@ -247,16 +247,15 @@ function MyLeagueCard({ leagueId, leagueName, teamId }: { leagueId: number; leag
         ) : !rows?.length ? (
           <p style={{ textAlign: "center", padding: "32px 0", fontSize: 12, color: "#5d7ba8" }}>No members yet.</p>
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 16 }}>
+          <div className="grid grid-cols-2 gap-4 md:flex md:flex-col">
             {(rows as LeaderboardEntry[]).map((row) => {
               const isMe = row.teamId === teamId;
               const isFirst = row.rank === 1;
               return (
                 <div
                   key={row.teamId}
+                  className="flex flex-col gap-2 min-h-[112px] p-4 rounded-xl md:flex-row md:items-center md:gap-3 md:min-h-0 md:px-3 md:py-3"
                   style={{
-                    display: "flex", flexDirection: "column", gap: 8,
-                    minHeight: 112, padding: 16, borderRadius: 12,
                     background: isFirst
                       ? "linear-gradient(135deg, #ffd873 0%, #e8a627 100%)"
                       : "linear-gradient(135deg, #1a2c54 0%, #101d3a 100%)",
@@ -264,15 +263,15 @@ function MyLeagueCard({ leagueId, leagueName, teamId }: { leagueId: number; leag
                     boxShadow: isFirst ? "0 4px 20px rgba(255,196,54,0.25)" : "0 2px 12px rgba(0,0,0,0.3)",
                   }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <span style={{ fontSize: 11, fontWeight: 900, color: isFirst ? "#2a1900" : "#7ab4ff" }}>
+                  <div className="flex items-center justify-between md:contents">
+                    <span className="md:order-1" style={{ fontSize: 11, fontWeight: 900, color: isFirst ? "#2a1900" : "#7ab4ff" }}>
                       {isFirst ? "🥇" : `#${row.rank}`}
                     </span>
-                    <span className="tabular-nums" style={{ fontSize: 18, fontWeight: 900, color: isFirst ? "#2a1900" : isMe ? "#06b6d4" : "#f1f5f9" }}>
+                    <span className="tabular-nums md:order-3" style={{ fontSize: 18, fontWeight: 900, color: isFirst ? "#2a1900" : isMe ? "#06b6d4" : "#f1f5f9" }}>
                       {row.totalPoints}
                     </span>
                   </div>
-                  <span className="truncate" style={{ fontSize: 14, fontWeight: 700, color: isFirst ? "#2a1900" : "#e2e8f0" }}>
+                  <span className="truncate md:order-2 md:flex-1 md:min-w-0" style={{ fontSize: 14, fontWeight: 700, color: isFirst ? "#2a1900" : "#e2e8f0" }}>
                     {row.managerName}
                     {isMe && <span style={{ marginLeft: 6, fontSize: 11, color: isFirst ? "#7a5200" : "#06b6d4" }}>(you)</span>}
                   </span>
@@ -313,16 +312,15 @@ function TopPerformersCard() {
             <p style={{ fontSize: 12, color: "#5d7ba8" }}>No scores yet</p>
           </div>
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 16 }}>
+          <div className="grid grid-cols-3 gap-4 md:flex md:flex-col">
             {(performers as TopPerformer[]).map((p, i) => {
               const medal = MEDAL_STYLES[i] ?? MEDAL_STYLES[2];
               const isTop = i === 0;
               return (
               <div
                 key={p.id}
+                className="flex flex-col items-start gap-2.5 min-h-[132px] p-4 rounded-xl md:flex-row md:items-center md:gap-3 md:min-h-0 md:px-3 md:py-3"
                 style={{
-                  display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 10,
-                  minHeight: 132, padding: 16, borderRadius: 12,
                   background: isTop ? "linear-gradient(135deg, #ffd873 0%, #e8a627 100%)" : "linear-gradient(135deg, #1a2c54 0%, #101d3a 100%)",
                   border: isTop ? "1px solid rgba(255,196,54,0.5)" : "1px solid rgba(93,156,236,0.3)",
                   boxShadow: isTop ? "0 4px 20px rgba(255,196,54,0.25)" : "0 2px 12px rgba(0,0,0,0.3)",
@@ -340,7 +338,7 @@ function TopPerformersCard() {
                 >
                   {isTop ? "🔥" : "⚽"}
                 </div>
-                <div style={{ width: "100%", minWidth: 0 }}>
+                <div className="w-full min-w-0 md:flex-1">
                   <p className="truncate" style={{ fontSize: 13, fontWeight: 800, color: isTop ? "#2a1900" : "#f1f5f9" }}>{p.name}</p>
                   <p style={{ fontSize: 10, color: isTop ? "#7a5200" : "#5d7ba8", marginTop: 3, fontWeight: 700 }}>{p.position}</p>
                 </div>
@@ -694,24 +692,26 @@ export function Dashboard() {
           <NoSquadPrompt />
         )}
 
-        {/* ── My League ── */}
-        {summary?.firstLeagueId != null ? (
-          <MyLeagueCard
-            leagueId={summary.firstLeagueId}
-            leagueName={summary.firstLeagueName ?? null}
-            teamId={teamId}
-          />
-        ) : (
-          <div style={{ ...CARD, display: "flex", alignItems: "center", justifyContent: "center", minHeight: 200 }}>
-            <div style={{ textAlign: "center", padding: "0 16px" }}>
-              <p style={{ fontSize: 12, color: "#5d7ba8", marginBottom: 8 }}>No league joined yet</p>
-              <Link href="/leagues" style={{ fontSize: 11, fontWeight: 700, color: "#7ab4ff" }}>Browse leagues →</Link>
+        <div className="grid gap-4 md:grid-cols-2">
+          {/* ── My League ── */}
+          {summary?.firstLeagueId != null ? (
+            <MyLeagueCard
+              leagueId={summary.firstLeagueId}
+              leagueName={summary.firstLeagueName ?? null}
+              teamId={teamId}
+            />
+          ) : (
+            <div style={{ ...CARD, display: "flex", alignItems: "center", justifyContent: "center", minHeight: 200 }}>
+              <div style={{ textAlign: "center", padding: "0 16px" }}>
+                <p style={{ fontSize: 12, color: "#5d7ba8", marginBottom: 8 }}>No league joined yet</p>
+                <Link href="/leagues" style={{ fontSize: 11, fontWeight: 700, color: "#7ab4ff" }}>Browse leagues →</Link>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* ── Top Performers ── */}
-        <TopPerformersCard />
+          {/* ── Top Performers ── */}
+          <TopPerformersCard />
+        </div>
 
         {/* ── Today's Matches ── */}
         <TodayMatchesCard />
