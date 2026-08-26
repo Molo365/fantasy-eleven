@@ -276,9 +276,6 @@ function MyLeagueCard({ leagueId, leagueName, teamId }: { leagueId: number; leag
                     {row.managerName}
                     {isMe && <span style={{ marginLeft: 6, fontSize: 11, color: isFirst ? "#7a5200" : "#06b6d4" }}>(you)</span>}
                   </span>
-                  <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: isFirst ? "#7a5200" : "#5d7ba8" }}>
-                    Points
-                  </span>
                 </div>
               );
             })}
@@ -348,7 +345,7 @@ function TopPerformersCard() {
                   <p style={{ fontSize: 10, color: isTop ? "#7a5200" : "#5d7ba8", marginTop: 3, fontWeight: 700 }}>{p.position}</p>
                 </div>
                 <span className="tabular-nums" style={{ fontSize: 12, fontWeight: 900, color: isTop ? "#7a5200" : medal.pts }}>
-                  {p.totalPoints}
+                  {p.totalPoints} pts
                 </span>
               </div>
               );
@@ -480,9 +477,9 @@ function SquadStrip({ teamId }: { teamId: number }) {
       </div>
 
       <div
+        className="md:max-h-[280px] md:overflow-y-auto"
         style={{
           display: "flex", flexDirection: "column", gap: 16, padding: 16,
-          maxHeight: 280, overflowY: "auto",
           scrollbarWidth: "thin",
         }}
       >
