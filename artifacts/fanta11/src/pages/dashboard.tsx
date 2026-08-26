@@ -475,8 +475,8 @@ function SquadStrip({ teamId }: { teamId: number }) {
       </div>
 
       <div
+        className="flex flex-col gap-4 p-4 md:grid md:grid-cols-3"
         style={{
-          display: "flex", flexDirection: "column", gap: 16, padding: 16,
           scrollbarWidth: "thin",
         }}
       >
