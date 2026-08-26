@@ -131,20 +131,6 @@ export interface LeaderboardEntry {
   gameweekPoints?: number;
 }
 
-/**
- * Machine-readable round identifier
- */
-export type GameweekRound = typeof GameweekRound[keyof typeof GameweekRound];
-
-
-export const GameweekRound = {
-  group: 'group',
-  r16: 'r16',
-  qf: 'qf',
-  sf: 'sf',
-  final: 'final',
-} as const;
-
 export type GameweekStatus = typeof GameweekStatus[keyof typeof GameweekStatus];
 
 
@@ -160,7 +146,7 @@ export interface Gameweek {
   /** Human-readable label, e.g. "Group Stage — Week 1" */
   name: string;
   /** Machine-readable round identifier */
-  round: GameweekRound;
+  round: string;
   status: GameweekStatus;
   startDate?: string;
   endDate?: string;
@@ -169,17 +155,6 @@ export interface Gameweek {
   /** @nullable */
   highestPoints?: number | null;
 }
-
-export type GameweekDetailRound = typeof GameweekDetailRound[keyof typeof GameweekDetailRound];
-
-
-export const GameweekDetailRound = {
-  group: 'group',
-  r16: 'r16',
-  qf: 'qf',
-  sf: 'sf',
-  final: 'final',
-} as const;
 
 export type GameweekDetailStatus = typeof GameweekDetailStatus[keyof typeof GameweekDetailStatus];
 
@@ -216,7 +191,7 @@ export interface GameweekDetail {
   id: number;
   number: number;
   name: string;
-  round: GameweekDetailRound;
+  round: string;
   status: GameweekDetailStatus;
   startDate?: string;
   endDate?: string;
@@ -225,6 +200,48 @@ export interface GameweekDetail {
   /** @nullable */
   highestPoints?: number | null;
   fixtures: Fixture[];
+}
+
+export interface GameweekHistoryLeaderboardEntry {
+  rank: number;
+  teamId: number;
+  teamName: string;
+  managerName: string;
+  points: number;
+  isCurrentUserTeam: boolean;
+}
+
+export interface GameweekHistoryLineupPlayer {
+  playerId: number;
+  slot: number;
+  name: string;
+  position: string;
+  club: string;
+  /** @nullable */
+  imageUrl: string | null;
+  /** @nullable */
+  crestUrl: string | null;
+  /**
+     * Final contribution after captain or vice-captain multiplier; null for legacy locked gameweeks
+     * @nullable
+     */
+  points: number | null;
+  isCaptain: boolean;
+  isViceCaptain: boolean;
+}
+
+export interface GameweekHistoryTeam {
+  teamId: number;
+  teamName: string;
+  managerName: string;
+  totalPoints: number;
+  players: GameweekHistoryLineupPlayer[];
+}
+
+export interface GameweekHistory {
+  gameweek: Gameweek;
+  leaderboard: GameweekHistoryLeaderboardEntry[];
+  myTeam?: GameweekHistoryTeam;
 }
 
 export type LiveFixtureStatus = typeof LiveFixtureStatus[keyof typeof LiveFixtureStatus];
@@ -298,13 +315,17 @@ export interface TopPerformer {
 export interface SquadPlayer {
   playerId: number;
   name: string;
+  /** @nullable */
+  nationality?: string | null;
   position: string;
   slot: number;
   isCaptain: boolean;
   isViceCaptain: boolean;
   points: number;
-  imageUrl?: string | null;
-  crestUrl?: string | null;
+  /** @nullable */
+  imageUrl: string | null;
+  /** @nullable */
+  crestUrl: string | null;
 }
 
 export type ActivityItemType = typeof ActivityItemType[keyof typeof ActivityItemType];

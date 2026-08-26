@@ -48,6 +48,7 @@ export const gameweekTeamLineupPlayersTable = pgTable("gameweek_team_lineup_play
   teamId: integer("team_id").notNull(),
   playerId: integer("player_id").notNull(),
   slot: integer("slot").notNull(),
+  points: integer("points"),
   isCaptain: boolean("is_captain").notNull().default(false),
   isViceCaptain: boolean("is_vice_captain").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

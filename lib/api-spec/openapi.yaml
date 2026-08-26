@@ -401,6 +401,44 @@ paths:
               schema:
                 $ref: "#/components/schemas/GameweekDetail"
 
+  /gameweeks/history:
+    get:
+      operationId: listFinishedGameweeks
+      tags: [gameweeks]
+      summary: List finished and locked gameweeks, newest first
+      responses:
+        "200":
+          description: Finished gameweeks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Gameweek"
+
+  /gameweeks/{id}/history:
+    get:
+      operationId: getGameweekHistory
+      tags: [gameweeks]
+      summary: Get a finished gameweek leaderboard and the current user's locked lineup
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Finished gameweek history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameweekHistory"
+        "401":
+          description: Not authenticated
+        "404":
+          description: Finished gameweek not found
+
   /gameweeks/{id}/fixtures:
     get:
       operationId: getGameweekFixtures
@@ -557,6 +595,8 @@ components:
         cleanSheets:
           type: integer
         imageUrl:
+          type: ["string", "null"]
+        crestUrl:
           type: ["string", "null"]
 
     Team:
@@ -723,7 +763,6 @@ components:
           description: Human-readable label, e.g. "Group Stage — Week 1"
         round:
           type: string
-          enum: [group, r16, qf, sf, final]
           description: Machine-readable round identifier
         status:
           type: string
@@ -749,7 +788,6 @@ components:
           type: string
         round:
           type: string
-          enum: [group, r16, qf, sf, final]
         status:
           type: string
           enum: [upcoming, active, finished]
@@ -765,6 +803,79 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Fixture"
+
+    GameweekHistoryLeaderboardEntry:
+      type: object
+      required: [rank, teamId, teamName, managerName, points, isCurrentUserTeam]
+      properties:
+        rank:
+          type: integer
+        teamId:
+          type: integer
+        teamName:
+          type: string
+        managerName:
+          type: string
+        points:
+          type: integer
+        isCurrentUserTeam:
+          type: boolean
+
+    GameweekHistoryLineupPlayer:
+      type: object
+      required: [playerId, slot, name, position, club, imageUrl, crestUrl, points, isCaptain, isViceCaptain]
+      properties:
+        playerId:
+          type: integer
+        slot:
+          type: integer
+        name:
+          type: string
+        position:
+          type: string
+        club:
+          type: string
+        imageUrl:
+          type: ["string", "null"]
+        crestUrl:
+          type: ["string", "null"]
+        points:
+          type: ["integer", "null"]
+          description: Final contribution after captain or vice-captain multiplier; null for legacy locked gameweeks
+        isCaptain:
+          type: boolean
+        isViceCaptain:
+          type: boolean
+
+    GameweekHistoryTeam:
+      type: object
+      required: [teamId, teamName, managerName, totalPoints, players]
+      properties:
+        teamId:
+          type: integer
+        teamName:
+          type: string
+        managerName:
+          type: string
+        totalPoints:
+          type: integer
+        players:
+          type: array
+          items:
+            $ref: "#/components/schemas/GameweekHistoryLineupPlayer"
+
+    GameweekHistory:
+      type: object
+      required: [gameweek, leaderboard]
+      properties:
+        gameweek:
+          $ref: "#/components/schemas/Gameweek"
+        leaderboard:
+          type: array
+          items:
+            $ref: "#/components/schemas/GameweekHistoryLeaderboardEntry"
+        myTeam:
+          $ref: "#/components/schemas/GameweekHistoryTeam"
 
     Fixture:
       type: object
@@ -874,7 +985,7 @@ components:
 
     SquadPlayer:
       type: object
-      required: [playerId, name, position, slot, isCaptain, isViceCaptain, points]
+      required: [playerId, name, position, slot, isCaptain, isViceCaptain, points, imageUrl, crestUrl]
       properties:
         playerId:
           type: integer
@@ -892,6 +1003,10 @@ components:
           type: boolean
         points:
           type: integer
+        imageUrl:
+          type: ["string", "null"]
+        crestUrl:
+          type: ["string", "null"]
 
     ActivityItem:
       type: object

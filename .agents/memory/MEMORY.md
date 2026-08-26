@@ -8,3 +8,4 @@
 - [Drizzle pool SSL must match session pool](drizzle-ssl.md) — lib/db/src/index.ts Pool needs ssl:{rejectUnauthorized:false} in production; without it Railway/Render certs are rejected while the session pool (app.ts) works fine.
 - [asyncHandler pattern for Express 4 routes](async-handler.md) — lib/src/lib/asyncHandler.ts wraps async route handlers so rejections reach the global error middleware; applied to players.ts, teams.ts, dashboard.ts.
 - [Migration 0001 covers crest_url and fpl_gameweek_number](migration-0001.md) — both columns were added outside migrations; 0001 back-fills them with IF NOT EXISTS; applied to dev and Railway production via psql.
+- [Tracked SQL migrations](tracked-sql-migrations.md) — add every numbered SQL file to the application migration runner; never force a Drizzle push that wants to drop its tracking table.

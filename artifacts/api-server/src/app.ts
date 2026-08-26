@@ -15,6 +15,12 @@ const pgPool = new pg.Pool({
 });
 
 const app: Express = express();
+const configuredCorsOrigins = new Set(
+  (process.env.CORS_ORIGINS ?? "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean),
+);
 
 // Trust Replit's reverse proxy so secure cookies work over HTTPS in production
 app.set("trust proxy", 1);
@@ -39,12 +45,28 @@ app.use(
   }),
 );
 
-app.use(
-  cors({
-    origin: true,
-    credentials: true,
-  }),
-);
+app.use(cors((req, callback) => {
+  const origin = req.header("Origin");
+  if (!origin) {
+    callback(null, { origin: false, credentials: false });
+    return;
+  }
+
+  let isSameOrigin = false;
+  try {
+    const originHost = new URL(origin).host;
+    const forwardedHost = req.header("x-forwarded-host")?.split(",")[0]?.trim();
+    isSameOrigin = originHost === (forwardedHost || req.header("host"));
+  } catch {
+    isSameOrigin = false;
+  }
+
+  const isAllowed = isSameOrigin || configuredCorsOrigins.has(origin);
+  callback(null, {
+    origin: isAllowed ? origin : false,
+    credentials: isAllowed,
+  });
+}));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

@@ -272,9 +272,18 @@ async function scoreAndPersistTeams(
       let points = 0;
       for (const player of squad) {
         const earned = playerEarned.get(player.playerId);
-        if (!earned) continue;
         const multiplier = player.isCaptain || (player.isViceCaptain && !captainPlayed) ? 2 : 1;
-        points += earned.pts * multiplier;
+        const awardedPoints = (earned?.pts ?? 0) * multiplier;
+        points += awardedPoints;
+
+        await tx
+          .update(gameweekTeamLineupPlayersTable)
+          .set({ points: awardedPoints })
+          .where(and(
+            eq(gameweekTeamLineupPlayersTable.gameweekId, gameweekId),
+            eq(gameweekTeamLineupPlayersTable.teamId, teamId),
+            eq(gameweekTeamLineupPlayersTable.playerId, player.playerId),
+          ));
       }
 
       await tx

@@ -8,6 +8,7 @@ import { Dashboard } from "@/pages/dashboard";
 import { SquadBuilder } from "@/pages/squad-builder";
 import { Players } from "@/pages/players";
 import { Leagues } from "@/pages/leagues";
+import { Gameweeks } from "@/pages/gameweeks";
 import { Fixtures } from "@/pages/fixtures";
 import { LandingPage } from "@/pages/landing";
 import { AdminDashboard } from "@/pages/admin-dashboard";
@@ -53,6 +54,7 @@ function AppRoutes() {
         <Route path="/squad" component={SquadBuilder} />
         <Route path="/players" component={Players} />
         <Route path="/leagues" component={Leagues} />
+        <Route path="/gameweeks" component={Gameweeks} />
         <Route path="/fixtures" component={Fixtures} />
         <Route component={NotFound} />
       </Switch>

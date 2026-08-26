@@ -69,7 +69,8 @@ export const GetPlayerResponse = zod.object({
   "goalsScored": zod.number().optional(),
   "assists": zod.number().optional(),
   "cleanSheets": zod.number().optional(),
-  "imageUrl": zod.string().nullish()
+  "imageUrl": zod.string().nullish(),
+  "crestUrl": zod.string().nullish()
 })
 
 
@@ -96,7 +97,8 @@ export const GetTopPlayersResponseItem = zod.object({
   "goalsScored": zod.number().optional(),
   "assists": zod.number().optional(),
   "cleanSheets": zod.number().optional(),
-  "imageUrl": zod.string().nullish()
+  "imageUrl": zod.string().nullish(),
+  "crestUrl": zod.string().nullish()
 })
 export const GetTopPlayersResponse = zod.array(GetTopPlayersResponseItem)
 
@@ -353,7 +355,7 @@ export const ListGameweeksResponseItem = zod.object({
   "id": zod.number(),
   "number": zod.number(),
   "name": zod.string().describe('Human-readable label, e.g. \"Group Stage — Week 1\"'),
-  "round": zod.enum(['group', 'r16', 'qf', 'sf', 'final']).describe('Machine-readable round identifier'),
+  "round": zod.string().describe('Machine-readable round identifier'),
   "status": zod.enum(['upcoming', 'active', 'finished']),
   "startDate": zod.string().optional(),
   "endDate": zod.string().optional(),
@@ -370,7 +372,7 @@ export const GetCurrentGameweekResponse = zod.object({
   "id": zod.number(),
   "number": zod.number(),
   "name": zod.string(),
-  "round": zod.enum(['group', 'r16', 'qf', 'sf', 'final']),
+  "round": zod.string(),
   "status": zod.enum(['upcoming', 'active', 'finished']),
   "startDate": zod.string().optional(),
   "endDate": zod.string().optional(),
@@ -386,6 +388,71 @@ export const GetCurrentGameweekResponse = zod.object({
   "kickoff": zod.string(),
   "status": zod.enum(['scheduled', 'live', 'finished'])
 }))
+})
+
+
+/**
+ * @summary List finished and locked gameweeks, newest first
+ */
+export const ListFinishedGameweeksResponseItem = zod.object({
+  "id": zod.number(),
+  "number": zod.number(),
+  "name": zod.string().describe('Human-readable label, e.g. \"Group Stage — Week 1\"'),
+  "round": zod.string().describe('Machine-readable round identifier'),
+  "status": zod.enum(['upcoming', 'active', 'finished']),
+  "startDate": zod.string().optional(),
+  "endDate": zod.string().optional(),
+  "averagePoints": zod.number().nullish(),
+  "highestPoints": zod.number().nullish()
+})
+export const ListFinishedGameweeksResponse = zod.array(ListFinishedGameweeksResponseItem)
+
+
+/**
+ * @summary Get a finished gameweek leaderboard and the current user's locked lineup
+ */
+export const GetGameweekHistoryParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetGameweekHistoryResponse = zod.object({
+  "gameweek": zod.object({
+  "id": zod.number(),
+  "number": zod.number(),
+  "name": zod.string().describe('Human-readable label, e.g. \"Group Stage — Week 1\"'),
+  "round": zod.string().describe('Machine-readable round identifier'),
+  "status": zod.enum(['upcoming', 'active', 'finished']),
+  "startDate": zod.string().optional(),
+  "endDate": zod.string().optional(),
+  "averagePoints": zod.number().nullish(),
+  "highestPoints": zod.number().nullish()
+}),
+  "leaderboard": zod.array(zod.object({
+  "rank": zod.number(),
+  "teamId": zod.number(),
+  "teamName": zod.string(),
+  "managerName": zod.string(),
+  "points": zod.number(),
+  "isCurrentUserTeam": zod.boolean()
+})),
+  "myTeam": zod.object({
+  "teamId": zod.number(),
+  "teamName": zod.string(),
+  "managerName": zod.string(),
+  "totalPoints": zod.number(),
+  "players": zod.array(zod.object({
+  "playerId": zod.number(),
+  "slot": zod.number(),
+  "name": zod.string(),
+  "position": zod.string(),
+  "club": zod.string(),
+  "imageUrl": zod.string().nullable(),
+  "crestUrl": zod.string().nullable(),
+  "points": zod.number().nullable().describe('Final contribution after captain or vice-captain multiplier; null for legacy locked gameweeks'),
+  "isCaptain": zod.boolean(),
+  "isViceCaptain": zod.boolean()
+}))
+}).optional()
 })
 
 
@@ -480,13 +547,14 @@ export const GetDashboardSquadQueryParams = zod.object({
 export const GetDashboardSquadResponseItem = zod.object({
   "playerId": zod.number(),
   "name": zod.string(),
+  "nationality": zod.string().nullish(),
   "position": zod.string(),
   "slot": zod.number(),
   "isCaptain": zod.boolean(),
   "isViceCaptain": zod.boolean(),
   "points": zod.number(),
-  "imageUrl": zod.string().nullish(),
-  "crestUrl": zod.string().nullish(),
+  "imageUrl": zod.string().nullable(),
+  "crestUrl": zod.string().nullable()
 })
 export const GetDashboardSquadResponse = zod.array(GetDashboardSquadResponseItem)
 

@@ -10,6 +10,7 @@ import {
   LogOut,
   User,
   ShieldCheck,
+  History,
 } from "lucide-react";
 import { useState } from "react";
 import logoSrc from "../assets/logo.png";
@@ -22,6 +23,7 @@ const navItems = [
   { href: "/squad", label: "Squad Builder", icon: ShieldHalf },
   { href: "/players", label: "Player Pool", icon: Users },
   { href: "/leagues", label: "Leagues", icon: Trophy },
+  { href: "/gameweeks", label: "History", icon: History },
   { href: "/fixtures", label: "Fixtures", icon: CalendarDays },
 ];
 
@@ -301,6 +303,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           { href: "/squad", label: "Squad", icon: ShieldHalf },
           { href: "/players", label: "Players", icon: Users },
           { href: "/leagues", label: "Leagues", icon: Trophy },
+          { href: "/gameweeks", label: "History", icon: History },
           { href: "/fixtures", label: "Fixtures", icon: CalendarDays },
         ].map(({ href, label, icon: Icon }) => {
           const active = isActive(href);

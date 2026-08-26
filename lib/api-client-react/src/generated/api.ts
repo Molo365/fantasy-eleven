@@ -25,6 +25,7 @@ import type {
   Fixture,
   Gameweek,
   GameweekDetail,
+  GameweekHistory,
   GetDashboardSquadParams,
   GetDashboardSummaryParams,
   GetRecentActivityParams,
@@ -1491,6 +1492,160 @@ export function useGetCurrentGameweek<TData = Awaited<ReturnType<typeof getCurre
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetCurrentGameweekQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getListFinishedGameweeksUrl = () => {
+
+
+
+
+  return `/api/gameweeks/history`
+}
+
+/**
+ * @summary List finished and locked gameweeks, newest first
+ */
+export const listFinishedGameweeks = async ( options?: RequestInit): Promise<Gameweek[]> => {
+
+  return customFetch<Gameweek[]>(getListFinishedGameweeksUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListFinishedGameweeksQueryKey = () => {
+    return [
+    `/api/gameweeks/history`
+    ] as const;
+    }
+
+
+export const getListFinishedGameweeksQueryOptions = <TData = Awaited<ReturnType<typeof listFinishedGameweeks>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listFinishedGameweeks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListFinishedGameweeksQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listFinishedGameweeks>>> = ({ signal }) => listFinishedGameweeks({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listFinishedGameweeks>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListFinishedGameweeksQueryResult = NonNullable<Awaited<ReturnType<typeof listFinishedGameweeks>>>
+export type ListFinishedGameweeksQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List finished and locked gameweeks, newest first
+ */
+
+export function useListFinishedGameweeks<TData = Awaited<ReturnType<typeof listFinishedGameweeks>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listFinishedGameweeks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListFinishedGameweeksQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetGameweekHistoryUrl = (id: number,) => {
+
+
+
+
+  return `/api/gameweeks/${id}/history`
+}
+
+/**
+ * @summary Get a finished gameweek leaderboard and the current user's locked lineup
+ */
+export const getGameweekHistory = async (id: number, options?: RequestInit): Promise<GameweekHistory> => {
+
+  return customFetch<GameweekHistory>(getGetGameweekHistoryUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetGameweekHistoryQueryKey = (id: number,) => {
+    return [
+    `/api/gameweeks/${id}/history`
+    ] as const;
+    }
+
+
+export const getGetGameweekHistoryQueryOptions = <TData = Awaited<ReturnType<typeof getGameweekHistory>>, TError = ErrorType<void>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGameweekHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetGameweekHistoryQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getGameweekHistory>>> = ({ signal }) => getGameweekHistory(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getGameweekHistory>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetGameweekHistoryQueryResult = NonNullable<Awaited<ReturnType<typeof getGameweekHistory>>>
+export type GetGameweekHistoryQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get a finished gameweek leaderboard and the current user's locked lineup
+ */
+
+export function useGetGameweekHistory<TData = Awaited<ReturnType<typeof getGameweekHistory>>, TError = ErrorType<void>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGameweekHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetGameweekHistoryQueryOptions(id,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

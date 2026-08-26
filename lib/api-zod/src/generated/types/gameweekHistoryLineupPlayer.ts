@@ -6,18 +6,21 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface SquadPlayer {
+export interface GameweekHistoryLineupPlayer {
   playerId: number;
-  name: string;
-  /** @nullable */
-  nationality?: string | null;
-  position: string;
   slot: number;
-  isCaptain: boolean;
-  isViceCaptain: boolean;
-  points: number;
+  name: string;
+  position: string;
+  club: string;
   /** @nullable */
   imageUrl: string | null;
   /** @nullable */
   crestUrl: string | null;
+  /**
+     * Final contribution after captain or vice-captain multiplier; null for legacy locked gameweeks
+     * @nullable
+     */
+  points: number | null;
+  isCaptain: boolean;
+  isViceCaptain: boolean;
 }
