@@ -5,10 +5,7 @@
  * FANTA11 Fantasy Soccer API
  * OpenAPI spec version: 0.1.0
  */
-import type { GetTopPlayersPosition } from './getTopPlayersPosition';
 
-export type GetTopPlayersParams = {
-position?: GetTopPlayersPosition;
-limit?: number;
+export type GetPlayerNationsParams = {
 competitionKey?: string;
 };

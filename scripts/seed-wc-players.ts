@@ -618,6 +618,7 @@ async function main() {
   console.log("Seeding nations…\n");
   for (const nation of NATIONS) {
     const rows = nation.players.map(p => ({
+      competitionKey: "world-cup-2026",
       name: p.name,
       position: p.pos as string,
       club: nation.name,

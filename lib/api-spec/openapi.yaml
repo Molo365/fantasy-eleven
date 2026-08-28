@@ -52,6 +52,11 @@ paths:
           in: query
           schema:
             type: string
+        - name: competitionKey
+          in: query
+          schema:
+            type: string
+            default: premier-league
         - name: limit
           in: query
           schema:
@@ -109,6 +114,11 @@ paths:
           schema:
             type: integer
             default: 10
+        - name: competitionKey
+          in: query
+          schema:
+            type: string
+            default: premier-league
       responses:
         "200":
           description: Top players by points
@@ -124,6 +134,12 @@ paths:
       operationId: getPlayerNations
       tags: [players]
       summary: Get distinct nations represented in the player pool
+      parameters:
+        - name: competitionKey
+          in: query
+          schema:
+            type: string
+            default: premier-league
       responses:
         "200":
           description: List of nation names
@@ -573,10 +589,12 @@ components:
 
     Player:
       type: object
-      required: [id, name, position, club, totalPoints, price]
+      required: [id, competitionKey, name, position, club, nationality, totalPoints, price]
       properties:
         id:
           type: integer
+        competitionKey:
+          type: string
         name:
           type: string
         position:
@@ -586,6 +604,8 @@ components:
           type: string
         clubShortName:
           type: string
+        nationality:
+          type: ["string", "null"]
         totalPoints:
           type: integer
         price:

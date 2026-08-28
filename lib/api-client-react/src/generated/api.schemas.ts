@@ -21,10 +21,13 @@ export const PlayerPosition = {
 
 export interface Player {
   id: number;
+  competitionKey: string;
   name: string;
   position: PlayerPosition;
   club: string;
   clubShortName?: string;
+  /** @nullable */
+  nationality: string | null;
   totalPoints: number;
   price: number;
   form?: number;
@@ -367,6 +370,7 @@ export type ListPlayersParams = {
 position?: ListPlayersPosition;
 club?: string;
 search?: string;
+competitionKey?: string;
 limit?: number;
 offset?: number;
 };
@@ -384,6 +388,7 @@ export const ListPlayersPosition = {
 export type GetTopPlayersParams = {
 position?: GetTopPlayersPosition;
 limit?: number;
+competitionKey?: string;
 };
 
 export type GetTopPlayersPosition = typeof GetTopPlayersPosition[keyof typeof GetTopPlayersPosition];
@@ -395,6 +400,10 @@ export const GetTopPlayersPosition = {
   MID: 'MID',
   FWD: 'FWD',
 } as const;
+
+export type GetPlayerNationsParams = {
+competitionKey?: string;
+};
 
 export type GetLiveFixturesParams = {
 leagueKey?: string;

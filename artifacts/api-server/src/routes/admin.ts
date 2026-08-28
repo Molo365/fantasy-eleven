@@ -5,7 +5,7 @@ import {
   teamsTable, teamPlayersTable, leaguesTable, leagueTeamsTable, activityTable,
 } from "@workspace/db";
 import { logger } from "../lib/logger";
-import { clearAndSyncWorldCupPlayers, syncZafronixPlayers } from "../lib/apiSports";
+import { clearAndSyncWorldCupPlayers, syncSerieAPlayers, syncZafronixPlayers } from "../lib/apiSports";
 import { GameweekScoringConflictError, processGameweekScoring, processFplGameweekScoring } from "../lib/scoring";
 
 const ADMIN_EMAIL = "domenicg@gmx.com";
@@ -412,7 +412,7 @@ router.post("/admin/sync-fpl", requireAdmin, async (req, res): Promise<void> => 
     );
 
     // ── UPSERT strategy ────────────────────────────────────────────────────────
-    // We never DELETE premier_league player rows. Deleting triggers ON DELETE
+    // We never DELETE Premier League player rows. Deleting triggers ON DELETE
     // CASCADE on team_players, wiping every user's squad. Instead we:
     //   • UPDATE existing rows in-place by their DB primary key (id never changes)
     //   • INSERT only genuinely new players (new FPL externalId not yet in the DB)
@@ -423,7 +423,7 @@ router.post("/admin/sync-fpl", requireAdmin, async (req, res): Promise<void> => 
     const existingRows = await db
       .select({ id: playersTable.id, externalId: playersTable.externalId })
       .from(playersTable)
-      .where(eq(playersTable.nationality, "premier_league"));
+      .where(eq(playersTable.competitionKey, "premier-league"));
 
     const existingMap = new Map<number, number>(); // externalId → db id
     for (const row of existingRows) {
@@ -474,11 +474,12 @@ router.post("/admin/sync-fpl", requireAdmin, async (req, res): Promise<void> => 
           // Genuinely new player — safe to insert.
           await db.insert(playersTable).values({
             externalId: el.id,
+            competitionKey: "premier-league",
             name: fullName,
             position: pos,
             club: team.name,
             clubShortName: team.short,
-            nationality: "premier_league",
+            nationality: null,
             price,
             totalPoints: el.total_points,
             imageUrl,
@@ -503,7 +504,7 @@ router.post("/admin/sync-fpl", requireAdmin, async (req, res): Promise<void> => 
       .update(playersTable)
       .set({ active: false })
       .where(and(
-        eq(playersTable.nationality, "premier_league"),
+        eq(playersTable.competitionKey, "premier-league"),
         or(
           isNull(playersTable.externalId),
           latestExternalIds.length > 0
@@ -518,6 +519,18 @@ router.post("/admin/sync-fpl", requireAdmin, async (req, res): Promise<void> => 
     res.json({ ok: true, updated, inserted, deactivated: deactivated.length, skipped, firstSkipReason: firstSkipReason || null, firstError: firstError || null });
   } catch (err) {
     req.log.error({ err }, "FPL player sync failed");
+    res.status(500).json({ error: String(err) });
+  }
+});
+
+router.post("/admin/sync-serie-a", requireAdmin, async (req, res): Promise<void> => {
+  try {
+    req.log.info("Admin triggered Serie A player sync");
+    const result = await syncSerieAPlayers();
+    req.log.info(result, "Serie A player sync complete via admin");
+    res.json({ ok: true, ...result });
+  } catch (err) {
+    req.log.error({ err }, "Serie A player sync failed");
     res.status(500).json({ error: String(err) });
   }
 });

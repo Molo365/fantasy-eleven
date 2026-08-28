@@ -101,10 +101,12 @@ router.get("/teams/:id/players", asyncHandler(async (req, res) => {
       isViceCaptain: teamPlayersTable.isViceCaptain,
       player: {
         id:            playersTable.id,
+        competitionKey: playersTable.competitionKey,
         name:          playersTable.name,
         position:      playersTable.position,
         club:          playersTable.club,
         clubShortName: playersTable.clubShortName,
+        nationality:   playersTable.nationality,
         totalPoints:   playersTable.totalPoints,
         price:         playersTable.price,
         form:          playersTable.form,

@@ -450,6 +450,7 @@ async function main() {
   for (const { name, squad } of NATIONS) {
     const code = CODE[name] ?? name.slice(0, 3).toUpperCase();
     const rows = squad.map(([playerName, pos]) => ({
+      competitionKey: "world-cup-2026",
       name: playerName,
       position: pos as string,
       club: name,

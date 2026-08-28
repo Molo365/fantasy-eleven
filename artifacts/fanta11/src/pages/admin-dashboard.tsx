@@ -8,7 +8,7 @@ const API = "/api/admin";
 
 type Stats = { userCount: number; teamCount: number; processedCount: number };
 type AdminUser = { id: number; username: string; email: string; displayName: string; createdAt: string; squadSubmitted: boolean; totalPoints: number };
-type AdminPlayer = { id: number; name: string; club: string; clubShortName: string; position: string; price: number; totalPoints: number };
+type AdminPlayer = { id: number; competitionKey: string; name: string; club: string; clubShortName: string; position: string; price: number; totalPoints: number };
 type AdminGameweek = {
   id: number;
   number: number;
@@ -332,6 +332,8 @@ export function AdminDashboard() {
   const [syncResultZ, setSyncResultZ] = useState<string | null>(null);
   const [syncingFPL, setSyncingFPL] = useState(false);
   const [syncResultFPL, setSyncResultFPL] = useState<string | null>(null);
+  const [syncingSerieA, setSyncingSerieA] = useState(false);
+  const [syncResultSerieA, setSyncResultSerieA] = useState<string | null>(null);
   const [scoringResult, setScoringResult] = useState<{
     gwName: string;
     fixturesProcessed: number;
@@ -627,6 +629,30 @@ export function AdminDashboard() {
     }
   };
 
+  const syncSerieAPlayers = async () => {
+    setSyncingSerieA(true);
+    setSyncResultSerieA(null);
+    try {
+      const json = await apiFetch("/sync-serie-a", { method: "POST" }) as {
+        ok: boolean;
+        playersFetched: number;
+        updated: number;
+        inserted: number;
+        deactivated: number;
+        skipped: number;
+        missingNationality: number;
+      };
+      setSyncResultSerieA(
+        `✓ Synced ${json.playersFetched} Serie A players (${json.inserted} new, ${json.updated} updated, ${json.deactivated} inactive, ${json.missingNationality} missing nationality)`,
+      );
+      await loadAll();
+    } catch (e) {
+      setSyncResultSerieA(`✗ Sync failed: ${String(e)}`);
+    } finally {
+      setSyncingSerieA(false);
+    }
+  };
+
   const fullReset = () => {
     setConfirm({
       open: true, danger: true,
@@ -751,6 +777,20 @@ export function AdminDashboard() {
             {syncResultFPL && (
               <span style={{ fontSize: 12, color: syncResultFPL.startsWith("✓") ? "#4ade80" : "#f87171" }}>
                 {syncResultFPL}
+              </span>
+            )}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginTop: 12 }}>
+            <button
+              style={{ ...S.btnSolidDanger, background: "#1d4ed8", borderColor: "#60a5fa", opacity: syncingSerieA ? 0.7 : 1, cursor: syncingSerieA ? "not-allowed" : "pointer", minWidth: 180 }}
+              onClick={syncSerieAPlayers}
+              disabled={syncingSerieA}
+            >
+              {syncingSerieA ? "⟳ Syncing Serie A…" : "⟳ Sync Serie A Players"}
+            </button>
+            {syncResultSerieA && (
+              <span style={{ fontSize: 12, color: syncResultSerieA.startsWith("✓") ? "#4ade80" : "#f87171" }}>
+                {syncResultSerieA}
               </span>
             )}
           </div>

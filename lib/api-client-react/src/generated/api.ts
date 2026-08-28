@@ -29,6 +29,7 @@ import type {
   GetDashboardSquadParams,
   GetDashboardSummaryParams,
   GetLiveFixturesParams,
+  GetPlayerNationsParams,
   GetRecentActivityParams,
   GetTopPlayersParams,
   HealthStatus,
@@ -382,20 +383,27 @@ export function useGetTopPlayers<TData = Awaited<ReturnType<typeof getTopPlayers
 
 
 
-export const getGetPlayerNationsUrl = () => {
+export const getGetPlayerNationsUrl = (params?: GetPlayerNationsParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/players/nations`
+  return stringifiedParams.length > 0 ? `/api/players/nations?${stringifiedParams}` : `/api/players/nations`
 }
 
 /**
  * @summary Get distinct nations represented in the player pool
  */
-export const getPlayerNations = async ( options?: RequestInit): Promise<string[]> => {
+export const getPlayerNations = async (params?: GetPlayerNationsParams, options?: RequestInit): Promise<string[]> => {
 
-  return customFetch<string[]>(getGetPlayerNationsUrl(),
+  return customFetch<string[]>(getGetPlayerNationsUrl(params),
   {
     ...options,
     method: 'GET'
@@ -408,23 +416,23 @@ export const getPlayerNations = async ( options?: RequestInit): Promise<string[]
 
 
 
-export const getGetPlayerNationsQueryKey = () => {
+export const getGetPlayerNationsQueryKey = (params?: GetPlayerNationsParams,) => {
     return [
-    `/api/players/nations`
+    `/api/players/nations`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getGetPlayerNationsQueryOptions = <TData = Awaited<ReturnType<typeof getPlayerNations>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPlayerNations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getGetPlayerNationsQueryOptions = <TData = Awaited<ReturnType<typeof getPlayerNations>>, TError = ErrorType<unknown>>(params?: GetPlayerNationsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPlayerNations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetPlayerNationsQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getGetPlayerNationsQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPlayerNations>>> = ({ signal }) => getPlayerNations({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPlayerNations>>> = ({ signal }) => getPlayerNations(params, { signal, ...requestOptions });
 
 
 
@@ -442,11 +450,11 @@ export type GetPlayerNationsQueryError = ErrorType<unknown>
  */
 
 export function useGetPlayerNations<TData = Awaited<ReturnType<typeof getPlayerNations>>, TError = ErrorType<unknown>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPlayerNations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ params?: GetPlayerNationsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPlayerNations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getGetPlayerNationsQueryOptions(options)
+  const queryOptions = getGetPlayerNationsQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

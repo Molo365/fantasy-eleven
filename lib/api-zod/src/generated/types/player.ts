@@ -9,10 +9,13 @@ import type { PlayerPosition } from './playerPosition';
 
 export interface Player {
   id: number;
+  competitionKey: string;
   name: string;
   position: PlayerPosition;
   club: string;
   clubShortName?: string;
+  /** @nullable */
+  nationality: string | null;
   totalPoints: number;
   price: number;
   form?: number;

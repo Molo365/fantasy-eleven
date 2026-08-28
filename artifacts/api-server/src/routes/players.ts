@@ -8,6 +8,7 @@ import {
   ListPlayersResponse,
   GetPlayerResponse,
   GetTopPlayersResponse,
+  GetPlayerNationsQueryParams,
 } from "@workspace/api-zod";
 import { syncWorldCupPlayers } from "../lib/apiSports";
 import { asyncHandler } from "../lib/asyncHandler";
@@ -20,8 +21,11 @@ router.get("/players/top", asyncHandler(async (req, res) => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const { position, limit = 10 } = parsed.data;
-  const conditions = [eq(playersTable.active, true)];
+  const { position, competitionKey = "premier-league", limit = 10 } = parsed.data;
+  const conditions = [
+    eq(playersTable.active, true),
+    eq(playersTable.competitionKey, competitionKey),
+  ];
   if (position) conditions.push(eq(playersTable.position, position));
   const rows = await db
     .select()
@@ -48,9 +52,11 @@ router.get("/players", asyncHandler(async (req, res) => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const { position, club, search, limit = 50, offset = 0 } = parsed.data;
-  const conditions = [];
-  conditions.push(eq(playersTable.active, true));
+  const { position, club, search, competitionKey = "premier-league", limit = 50, offset = 0 } = parsed.data;
+  const conditions = [
+    eq(playersTable.active, true),
+    eq(playersTable.competitionKey, competitionKey),
+  ];
   if (position) conditions.push(eq(playersTable.position, position));
   if (club)     conditions.push(eq(playersTable.club, club));
   if (search)   conditions.push(ilike(playersTable.name, `%${search}%`));
@@ -65,11 +71,19 @@ router.get("/players", asyncHandler(async (req, res) => {
   res.json(ListPlayersResponse.parse(rows));
 }));
 
-router.get("/players/nations", asyncHandler(async (_req, res) => {
+router.get("/players/nations", asyncHandler(async (req, res) => {
+  const parsed = GetPlayerNationsQueryParams.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
   const rows = await db
     .selectDistinct({ club: playersTable.club })
     .from(playersTable)
-    .where(eq(playersTable.active, true))
+    .where(and(
+      eq(playersTable.active, true),
+      eq(playersTable.competitionKey, parsed.data.competitionKey),
+    ))
     .orderBy(asc(playersTable.club));
   res.json(rows.map(r => r.club));
 }));

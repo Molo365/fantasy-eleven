@@ -1,9 +1,13 @@
 import { db, playersTable, teamPlayersTable, teamsTable } from "@workspace/db";
-import { count, eq, sql } from "drizzle-orm";
+import { and, count, eq, isNull, notInArray, or, sql } from "drizzle-orm";
 import { logger } from "./logger";
 
 const API_BASE = "https://v3.football.api-sports.io";
 const WC_LEAGUE_ID = 1;
+const SERIE_A_LEAGUE_ID = 135;
+const SERIE_A_SEASON = 2026;
+const SERIE_A_COMPETITION_KEY = "serie-a";
+const WORLD_CUP_COMPETITION_KEY = "world-cup-2026";
 
 // ─── Nation code map ──────────────────────────────────────────────────────────
 
@@ -107,6 +111,274 @@ const POS_MAP: Record<string, Pos> = {
   Goalkeeper: "GK", Defender: "DEF", Midfielder: "MID", Attacker: "FWD",
 };
 
+const SERIE_A_OPENING_PRICES: Record<Pos, number> = {
+  GK: 4.5,
+  DEF: 4.5,
+  MID: 5.5,
+  FWD: 6.0,
+};
+
+type ApiSerieATeam = {
+  team: {
+    id: number;
+    name: string;
+    code: string | null;
+    logo: string | null;
+  };
+};
+
+type ApiSerieASquad = {
+  team: {
+    id: number;
+    name: string;
+    logo: string | null;
+  };
+  players: Array<{
+    id: number;
+    name: string;
+    age: number | null;
+    number: number | null;
+    position: string;
+    photo: string | null;
+  }>;
+};
+
+type ApiSerieAPlayerStats = {
+  player: {
+    id: number;
+    name: string;
+    firstname: string | null;
+    lastname: string | null;
+    nationality: string | null;
+    photo: string | null;
+  };
+  statistics: Array<{
+    team: { id: number; name: string; logo: string | null };
+    league: { id: number; season: number };
+    games: { position: string | null };
+  }>;
+};
+
+type SerieARosterPlayer = {
+  externalId: number;
+  name: string;
+  position: Pos;
+  club: string;
+  clubShortName: string;
+  nationality: string | null;
+  imageUrl: string | null;
+  crestUrl: string | null;
+};
+
+export type SerieASyncResult = {
+  teams: number;
+  playersFetched: number;
+  pagesFetched: number;
+  updated: number;
+  inserted: number;
+  deactivated: number;
+  skipped: number;
+  missingNationality: number;
+};
+
+function serieAOpeningPrice(position: Pos): number {
+  return SERIE_A_OPENING_PRICES[position];
+}
+
+function fallbackClubCode(name: string): string {
+  const letters = name.replace(/[^A-Za-z]/g, "").toUpperCase();
+  return (letters.slice(0, 3) || name.slice(0, 3).toUpperCase()).padEnd(3, "X");
+}
+
+async function getAllSerieAPlayerStats(): Promise<{
+  players: ApiSerieAPlayerStats[];
+  pagesFetched: number;
+}> {
+  const all: ApiSerieAPlayerStats[] = [];
+  let page = 1;
+  let totalPages = 1;
+
+  do {
+    if (page > 1) await new Promise((resolve) => setTimeout(resolve, 350));
+    const result = await apiFetchPaged<ApiSerieAPlayerStats>(
+      `/players?league=${SERIE_A_LEAGUE_ID}&season=${SERIE_A_SEASON}&page=${page}`,
+    );
+    all.push(...result.response);
+    totalPages = result.paging.total;
+    page++;
+  } while (page <= totalPages);
+
+  return { players: all, pagesFetched: totalPages };
+}
+
+export async function syncSerieAPlayers(): Promise<SerieASyncResult> {
+  logger.info(
+    { leagueId: SERIE_A_LEAGUE_ID, season: SERIE_A_SEASON },
+    "Fetching Serie A teams and squads",
+  );
+
+  const teamEntries = await apiFetch<ApiSerieATeam[]>(
+    `/teams?league=${SERIE_A_LEAGUE_ID}&season=${SERIE_A_SEASON}`,
+  );
+  const uniqueTeamIds = new Set(teamEntries.map((entry) => entry.team.id));
+  if (teamEntries.length !== 20 || uniqueTeamIds.size !== 20) {
+    throw new Error(
+      `API-Sports returned an incomplete Serie A team list (${teamEntries.length} rows, ${uniqueTeamIds.size} unique; expected 20)`,
+    );
+  }
+
+  const roster = new Map<number, SerieARosterPlayer>();
+  let skipped = 0;
+
+  for (const { team } of teamEntries) {
+    const squadResponse = await apiFetch<ApiSerieASquad[]>(
+      `/players/squads?team=${team.id}`,
+    );
+    const squad = squadResponse.find((entry) => entry.team.id === team.id) ?? squadResponse[0];
+    if (!squad || squad.team.id !== team.id || squad.players.length < 18) {
+      throw new Error(
+        `API-Sports returned an incomplete squad for ${team.name} (${team.id}): ${squad?.players.length ?? 0} players`,
+      );
+    }
+
+    for (const player of squad.players) {
+      const position = POS_MAP[player.position];
+      if (!position) {
+        throw new Error(
+          `API-Sports returned unsupported position "${player.position}" for ${player.name} (${player.id})`,
+        );
+      }
+      const duplicate = roster.get(player.id);
+      if (duplicate && duplicate.club !== team.name) {
+        throw new Error(
+          `API-Sports returned player ${player.id} in both ${duplicate.club} and ${team.name}`,
+        );
+      }
+      roster.set(player.id, {
+        externalId: player.id,
+        name: player.name,
+        position,
+        club: team.name,
+        clubShortName: team.code?.trim() || fallbackClubCode(team.name),
+        nationality: null,
+        imageUrl: player.photo || null,
+        crestUrl: team.logo || squad.team.logo || null,
+      });
+    }
+    await new Promise((resolve) => setTimeout(resolve, 150));
+  }
+
+  if (roster.size < 360) {
+    throw new Error(
+      `API-Sports returned an incomplete Serie A roster (${roster.size} unique players; expected at least 360)`,
+    );
+  }
+
+  const enrichment = await getAllSerieAPlayerStats();
+  for (const entry of enrichment.players) {
+    const current = roster.get(entry.player.id);
+    if (!current) continue;
+    const stat = entry.statistics.find(
+      (item) => item.league.id === SERIE_A_LEAGUE_ID && item.league.season === SERIE_A_SEASON,
+    );
+    const fullName = [entry.player.firstname, entry.player.lastname]
+      .filter((part): part is string => Boolean(part?.trim()))
+      .join(" ")
+      .trim();
+    roster.set(entry.player.id, {
+      ...current,
+      name: fullName || entry.player.name || current.name,
+      nationality: entry.player.nationality?.trim() || null,
+      imageUrl: entry.player.photo || current.imageUrl,
+      crestUrl: stat?.team.logo || current.crestUrl,
+    });
+  }
+
+  const existingRows = await db
+    .select({ id: playersTable.id, externalId: playersTable.externalId })
+    .from(playersTable)
+    .where(eq(playersTable.competitionKey, SERIE_A_COMPETITION_KEY));
+  const existingByExternalId = new Map<number, number>();
+  for (const row of existingRows) {
+    if (row.externalId != null) existingByExternalId.set(row.externalId, row.id);
+  }
+
+  const players = [...roster.values()];
+  const latestExternalIds = players.map((player) => player.externalId);
+  const missingNationality = players.filter((player) => !player.nationality).length;
+  const now = new Date();
+  let updated = 0;
+  let inserted = 0;
+
+  const deactivated = await db.transaction(async (tx) => {
+    for (const player of players) {
+      const existingId = existingByExternalId.get(player.externalId);
+      if (existingId != null) {
+        await tx
+          .update(playersTable)
+          .set({
+            name: player.name,
+            position: player.position,
+            club: player.club,
+            clubShortName: player.clubShortName,
+            nationality: player.nationality,
+            imageUrl: player.imageUrl,
+            crestUrl: player.crestUrl,
+            cachedFromApi: true,
+            active: true,
+            cachedAt: now,
+          })
+          .where(eq(playersTable.id, existingId));
+        updated++;
+      } else {
+        await tx.insert(playersTable).values({
+          externalId: player.externalId,
+          competitionKey: SERIE_A_COMPETITION_KEY,
+          name: player.name,
+          position: player.position,
+          club: player.club,
+          clubShortName: player.clubShortName,
+          nationality: player.nationality,
+          price: serieAOpeningPrice(player.position),
+          totalPoints: 0,
+          imageUrl: player.imageUrl,
+          crestUrl: player.crestUrl,
+          cachedFromApi: true,
+          active: true,
+          cachedAt: now,
+        });
+        inserted++;
+      }
+    }
+
+    return tx
+      .update(playersTable)
+      .set({ active: false })
+      .where(and(
+        eq(playersTable.competitionKey, SERIE_A_COMPETITION_KEY),
+        eq(playersTable.active, true),
+        or(
+          isNull(playersTable.externalId),
+          notInArray(playersTable.externalId, latestExternalIds),
+        ),
+      ))
+      .returning({ id: playersTable.id });
+  });
+
+  const result = {
+    teams: teamEntries.length,
+    playersFetched: players.length,
+    pagesFetched: enrichment.pagesFetched,
+    updated,
+    inserted,
+    deactivated: deactivated.length,
+    skipped,
+    missingNationality,
+  };
+  logger.info(result, "Serie A player sync complete");
+  return result;
+}
+
 /** Fetch all pages of /players?league=WC_LEAGUE_ID&season=SEASON */
 export async function getWorldCupSquads(season: number): Promise<ApiWCPlayer[]> {
   const all: ApiWCPlayer[] = [];
@@ -145,7 +417,7 @@ type SavedEntry = {
   wasViceCaptainForTeam: boolean;
 };
 
-async function saveSquads(): Promise<SavedEntry[]> {
+async function saveSquads(competitionKey: string): Promise<SavedEntry[]> {
   const rows = await db
     .select({
       teamId: teamPlayersTable.teamId,
@@ -157,7 +429,8 @@ async function saveSquads(): Promise<SavedEntry[]> {
       playerNation: playersTable.nationality,
     })
     .from(teamPlayersTable)
-    .innerJoin(playersTable, eq(teamPlayersTable.playerId, playersTable.id));
+    .innerJoin(playersTable, eq(teamPlayersTable.playerId, playersTable.id))
+    .where(eq(playersTable.competitionKey, competitionKey));
 
   if (rows.length === 0) return [];
 
@@ -247,11 +520,14 @@ async function restoreSquads(
 export async function clearAndSyncWorldCupPlayers(): Promise<{
   cleared: number; inserted: number; skipped: number; nations: number;
 }> {
-  const saved = await saveSquads();
+  const saved = await saveSquads(WORLD_CUP_COMPETITION_KEY);
   logger.info({ savedEntries: saved.length }, "Saved squad snapshot before API-Sports sync");
-  const [{ before }] = await db.select({ before: count() }).from(playersTable);
-  await db.execute(sql`TRUNCATE players RESTART IDENTITY CASCADE`);
-  logger.info({ cleared: before }, "Cleared players table");
+  const [{ before }] = await db
+    .select({ before: count() })
+    .from(playersTable)
+    .where(eq(playersTable.competitionKey, WORLD_CUP_COMPETITION_KEY));
+  await db.delete(playersTable).where(eq(playersTable.competitionKey, WORLD_CUP_COMPETITION_KEY));
+  logger.info({ cleared: before }, "Cleared World Cup players");
   const result = await syncWorldCupPlayers();
   const restore = await restoreSquads(saved);
   logger.info(restore, "Restored squads after API-Sports sync");
@@ -417,11 +693,14 @@ export async function syncZafronixPlayers(): Promise<{
   }
   logger.info({ teams: teams.length, totalPlayers }, "Got Zafronix squads — replacing player pool");
 
-  const saved = await saveSquads();
+  const saved = await saveSquads(WORLD_CUP_COMPETITION_KEY);
   logger.info({ savedEntries: saved.length }, "Saved squad snapshot before Zafronix sync");
 
-  const [{ before }] = await db.select({ before: count() }).from(playersTable);
-  await db.execute(sql`TRUNCATE players RESTART IDENTITY CASCADE`);
+  const [{ before }] = await db
+    .select({ before: count() })
+    .from(playersTable)
+    .where(eq(playersTable.competitionKey, WORLD_CUP_COMPETITION_KEY));
+  await db.delete(playersTable).where(eq(playersTable.competitionKey, WORLD_CUP_COMPETITION_KEY));
 
   let inserted = 0, skipped = 0;
   const nations = new Set<string>();
@@ -440,6 +719,7 @@ export async function syncZafronixPlayers(): Promise<{
       try {
         await db.insert(playersTable).values({
           externalId: null,
+          competitionKey: WORLD_CUP_COMPETITION_KEY,
           name: cleanName,
           position: pos,
           club: nationName,
@@ -493,6 +773,7 @@ export async function syncWorldCupPlayers(): Promise<{ inserted: number; skipped
     try {
       await db.insert(playersTable).values({
         externalId: entry.player.id,
+        competitionKey: WORLD_CUP_COMPETITION_KEY,
         name: entry.player.name,
         position: pos,
         club: nationName,
@@ -511,7 +792,10 @@ export async function syncWorldCupPlayers(): Promise<{ inserted: number; skipped
   logger.info({ apiInserted, apiSkipped, nations: nationsSeen.size }, "API-Sports WC players done");
 
   // Fill any nations missing from the API with curated fallback data
-  const existing = await db.selectDistinct({ club: playersTable.club }).from(playersTable);
+  const existing = await db
+    .selectDistinct({ club: playersTable.club })
+    .from(playersTable)
+    .where(eq(playersTable.competitionKey, WORLD_CUP_COMPETITION_KEY));
   const existingNations = new Set(existing.map(r => r.club));
   const { inserted: fbInserted, skipped: fbSkipped, nations: fbNations } =
     await seedFallbackMissing(existingNations);
@@ -968,7 +1252,7 @@ async function seedFallbackMissing(skip: Set<string> = new Set()): Promise<{ ins
     for (const [name, pos] of nation.players) {
       try {
         await db.insert(playersTable).values({
-          name, position: pos,
+          name, position: pos, competitionKey: WORLD_CUP_COMPETITION_KEY,
           club: nation.name, clubShortName: code, nationality: nation.name,
           price: assignPrice(name, pos, nation.name),
           totalPoints: 0, cachedFromApi: true, cachedAt: now,

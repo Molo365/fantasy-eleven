@@ -11,6 +11,7 @@ export type ListPlayersParams = {
 position?: ListPlayersPosition;
 club?: string;
 search?: string;
+competitionKey?: string;
 limit?: number;
 offset?: number;
 };

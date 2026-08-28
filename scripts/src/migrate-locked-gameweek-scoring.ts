@@ -7,6 +7,7 @@ const migrations = [
   "0003_player_active",
   "0004_gameweek_lineup_points",
   "0005_league_competition",
+  "0006_player_competition",
 ].map((name) => ({
   name,
   path: fileURLToPath(new URL(`../../lib/db/drizzle/${name}.sql`, import.meta.url)),
@@ -53,11 +54,18 @@ try {
     }
 
     const migrationSql = await readFile(migration.path, "utf8");
-    await client.query(migrationSql);
-    await client.query(
-      'INSERT INTO "application_migrations" ("name") VALUES ($1)',
-      [migration.name],
-    );
+    await client.query("BEGIN");
+    try {
+      await client.query(migrationSql);
+      await client.query(
+        'INSERT INTO "application_migrations" ("name") VALUES ($1)',
+        [migration.name],
+      );
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    }
     console.info(`Applied database migration ${migration.name}.`);
   }
 } finally {

@@ -356,7 +356,8 @@ export async function processGameweekScoring(
       name: playersTable.name,
       position: playersTable.position,
     })
-    .from(playersTable);
+    .from(playersTable)
+    .where(eq(playersTable.competitionKey, "world-cup-2026"));
 
   const byExternalId = new Map<number, typeof allPlayers[0]>();
   const byNameLower = new Map<string, typeof allPlayers[0]>();
@@ -467,8 +468,17 @@ export async function processGameweekScoring(
   const { teamsUpdated } = await scoreAndPersistTeams(gameweekId, playerEarned, playerById, options);
 
   // 6. Update current player rows for the dashboard and squad views.
-  await db.update(playersTable).set({ totalPoints: 0 });
-  await db.update(teamPlayersTable).set({ points: 0 });
+  const worldCupPlayerIds = allPlayers.map((player) => player.id);
+  if (worldCupPlayerIds.length > 0) {
+    await db
+      .update(playersTable)
+      .set({ totalPoints: 0 })
+      .where(inArray(playersTable.id, worldCupPlayerIds));
+    await db
+      .update(teamPlayersTable)
+      .set({ points: 0 })
+      .where(inArray(teamPlayersTable.playerId, worldCupPlayerIds));
+  }
 
   let playersUpdated = 0;
   let totalPointsAwarded = 0;
@@ -522,7 +532,7 @@ export async function processFplGameweekScoring(
     );
   }
 
-  // 2. Load only Premier League players (tagged nationality = 'premier_league')
+  // 2. Load only Premier League players.
   const plPlayers = await db
     .select({
       id:         playersTable.id,
@@ -531,7 +541,7 @@ export async function processFplGameweekScoring(
       position:   playersTable.position,
     })
     .from(playersTable)
-    .where(eq(playersTable.nationality, "premier_league"));
+    .where(eq(playersTable.competitionKey, "premier-league"));
 
   const byExternalId = new Map<number, typeof plPlayers[0]>();
   const playerById   = new Map<number, string>();

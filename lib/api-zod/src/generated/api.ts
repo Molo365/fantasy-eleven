@@ -19,6 +19,7 @@ export const HealthCheckResponse = zod.object({
 /**
  * @summary List all available players
  */
+export const listPlayersQueryCompetitionKeyDefault = `premier-league`;
 export const listPlayersQueryLimitDefault = 50;
 export const listPlayersQueryOffsetDefault = 0;
 
@@ -26,16 +27,19 @@ export const ListPlayersQueryParams = zod.object({
   "position": zod.enum(['GK', 'DEF', 'MID', 'FWD']).optional(),
   "club": zod.coerce.string().optional(),
   "search": zod.coerce.string().optional(),
+  "competitionKey": zod.coerce.string().default(listPlayersQueryCompetitionKeyDefault),
   "limit": zod.coerce.number().default(listPlayersQueryLimitDefault),
   "offset": zod.coerce.number().default(listPlayersQueryOffsetDefault)
 })
 
 export const ListPlayersResponseItem = zod.object({
   "id": zod.number(),
+  "competitionKey": zod.string(),
   "name": zod.string(),
   "position": zod.enum(['GK', 'DEF', 'MID', 'FWD']),
   "club": zod.string(),
   "clubShortName": zod.string().optional(),
+  "nationality": zod.string().nullable(),
   "totalPoints": zod.number(),
   "price": zod.number(),
   "form": zod.number().optional(),
@@ -58,10 +62,12 @@ export const GetPlayerParams = zod.object({
 
 export const GetPlayerResponse = zod.object({
   "id": zod.number(),
+  "competitionKey": zod.string(),
   "name": zod.string(),
   "position": zod.enum(['GK', 'DEF', 'MID', 'FWD']),
   "club": zod.string(),
   "clubShortName": zod.string().optional(),
+  "nationality": zod.string().nullable(),
   "totalPoints": zod.number(),
   "price": zod.number(),
   "form": zod.number().optional(),
@@ -78,18 +84,22 @@ export const GetPlayerResponse = zod.object({
  * @summary Get top performing players
  */
 export const getTopPlayersQueryLimitDefault = 10;
+export const getTopPlayersQueryCompetitionKeyDefault = `premier-league`;
 
 export const GetTopPlayersQueryParams = zod.object({
   "position": zod.enum(['GK', 'DEF', 'MID', 'FWD']).optional(),
-  "limit": zod.coerce.number().default(getTopPlayersQueryLimitDefault)
+  "limit": zod.coerce.number().default(getTopPlayersQueryLimitDefault),
+  "competitionKey": zod.coerce.string().default(getTopPlayersQueryCompetitionKeyDefault)
 })
 
 export const GetTopPlayersResponseItem = zod.object({
   "id": zod.number(),
+  "competitionKey": zod.string(),
   "name": zod.string(),
   "position": zod.enum(['GK', 'DEF', 'MID', 'FWD']),
   "club": zod.string(),
   "clubShortName": zod.string().optional(),
+  "nationality": zod.string().nullable(),
   "totalPoints": zod.number(),
   "price": zod.number(),
   "form": zod.number().optional(),
@@ -106,6 +116,12 @@ export const GetTopPlayersResponse = zod.array(GetTopPlayersResponseItem)
 /**
  * @summary Get distinct nations represented in the player pool
  */
+export const getPlayerNationsQueryCompetitionKeyDefault = `premier-league`;
+
+export const GetPlayerNationsQueryParams = zod.object({
+  "competitionKey": zod.coerce.string().default(getPlayerNationsQueryCompetitionKeyDefault)
+})
+
 export const GetPlayerNationsResponseItem = zod.string()
 export const GetPlayerNationsResponse = zod.array(GetPlayerNationsResponseItem)
 
@@ -199,10 +215,12 @@ export const GetTeamPlayersResponseItem = zod.object({
   "isViceCaptain": zod.boolean().optional(),
   "player": zod.object({
   "id": zod.number(),
+  "competitionKey": zod.string(),
   "name": zod.string(),
   "position": zod.enum(['GK', 'DEF', 'MID', 'FWD']),
   "club": zod.string(),
   "clubShortName": zod.string().optional(),
+  "nationality": zod.string().nullable(),
   "totalPoints": zod.number(),
   "price": zod.number(),
   "form": zod.number().optional(),

@@ -234,7 +234,7 @@ async function main() {
     }
 
     const rows: Array<{
-      name: string; position: string; club: string; clubShortName: string;
+      competitionKey: string; name: string; position: string; club: string; clubShortName: string;
       nationality: string; price: number; totalPoints: number; form: number;
       selected: number; goalsScored: number; assists: number; cleanSheets: number;
       imageUrl: string | null; cachedFromApi: boolean; cachedAt: Date;
@@ -246,6 +246,7 @@ async function main() {
       if (!pos) continue; // skip players with unknown position
 
       rows.push({
+        competitionKey: "world-cup-2026",
         name: athlete.displayName || athlete.fullName,
         position: pos,
         club: team.name,
@@ -280,6 +281,7 @@ async function main() {
 
   for (const { name, code, squad } of CURATED_FALLBACK) {
     const rows = squad.map(([playerName, pos]) => ({
+      competitionKey: "world-cup-2026",
       name: playerName,
       position: pos as string,
       club: name,

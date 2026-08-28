@@ -6,7 +6,7 @@
  */
 
 import { db, playersTable } from "@workspace/db";
-import { sql, count } from "drizzle-orm";
+import { count, eq } from "drizzle-orm";
 
 const API_BASE = "https://v3.football.api-sports.io";
 const WC_LEAGUE_ID = 1;
@@ -93,12 +93,7 @@ async function main() {
   const key = process.env.API_SPORTS_KEY;
   if (!key) { console.error("❌  API_SPORTS_KEY not set"); process.exit(1); }
 
-  // 1. Clear existing players
-  const [{ before }] = await db.select({ before: count() }).from(playersTable);
-  console.log(`\n🗑  Clearing ${before} existing players…`);
-  await db.execute(sql`TRUNCATE players RESTART IDENTITY CASCADE`);
-
-  // 2. Fetch from API-Sports — try 2026 first, fall back to 2022
+  // 1. Fetch from API-Sports — try 2026 first, fall back to 2022
   let all: ApiPlayer[] = [];
   let usedSeason = 0;
 
@@ -137,6 +132,16 @@ async function main() {
     process.exit(0);
   }
 
+  // 2. Clear only the World Cup pool after a replacement feed exists.
+  const [{ before }] = await db
+    .select({ before: count() })
+    .from(playersTable)
+    .where(eq(playersTable.competitionKey, "world-cup-2026"));
+  console.log(`\n🗑  Clearing ${before} existing World Cup players…`);
+  await db
+    .delete(playersTable)
+    .where(eq(playersTable.competitionKey, "world-cup-2026"));
+
   // 3. Insert into DB with photo URL constructed from API-Sports player ID
   let inserted = 0, skipped = 0;
   const nationsSeen = new Set<string>();
@@ -157,6 +162,7 @@ async function main() {
     try {
       await db.insert(playersTable).values({
         externalId: entry.player.id,
+        competitionKey: "world-cup-2026",
         name: entry.player.name,
         position: pos,
         club: nationName,
