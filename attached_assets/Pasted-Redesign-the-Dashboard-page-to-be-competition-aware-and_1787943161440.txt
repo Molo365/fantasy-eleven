@@ -1,0 +1,29 @@
+Redesign the Dashboard page to be competition-aware and show both Premier League and Serie A at a glance, per the attached reference mock (thin two-league strip, no big hero section).
+
+CONTEXT (confirmed by prior investigation, do not re-investigate):
+- artifacts/fanta11/src/pages/dashboard.tsx currently derives the active team from
+  authState.user.teamId (legacy single-team assumption) and ignores
+  useLeagueContext()'s activeTeamId/activeCompetitionKey, and user.teams[].
+- GET /api/dashboard/summary (artifacts/api-server/src/routes/dashboard.ts) takes
+  teamId, returns rank/points/budget/captain/league info, but has no competitionKey
+  param and no nextKickoff field.
+- GET /api/dashboard/squad, GET /api/leagues/:id/leaderboard, and
+  GET /api/dashboard/top-performers are all called separately, none scoped by competition.
+- TodayMatchesCard hardcodes leagueKey: "premier-league" against GET /api/fixtures.
+- Global rank in the summary counts across the entire teams table, not per competition —
+  this needs to become competition-scoped too, or it's misleading once both leagues show at once.
+- Task #15 already gives each user one team per competition (teams.competitionKey,
+  unique on userId+competitionKey) — user.teams[] should have what's needed to resolve
+  both team IDs.
+
+BACKEND TASKS:
+1. Add a `competitionKey` param to GET /api/dashboard/summary. Resolve the team from
+   the authenticated user's teams for that competition (server-side), not from a
+   client-supplied teamId. Scope the rank calculation to only teams within that
+   competition's leagues.
+2. Add a `nextKickoff` field to the summary response — the earliest upcoming fixture
+   time for that competition. Reuse the existing live fixture-provider logic (from the
+   fixtures route/registry) rather than adding a new fixture table or sync job — factor
+   out a small shared helper that returns just the next kickoff instead of the full list.
+3. Scope GET /api/dashboard/top-performers and TodayMatchesCard's fixture call by
+   competitionKey as well, so switching competitions on the
