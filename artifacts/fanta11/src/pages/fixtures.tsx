@@ -9,11 +9,40 @@ import { format } from "date-fns";
 
 type Fixture = LiveFixture;
 
-const ACTIVE_FIXTURE_LEAGUE = {
-  key: "premier-league",
-  apiSportsLeagueId: "39",
-  apiSportsSeason: "2026",
-} as const;
+type FixtureLeagueKey = "premier-league" | "serie-a";
+
+const FIXTURE_LEAGUES: Array<{
+  key: FixtureLeagueKey;
+  name: string;
+  image: string;
+  apiSportsLeagueId: string;
+  apiSportsSeason: string;
+}> = [
+  {
+    key: "premier-league",
+    name: "Premier League",
+    image: "/league-premier.png",
+    apiSportsLeagueId: "39",
+    apiSportsSeason: "2026",
+  },
+  {
+    key: "serie-a",
+    name: "Serie A",
+    image: "/league-seriea.png",
+    apiSportsLeagueId: "135",
+    apiSportsSeason: "2026",
+  },
+];
+
+const LAST_FIXTURE_LEAGUE_STORAGE_KEY = "fanta11:last-fixture-league";
+
+function getInitialFixtureLeague(): FixtureLeagueKey {
+  if (typeof window !== "undefined") {
+    const saved = window.localStorage.getItem(LAST_FIXTURE_LEAGUE_STORAGE_KEY);
+    if (saved === "serie-a" || saved === "premier-league") return saved;
+  }
+  return "premier-league";
+}
 
 function parseLocal(dateStr: string) {
   const [y, m, d] = dateStr.split("T")[0].split("-").map(Number);
@@ -101,18 +130,25 @@ function TeamSide({ name, logo, align }: { name: string; logo: string | null | u
 }
 
 export function Fixtures() {
+  const [activeLeagueKey, setActiveLeagueKey] = useState<FixtureLeagueKey>(getInitialFixtureLeague);
+  const activeLeague = FIXTURE_LEAGUES.find((league) => league.key === activeLeagueKey)!;
   const { data: fixtures, isLoading, isError } = useGetLiveFixtures(
-    { leagueKey: ACTIVE_FIXTURE_LEAGUE.key },
+    { leagueKey: activeLeagueKey },
     {
       query: {
-        queryKey: getGetLiveFixturesQueryKey({ leagueKey: ACTIVE_FIXTURE_LEAGUE.key }),
-        refetchInterval: 60_000,
+        queryKey: getGetLiveFixturesQueryKey({ leagueKey: activeLeagueKey }),
+        refetchInterval: activeLeagueKey === "premier-league" ? 60_000 : 15 * 60_000,
       },
     }
   );
 
   const [selectedGw, setSelectedGw] = useState<number | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setSelectedGw(null);
+    window.localStorage.setItem(LAST_FIXTURE_LEAGUE_STORAGE_KEY, activeLeagueKey);
+  }, [activeLeagueKey]);
 
   const uniqueGameweeks = useMemo(() => {
     if (!fixtures) return [];
@@ -158,6 +194,8 @@ export function Fixtures() {
   }, [selectedGw]);
 
   useEffect(() => {
+    if (activeLeagueKey !== "premier-league") return;
+
     const existing = document.querySelector('script[src*="widgets.api-sports.io"]');
     if (!existing) {
       const script = document.createElement("script");
@@ -165,7 +203,7 @@ export function Fixtures() {
       script.type = "module";
       document.body.appendChild(script);
     }
-  }, []);
+  }, [activeLeagueKey]);
 
   const API_KEY = import.meta.env.VITE_API_SPORTS_KEY ?? "";
 
@@ -188,6 +226,35 @@ export function Fixtures() {
         <p className="text-blue-300/60 text-sm mt-2 font-medium tracking-wide">
           Match schedules, live scores, and past results.
         </p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 max-w-xl animate-in fade-in slide-in-from-bottom-2 duration-500">
+        {FIXTURE_LEAGUES.map((league) => {
+          const isSelected = activeLeagueKey === league.key;
+          return (
+            <button
+              type="button"
+              key={league.key}
+              data-testid={`fixture-competition-${league.key}`}
+              aria-pressed={isSelected}
+              aria-label={league.name}
+              onClick={() => setActiveLeagueKey(league.key)}
+              className={`relative rounded-xl border-2 p-3 transition-all flex items-center gap-3 text-left overflow-hidden cursor-pointer hover:border-primary/50 ${
+                isSelected ? "border-primary bg-primary/5" : "border-border bg-card"
+              }`}
+            >
+              {isSelected && (
+                <div className="absolute top-2 right-2 w-4 h-4 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-[10px]">
+                  ✓
+                </div>
+              )}
+              <div className="h-10 w-14 flex items-center justify-center flex-shrink-0">
+                <img src={league.image} alt="" className="max-h-full max-w-full object-contain drop-shadow-md" />
+              </div>
+              <span className="font-semibold text-sm">{league.name}</span>
+            </button>
+          );
+        })}
       </div>
 
       {isError && (
@@ -283,48 +350,50 @@ export function Fixtures() {
         </div>
       )}
 
-      {/* API-SPORTS WIDGETS */}
-      <div className="pt-10 space-y-6 animate-in fade-in duration-1000 delay-300 fill-mode-both">
-        <div className="flex items-center gap-3">
-          <Activity className="text-amber-400" size={24} />
-          <h2 className="text-xl font-black uppercase tracking-widest text-slate-200">
-            Live Standings
-          </h2>
-        </div>
-
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-          <div className="rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-[#081128]/80 min-h-[400px]">
-            <div
-              id="wg-api-football-games"
-              data-host="v3.football.api-sports.io"
-              data-key={API_KEY}
-              data-league={ACTIVE_FIXTURE_LEAGUE.apiSportsLeagueId}
-              data-season={ACTIVE_FIXTURE_LEAGUE.apiSportsSeason}
-              data-theme="dark"
-              data-refresh="60"
-              data-show-toolbar="true"
-              data-show-errors="false"
-              data-show-logos="true"
-              data-modal-game="true"
-              data-modal-standings="true"
-              data-modal-show-logos="true"
-            />
+      {activeLeagueKey === "premier-league" && (
+        /* API-SPORTS WIDGETS */
+        <div className="pt-10 space-y-6 animate-in fade-in duration-1000 delay-300 fill-mode-both">
+          <div className="flex items-center gap-3">
+            <Activity className="text-amber-400" size={24} />
+            <h2 className="text-xl font-black uppercase tracking-widest text-slate-200">
+              Live Standings
+            </h2>
           </div>
 
-          <div className="rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-[#081128]/80 min-h-[400px]">
-            <div
-              id="wg-api-football-standings"
-              data-host="v3.football.api-sports.io"
-              data-key={API_KEY}
-              data-league={ACTIVE_FIXTURE_LEAGUE.apiSportsLeagueId}
-              data-season={ACTIVE_FIXTURE_LEAGUE.apiSportsSeason}
-              data-theme="dark"
-              data-show-errors="false"
-              data-show-logos="true"
-            />
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            <div className="rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-[#081128]/80 min-h-[400px]">
+              <div
+                id="wg-api-football-games"
+                data-host="v3.football.api-sports.io"
+                data-key={API_KEY}
+                data-league={activeLeague.apiSportsLeagueId}
+                data-season={activeLeague.apiSportsSeason}
+                data-theme="dark"
+                data-refresh="60"
+                data-show-toolbar="true"
+                data-show-errors="false"
+                data-show-logos="true"
+                data-modal-game="true"
+                data-modal-standings="true"
+                data-modal-show-logos="true"
+              />
+            </div>
+
+            <div className="rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-[#081128]/80 min-h-[400px]">
+              <div
+                id="wg-api-football-standings"
+                data-host="v3.football.api-sports.io"
+                data-key={API_KEY}
+                data-league={activeLeague.apiSportsLeagueId}
+                data-season={activeLeague.apiSportsSeason}
+                data-theme="dark"
+                data-show-errors="false"
+                data-show-logos="true"
+              />
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

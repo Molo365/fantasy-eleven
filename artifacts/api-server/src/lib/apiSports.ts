@@ -844,7 +844,7 @@ type ApiFixture = {
 };
 
 const LIVE_CODES = new Set(["1H", "2H", "HT", "ET", "BT", "P", "LIVE", "INT", "SUSP"]);
-const FINISHED_CODES = new Set(["FT", "AET", "PEN", "WO"]);
+const FINISHED_CODES = new Set(["FT", "AET", "PEN", "AWD", "WO"]);
 
 function mapFixtureStatus(short: string): "scheduled" | "live" | "finished" {
   if (LIVE_CODES.has(short)) return "live";
@@ -880,6 +880,60 @@ export async function getWorldCupFixtures(season: number): Promise<LiveFixtureDT
     }))
     .sort((a, b) => a.kickoff.localeCompare(b.kickoff));
   fixturesCache.set(season, { at: Date.now(), data });
+  return data;
+}
+
+export type SerieALiveFixtureDTO = LiveFixtureDTO & {
+  leagueKey: typeof SERIE_A_COMPETITION_KEY;
+  gameweekNumber: number | null;
+};
+
+let cachedSerieAFixtures: {
+  at: number;
+  data: SerieALiveFixtureDTO[];
+} | null = null;
+const SERIE_A_FIXTURES_TTL_MS = 15 * 60 * 1000;
+
+function parseSerieAGameweek(round: string | null | undefined): number | null {
+  const match = /^Regular Season\s*-\s*(\d+)$/i.exec(round?.trim() ?? "");
+  return match ? Number(match[1]) : null;
+}
+
+export async function getSerieAFixtures(): Promise<SerieALiveFixtureDTO[]> {
+  if (cachedSerieAFixtures && Date.now() - cachedSerieAFixtures.at < SERIE_A_FIXTURES_TTL_MS) {
+    return cachedSerieAFixtures.data;
+  }
+
+  const response = await apiFetch<ApiFixture[]>(
+    `/fixtures?league=${SERIE_A_LEAGUE_ID}&season=${SERIE_A_SEASON}`,
+  );
+  const data: SerieALiveFixtureDTO[] = response
+    .flatMap<SerieALiveFixtureDTO>((f) => {
+      const gameweekNumber = parseSerieAGameweek(f.league.round);
+      if (gameweekNumber === null) return [];
+
+      return [{
+        id: f.fixture.id,
+        date: f.fixture.date.slice(0, 10),
+        kickoff: f.fixture.date,
+        status: mapFixtureStatus(f.fixture.status.short),
+        statusShort: f.fixture.status.short,
+        elapsed: f.fixture.status.elapsed,
+        leagueKey: SERIE_A_COMPETITION_KEY,
+        gameweekNumber,
+        round: f.league.round,
+        venue: f.fixture.venue?.name ?? null,
+        homeTeam: f.teams.home.name,
+        awayTeam: f.teams.away.name,
+        homeLogo: f.teams.home.logo,
+        awayLogo: f.teams.away.logo,
+        homeScore: f.goals.home,
+        awayScore: f.goals.away,
+      }];
+    })
+    .sort((a, b) => a.kickoff.localeCompare(b.kickoff));
+
+  cachedSerieAFixtures = { at: Date.now(), data };
   return data;
 }
 

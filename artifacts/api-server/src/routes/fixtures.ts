@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { GetLiveFixturesResponse } from "@workspace/api-zod";
+import { getSerieAFixtures } from "../lib/apiSports";
 
 const router: IRouter = Router();
 
@@ -30,7 +31,7 @@ type FplFixture = {
 type FixtureLeague = {
   key: string;
   name: string;
-  provider: "fpl";
+  provider: "fpl" | "serie-a";
 };
 
 // Keep provider-specific details behind a league registry so adding another
@@ -40,6 +41,11 @@ const fixtureLeagues: Record<string, FixtureLeague> = {
     key: "premier-league",
     name: "Premier League",
     provider: "fpl",
+  },
+  "serie-a": {
+    key: "serie-a",
+    name: "Serie A",
+    provider: "serie-a",
   },
 };
 const DEFAULT_LEAGUE_KEY = "premier-league";
@@ -130,6 +136,8 @@ async function fetchFixturesForLeague(league: FixtureLeague): Promise<unknown[]>
   switch (league.provider) {
     case "fpl":
       return fetchFplFixtures(league);
+    case "serie-a":
+      return getSerieAFixtures();
   }
 }
 
@@ -149,7 +157,7 @@ router.get("/fixtures", async (req, res): Promise<void> => {
     const fixtures = await fetchFixturesForLeague(league);
     res.json(GetLiveFixturesResponse.parse(fixtures));
   } catch (err) {
-    req.log.error({ err }, "Failed to fetch fixtures from FPL API");
+    req.log.error({ err }, "Failed to fetch fixtures");
     res.status(502).json({ error: "Failed to fetch fixtures" });
   }
 });
