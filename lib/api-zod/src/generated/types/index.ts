@@ -30,6 +30,7 @@ export * from './joinLeagueInput';
 export * from './leaderboardEntry';
 export * from './league';
 export * from './leagueInput';
+export * from './leagueInputCompetitionKey';
 export * from './listPlayersParams';
 export * from './listPlayersPosition';
 export * from './liveFixture';

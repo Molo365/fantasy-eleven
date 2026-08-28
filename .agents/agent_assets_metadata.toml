@@ -1,0 +1,9 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "Z8ddJZXJVeahlEE_3ltx9"
+uri = "file://.local/reports/create-league-wizard-full-diff.txt"
+type = "text"
+title = "Create League Wizard — Full Git Diff"
+description = "Complete 813-line raw patch from the working tree, including the generated competition enum and numbered database migration. No commit or push has been made."

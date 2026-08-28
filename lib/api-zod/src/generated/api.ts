@@ -247,6 +247,7 @@ export const RemovePlayerFromTeamParams = zod.object({
 export const ListLeaguesResponseItem = zod.object({
   "id": zod.number(),
   "name": zod.string(),
+  "competitionKey": zod.string(),
   "description": zod.string().nullish(),
   "code": zod.string().optional(),
   "teamCount": zod.number(),
@@ -269,6 +270,7 @@ export const ListLeaguesResponse = zod.array(ListLeaguesResponseItem)
 
 export const CreateLeagueBody = zod.object({
   "name": zod.string().min(1),
+  "competitionKey": zod.enum(['premier-league', 'serie-a']),
   "description": zod.string().optional(),
   "maxMembers": zod.number().nullish(),
   "entryFee": zod.string().optional(),
@@ -289,6 +291,7 @@ export const GetLeagueParams = zod.object({
 export const GetLeagueResponse = zod.object({
   "id": zod.number(),
   "name": zod.string(),
+  "competitionKey": zod.string(),
   "description": zod.string().nullish(),
   "code": zod.string().optional(),
   "teamCount": zod.number(),
@@ -335,6 +338,7 @@ export const JoinLeagueBody = zod.object({
 export const JoinLeagueResponse = zod.object({
   "id": zod.number(),
   "name": zod.string(),
+  "competitionKey": zod.string(),
   "description": zod.string().nullish(),
   "code": zod.string().optional(),
   "teamCount": zod.number(),

@@ -682,11 +682,13 @@ components:
 
     League:
       type: object
-      required: [id, name, teamCount]
+      required: [id, name, competitionKey, teamCount]
       properties:
         id:
           type: integer
         name:
+          type: string
+        competitionKey:
           type: string
         description:
           type: ["string", "null"]
@@ -711,11 +713,14 @@ components:
 
     LeagueInput:
       type: object
-      required: [name]
+      required: [name, competitionKey]
       properties:
         name:
           type: string
           minLength: 1
+        competitionKey:
+          type: string
+          enum: [premier-league, serie-a]
         description:
           type: string
         maxMembers:

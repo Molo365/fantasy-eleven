@@ -6,6 +6,7 @@ const migrations = [
   "0002_lock_gameweek_scoring",
   "0003_player_active",
   "0004_gameweek_lineup_points",
+  "0005_league_competition",
 ].map((name) => ({
   name,
   path: fileURLToPath(new URL(`../../lib/db/drizzle/${name}.sql`, import.meta.url)),

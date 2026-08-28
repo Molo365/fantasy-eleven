@@ -58,6 +58,7 @@ router.post("/leagues", async (req, res): Promise<void> => {
     .values({
       name: parsed.data.name,
       description: parsed.data.description ?? null,
+      competitionKey: parsed.data.competitionKey,
       code: randomCode(),
       maxMembers: parsed.data.maxMembers ?? null,
       entryFee: parsed.data.entryFee ?? "Free",

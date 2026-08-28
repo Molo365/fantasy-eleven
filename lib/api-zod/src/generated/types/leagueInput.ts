@@ -5,10 +5,12 @@
  * FANTA11 Fantasy Soccer API
  * OpenAPI spec version: 0.1.0
  */
+import type { LeagueInputCompetitionKey } from './leagueInputCompetitionKey';
 
 export interface LeagueInput {
   /** @minLength 1 */
   name: string;
+  competitionKey: LeagueInputCompetitionKey;
   description?: string;
   /** @nullable */
   maxMembers?: number | null;

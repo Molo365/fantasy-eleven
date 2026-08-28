@@ -6,6 +6,7 @@ export const leaguesTable = pgTable("leagues", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   description: text("description"),
+  competitionKey: text("competition_key").notNull().default("premier-league"),
   code: text("code").notNull().unique(),
   maxMembers: integer("max_members"),
   entryFee: text("entry_fee").notNull().default("Free"),

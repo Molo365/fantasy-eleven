@@ -11,11 +11,12 @@ import {
   getGetTeamQueryKey,
 } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Users, Trophy, ChevronRight, Plus, Copy, Check, Medal, ShieldHalf } from "lucide-react";
+import { Loader2, Users, Trophy, ChevronRight, Plus, Copy, Check, Medal, ShieldHalf, ArrowLeft } from "lucide-react";
 import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -274,6 +275,22 @@ function SquadViewDialog({
   );
 }
 
+const COMPETITIONS = [
+  { id: "premier-league", name: "Premier League", image: "/league-premier.png", available: true },
+  { id: "serie-a", name: "Serie A", image: "/league-seriea.png", available: true },
+  { id: "la-liga", name: "La Liga", image: "/league-laliga.png", available: false },
+  { id: "bundesliga", name: "Bundesliga", image: "/league-bundesliga.png", available: false },
+  { id: "ligue-1", name: "Ligue 1", image: "/league-ligue1.png", available: false },
+];
+
+const CREATE_STEP_LABELS = [
+  "Competition",
+  "Name and description",
+  "Members and entry fee",
+  "Prizes and privacy",
+  "Review and create",
+];
+
 export function Leagues() {
   const { authState } = useAuth();
   const myTeamId = authState.status === "authenticated" ? (authState.user.teamId ?? 0) : 0;
@@ -300,6 +317,9 @@ export function Leagues() {
   const createLeague = useCreateLeague();
   const joinLeague = useJoinLeague();
 
+  // Wizard state
+  const [createStep, setCreateStep] = useState(1);
+  const [competitionKey, setCompetitionKey] = useState<"premier-league" | "serie-a" | "">("");
   const [createName, setCreateName] = useState("");
   const [createDesc, setCreateDesc] = useState("");
   const [maxUnlimited, setMaxUnlimited] = useState(true);
@@ -315,6 +335,8 @@ export function Leagues() {
   const [createdLeague, setCreatedLeague] = useState<{ id: number; name: string; code: string } | null>(null);
 
   const resetCreateForm = () => {
+    setCreateStep(1);
+    setCompetitionKey("");
     setCreateName(""); setCreateDesc("");
     setMaxUnlimited(true); setMaxCount("");
     setEntryFee(""); setPrize1st(""); setPrize2nd(""); setPrize3rd("");
@@ -329,12 +351,33 @@ export function Leagues() {
     teamId: number; teamName: string; managerName: string;
   } | null>(null);
 
-  const handleCreate = (e: React.FormEvent) => {
-    e.preventDefault();
+  const canContinue = () => {
+    if (createStep === 1) return competitionKey !== "";
+    if (createStep === 2) return createName.trim().length > 0;
+    if (createStep === 3) return maxUnlimited || (parseInt(maxCount, 10) > 1);
+    return true;
+  };
+
+  const handleNext = () => {
+    if (canContinue() && createStep < 5) {
+      setCreateStep(prev => prev + 1);
+    }
+  };
+
+  const handleBack = () => {
+    if (createStep > 1) {
+      setCreateStep(prev => prev - 1);
+    }
+  };
+
+  const handleCreate = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (competitionKey !== "premier-league" && competitionKey !== "serie-a") return;
     createLeague.mutate(
       {
         data: {
           name: createName,
+          competitionKey: competitionKey,
           description: createDesc || undefined,
           maxMembers: (!maxUnlimited && maxCount) ? parseInt(maxCount, 10) : null,
           entryFee: entryFee.trim() || "Free",
@@ -450,15 +493,16 @@ export function Leagues() {
             open={isCreateOpen}
             onOpenChange={(o) => {
               if (!o && createdLeague) { handleDismissCreated(); return; }
+              if (!o) { resetCreateForm(); }
               setIsCreateOpen(o);
             }}
           >
             <DialogTrigger asChild>
-              <Button onClick={() => { setCreatedLeague(null); setIsCreateOpen(true); }}>
+              <Button onClick={() => { setCreatedLeague(null); resetCreateForm(); setIsCreateOpen(true); }}>
                 <Plus className="w-4 h-4 mr-2" /> Create League
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden gap-0">
+            <DialogContent className="sm:max-w-[550px] p-0 overflow-hidden gap-0">
               {/* Dialog header */}
               <div style={{
                 background: "linear-gradient(135deg, #0a1628 0%, #0d1f3c 100%)",
@@ -470,6 +514,11 @@ export function Leagues() {
                     <Trophy className="w-4 h-4 text-primary" />
                     {createdLeague ? "League Created!" : "Create a League"}
                   </DialogTitle>
+                  <DialogDescription className="sr-only">
+                    {createdLeague
+                      ? "Your league has been created. Copy the invite code or view the league."
+                      : "Configure the competition, details, entry settings, prizes, and privacy for your league."}
+                  </DialogDescription>
                 </DialogHeader>
               </div>
 
@@ -487,198 +536,305 @@ export function Leagues() {
                   <Button className="w-full" onClick={handleDismissCreated}>View League</Button>
                 </div>
               ) : (
-                <ScrollArea className="max-h-[70vh]">
-                  <form onSubmit={handleCreate} className="p-6 space-y-5">
-
-                    {/* 1 — League Name */}
-                    <div className="space-y-1.5">
-                      <Label htmlFor="lname" className="text-sm font-semibold">League Name <span className="text-destructive">*</span></Label>
-                      <Input
-                        id="lname"
-                        value={createName}
-                        onChange={(e) => setCreateName(e.target.value)}
-                        placeholder="e.g. Office WC 2026"
-                        required
-                      />
+                <div className="flex flex-col h-full max-h-[75vh]">
+                  {/* Step indicator */}
+                  <div
+                    className="px-6 pt-5 pb-3 bg-card border-b border-border"
+                    data-testid="step-indicator"
+                    role="progressbar"
+                    aria-valuemin={1}
+                    aria-valuemax={CREATE_STEP_LABELS.length}
+                    aria-valuenow={createStep}
+                    aria-valuetext={`Step ${createStep} of ${CREATE_STEP_LABELS.length}: ${CREATE_STEP_LABELS[createStep - 1]}`}
+                  >
+                    <span className="sr-only">
+                      Step {createStep} of {CREATE_STEP_LABELS.length}: {CREATE_STEP_LABELS[createStep - 1]}
+                    </span>
+                    <div className="flex justify-between items-center gap-2 relative" aria-hidden="true">
+                      <div className="absolute top-1/2 left-0 right-0 h-[2px] bg-secondary/50 -z-10" />
+                      {[1, 2, 3, 4, 5].map((step) => (
+                        <div key={step} className="flex flex-col items-center gap-1 bg-card px-1">
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
+                            createStep === step ? "bg-primary text-primary-foreground ring-4 ring-primary/20" :
+                            createStep > step ? "bg-primary text-primary-foreground" :
+                            "bg-secondary text-muted-foreground"
+                          }`} aria-current={createStep === step ? "step" : undefined}>
+                            {createStep > step ? <Check className="w-3 h-3" /> : step}
+                          </div>
+                        </div>
+                      ))}
                     </div>
+                  </div>
 
-                    {/* 2 — Description */}
-                    <div className="space-y-1.5">
-                      <Label htmlFor="desc" className="text-sm font-semibold">
-                        Description <span className="text-muted-foreground font-normal">(optional)</span>
-                      </Label>
-                      <Textarea
-                        id="desc"
-                        value={createDesc}
-                        onChange={(e) => setCreateDesc(e.target.value)}
-                        placeholder="Rules, trash talk, context for the league..."
-                        rows={2}
-                        className="resize-none"
-                      />
-                    </div>
+                  <ScrollArea className="flex-1 p-6">
+                    {createStep === 1 && (
+                      <div className="space-y-4 animate-in fade-in slide-in-from-left-4 duration-300">
+                        <div>
+                          <h3 className="text-lg font-bold">Select Competition</h3>
+                          <p className="text-sm text-muted-foreground">Choose the tournament for this league.</p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                          {COMPETITIONS.map((comp) => {
+                            const isSelected = competitionKey === comp.id;
+                            return (
+                              <button
+                                type="button"
+                                key={comp.id}
+                                data-testid={`competition-card-${comp.id}`}
+                                aria-pressed={comp.available ? isSelected : undefined}
+                                aria-label={`${comp.name}${comp.available ? "" : ", coming soon"}`}
+                                disabled={!comp.available}
+                                onClick={() => {
+                                  if (comp.available) {
+                                    setCompetitionKey(comp.id as "premier-league" | "serie-a");
+                                  }
+                                }}
+                                className={`relative rounded-xl border-2 p-3 transition-all flex flex-col items-center gap-2 text-center overflow-hidden
+                                  ${comp.available ? "cursor-pointer hover:border-primary/50" : "opacity-60 grayscale cursor-not-allowed disabled:pointer-events-none"}
+                                  ${isSelected ? "border-primary bg-primary/5" : "border-border bg-card"}
+                                `}
+                              >
+                                {isSelected && (
+                                  <div className="absolute top-2 right-2 w-4 h-4 bg-primary text-primary-foreground rounded-full flex items-center justify-center">
+                                    <Check className="w-3 h-3" />
+                                  </div>
+                                )}
+                                <div className="h-12 w-full flex items-center justify-center">
+                                  <img src={comp.image} alt={comp.name} className="max-h-full max-w-[80%] object-contain drop-shadow-md" />
+                                </div>
+                                <span className="font-semibold text-sm">{comp.name}</span>
+                                {!comp.available && (
+                                  <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground bg-secondary/80 px-2 py-0.5 rounded-sm">
+                                    Coming soon
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
 
-                    {/* Divider */}
-                    <div style={{ height: 1, background: "rgba(255,255,255,0.06)" }} />
-
-                    {/* 3 — Max Members */}
-                    <div className="space-y-1.5">
-                      <Label className="text-sm font-semibold">Max Members</Label>
-                      <div className="flex items-center gap-3">
-                        <button
-                          type="button"
-                          onClick={() => setMaxUnlimited(true)}
-                          style={{
-                            padding: "6px 14px", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer",
-                            border: `1px solid ${maxUnlimited ? "hsl(var(--primary))" : "rgba(255,255,255,0.12)"}`,
-                            background: maxUnlimited ? "hsl(var(--primary)/0.15)" : "transparent",
-                            color: maxUnlimited ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))",
-                            transition: "all 0.15s",
-                          }}
-                        >
-                          Unlimited
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setMaxUnlimited(false)}
-                          style={{
-                            padding: "6px 14px", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer",
-                            border: `1px solid ${!maxUnlimited ? "hsl(var(--primary))" : "rgba(255,255,255,0.12)"}`,
-                            background: !maxUnlimited ? "hsl(var(--primary)/0.15)" : "transparent",
-                            color: !maxUnlimited ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))",
-                            transition: "all 0.15s",
-                          }}
-                        >
-                          Set limit
-                        </button>
-                        {!maxUnlimited && (
+                    {createStep === 2 && (
+                      <div className="space-y-5 animate-in fade-in slide-in-from-left-4 duration-300">
+                        <div>
+                          <h3 className="text-lg font-bold">Name & Description</h3>
+                          <p className="text-sm text-muted-foreground">Give your league an identity.</p>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="lname" className="text-sm font-semibold">League Name <span className="text-destructive">*</span></Label>
                           <Input
-                            type="number"
-                            min={2}
-                            max={500}
-                            value={maxCount}
-                            onChange={(e) => setMaxCount(e.target.value)}
-                            placeholder="e.g. 10"
-                            className="w-24"
+                            id="lname"
+                            value={createName}
+                            onChange={(e) => setCreateName(e.target.value)}
+                            placeholder="e.g. Office WC 2026"
                             autoFocus
                           />
-                        )}
-                      </div>
-                    </div>
-
-                    {/* 4 — Entry Fee */}
-                    <div className="space-y-1.5">
-                      <Label htmlFor="fee" className="text-sm font-semibold">Entry Fee</Label>
-                      <Input
-                        id="fee"
-                        value={entryFee}
-                        onChange={(e) => setEntryFee(e.target.value)}
-                        placeholder="Free"
-                      />
-                      <p className="text-xs text-muted-foreground">Leave blank for free. Type any amount, e.g. "$20" or "£10".</p>
-                    </div>
-
-                    {/* 5 — Prize Structure */}
-                    <div className="space-y-2">
-                      <Label className="text-sm font-semibold">Prize Structure</Label>
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <span style={{
-                            fontSize: 11, fontWeight: 800, color: "#f59e0b",
-                            background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.3)",
-                            borderRadius: 6, padding: "2px 7px", flexShrink: 0,
-                          }}>🥇 1st</span>
-                          <Input
-                            value={prize1st}
-                            onChange={(e) => setPrize1st(e.target.value)}
-                            placeholder="e.g. $100 or Winner's Trophy"
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="desc" className="text-sm font-semibold">
+                            Description <span className="text-muted-foreground font-normal">(optional)</span>
+                          </Label>
+                          <Textarea
+                            id="desc"
+                            value={createDesc}
+                            onChange={(e) => setCreateDesc(e.target.value)}
+                            placeholder="Rules, trash talk, context for the league..."
+                            rows={3}
+                            className="resize-none"
                           />
                         </div>
+                      </div>
+                    )}
 
-                        {showPrize2 && (
-                          <div className="flex items-center gap-2">
-                            <span style={{
-                              fontSize: 11, fontWeight: 800, color: "#94a3b8",
-                              background: "rgba(148,163,184,0.1)", border: "1px solid rgba(148,163,184,0.25)",
-                              borderRadius: 6, padding: "2px 7px", flexShrink: 0,
-                            }}>🥈 2nd</span>
-                            <Input
-                              value={prize2nd}
-                              onChange={(e) => setPrize2nd(e.target.value)}
-                              placeholder="e.g. $50"
-                            />
-                          </div>
-                        )}
-
-                        {showPrize3 && (
-                          <div className="flex items-center gap-2">
-                            <span style={{
-                              fontSize: 11, fontWeight: 800, color: "#cd7f32",
-                              background: "rgba(205,127,50,0.1)", border: "1px solid rgba(205,127,50,0.25)",
-                              borderRadius: 6, padding: "2px 7px", flexShrink: 0,
-                            }}>🥉 3rd</span>
-                            <Input
-                              value={prize3rd}
-                              onChange={(e) => setPrize3rd(e.target.value)}
-                              placeholder="e.g. $25"
-                            />
-                          </div>
-                        )}
-
-                        <div className="flex gap-2 pt-1">
-                          {!showPrize2 && (
+                    {createStep === 3 && (
+                      <div className="space-y-6 animate-in fade-in slide-in-from-left-4 duration-300">
+                        <div>
+                          <h3 className="text-lg font-bold">Stakes & Limits</h3>
+                          <p className="text-sm text-muted-foreground">Set the rules of entry.</p>
+                        </div>
+                        <div className="space-y-3">
+                          <Label className="text-sm font-semibold">Max Members</Label>
+                          <div className="flex flex-wrap items-center gap-3">
                             <button
                               type="button"
-                              onClick={() => setShowPrize2(true)}
-                              style={{
-                                fontSize: 12, color: "hsl(var(--muted-foreground))", cursor: "pointer",
-                                border: "1px dashed rgba(255,255,255,0.15)", borderRadius: 6,
-                                padding: "4px 10px", background: "transparent", display: "flex", alignItems: "center", gap: 4,
-                              }}
+                              onClick={() => setMaxUnlimited(true)}
+                              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors border ${
+                                maxUnlimited ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-secondary"
+                              }`}
                             >
-                              <Plus style={{ width: 12, height: 12 }} /> Add 2nd place
+                              Unlimited
                             </button>
-                          )}
-                          {showPrize2 && !showPrize3 && (
                             <button
                               type="button"
-                              onClick={() => setShowPrize3(true)}
-                              style={{
-                                fontSize: 12, color: "hsl(var(--muted-foreground))", cursor: "pointer",
-                                border: "1px dashed rgba(255,255,255,0.15)", borderRadius: 6,
-                                padding: "4px 10px", background: "transparent", display: "flex", alignItems: "center", gap: 4,
-                              }}
+                              onClick={() => { setMaxUnlimited(false); if (!maxCount) setMaxCount("10"); }}
+                              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors border ${
+                                !maxUnlimited ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-secondary"
+                              }`}
                             >
-                              <Plus style={{ width: 12, height: 12 }} /> Add 3rd place
+                              Set limit
                             </button>
-                          )}
+                            {!maxUnlimited && (
+                              <Input
+                                type="number"
+                                min={2}
+                                max={500}
+                                value={maxCount}
+                                onChange={(e) => setMaxCount(e.target.value)}
+                                placeholder="e.g. 10"
+                                className="w-24 font-mono"
+                                autoFocus
+                              />
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="fee" className="text-sm font-semibold">Entry Fee</Label>
+                          <Input
+                            id="fee"
+                            value={entryFee}
+                            onChange={(e) => setEntryFee(e.target.value)}
+                            placeholder="Free"
+                          />
+                          <p className="text-xs text-muted-foreground">Leave blank for free. Type any amount, e.g. "$20" or "£10".</p>
                         </div>
                       </div>
-                    </div>
+                    )}
 
-                    {/* Divider */}
-                    <div style={{ height: 1, background: "rgba(255,255,255,0.06)" }} />
+                    {createStep === 4 && (
+                      <div className="space-y-6 animate-in fade-in slide-in-from-left-4 duration-300">
+                        <div>
+                          <h3 className="text-lg font-bold">Prizes & Privacy</h3>
+                          <p className="text-sm text-muted-foreground">What are they playing for?</p>
+                        </div>
 
-                    {/* 6 — Privacy */}
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label className="text-sm font-semibold">
-                          {isPublic ? "Public" : "Private (invite only)"}
-                        </Label>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {isPublic ? "Anyone can find and join this league." : "Only people with the invite code can join."}
-                        </p>
+                        <div className="space-y-3 p-4 bg-secondary/20 rounded-xl border border-border">
+                          <div className="flex items-center gap-3">
+                            <span className="w-12 text-center text-[10px] font-bold uppercase tracking-wider text-amber-500 bg-amber-500/10 py-1 rounded">1st</span>
+                            <Input value={prize1st} onChange={(e) => setPrize1st(e.target.value)} placeholder="e.g. $100 or Winner's Trophy" className="bg-card" />
+                          </div>
+
+                          {showPrize2 && (
+                            <div className="flex items-center gap-3">
+                              <span className="w-12 text-center text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-400/10 py-1 rounded">2nd</span>
+                              <Input value={prize2nd} onChange={(e) => setPrize2nd(e.target.value)} placeholder="e.g. $50" className="bg-card" />
+                            </div>
+                          )}
+
+                          {showPrize3 && (
+                            <div className="flex items-center gap-3">
+                              <span className="w-12 text-center text-[10px] font-bold uppercase tracking-wider text-amber-700 bg-amber-700/10 py-1 rounded">3rd</span>
+                              <Input value={prize3rd} onChange={(e) => setPrize3rd(e.target.value)} placeholder="e.g. $25" className="bg-card" />
+                            </div>
+                          )}
+
+                          <div className="flex gap-2 pt-1">
+                            {!showPrize2 && (
+                              <button type="button" onClick={() => setShowPrize2(true)} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors">
+                                <Plus className="w-3 h-3" /> Add 2nd place
+                              </button>
+                            )}
+                            {showPrize2 && !showPrize3 && (
+                              <button type="button" onClick={() => setShowPrize3(true)} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors">
+                                <Plus className="w-3 h-3" /> Add 3rd place
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between p-4 bg-secondary/20 rounded-xl border border-border">
+                          <div>
+                            <Label htmlFor="league-privacy" className="text-sm font-semibold">
+                              {isPublic ? "Public League" : "Private (invite only)"}
+                            </Label>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {isPublic ? "Anyone can find and join." : "Only people with the invite code."}
+                            </p>
+                          </div>
+                          <Switch id="league-privacy" checked={isPublic} onCheckedChange={setIsPublic} />
+                        </div>
                       </div>
-                      <Switch checked={isPublic} onCheckedChange={setIsPublic} />
-                    </div>
+                    )}
 
-                    {/* Submit */}
-                    <Button type="submit" className="w-full mt-2" disabled={createLeague.isPending || !createName.trim()}>
-                      {createLeague.isPending
-                        ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Creating…</>
-                        : "Create League"}
-                    </Button>
-                  </form>
-                </ScrollArea>
+                    {createStep === 5 && (
+                      <div className="space-y-5 animate-in fade-in slide-in-from-left-4 duration-300">
+                        <div>
+                          <h3 className="text-lg font-bold">Review & Create</h3>
+                          <p className="text-sm text-muted-foreground">Ready to kick off?</p>
+                        </div>
+
+                        <div className="space-y-4 rounded-xl border-2 border-primary/20 bg-primary/5 p-5">
+                          <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 bg-card rounded-lg border flex items-center justify-center p-1 shrink-0">
+                              <img src={COMPETITIONS.find(c => c.id === competitionKey)?.image} alt="" className="max-w-full max-h-full object-contain" />
+                            </div>
+                            <div>
+                              <div className="font-bold text-lg leading-tight">{createName}</div>
+                              <div className="text-sm text-muted-foreground">{COMPETITIONS.find(c => c.id === competitionKey)?.name}</div>
+                            </div>
+                          </div>
+
+                          {createDesc && (
+                            <p className="text-sm italic text-muted-foreground border-l-2 border-primary/30 pl-3">"{createDesc}"</p>
+                          )}
+
+                          <div className="grid grid-cols-2 gap-4 pt-2 text-sm">
+                            <div>
+                              <div className="text-muted-foreground text-xs uppercase tracking-wider font-semibold mb-1">Entry</div>
+                              <div className="font-medium">{entryFee || "Free"}</div>
+                            </div>
+                            <div>
+                              <div className="text-muted-foreground text-xs uppercase tracking-wider font-semibold mb-1">Capacity</div>
+                              <div className="font-medium">{maxUnlimited ? "Unlimited" : `${maxCount} teams max`}</div>
+                            </div>
+                            <div>
+                              <div className="text-muted-foreground text-xs uppercase tracking-wider font-semibold mb-1">Privacy</div>
+                              <div className="font-medium flex items-center gap-1.5">
+                                {isPublic ? "Public" : "Private"}
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-muted-foreground text-xs uppercase tracking-wider font-semibold mb-1">Prizes</div>
+                              {prize1st || prize2nd || prize3rd ? (
+                                <div className="space-y-1 font-medium">
+                                  {prize1st && <div>1st: {prize1st}</div>}
+                                  {showPrize2 && prize2nd && <div>2nd: {prize2nd}</div>}
+                                  {showPrize3 && prize3rd && <div>3rd: {prize3rd}</div>}
+                                </div>
+                              ) : (
+                                <div className="font-medium">None specified</div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </ScrollArea>
+
+                  {/* Footer actions */}
+                  <div className="p-4 bg-card border-t border-border flex items-center justify-between gap-3">
+                    {createStep > 1 ? (
+                      <Button type="button" variant="outline" onClick={handleBack} data-testid="action-back">
+                        <ArrowLeft className="w-4 h-4 mr-2" /> Back
+                      </Button>
+                    ) : (
+                      <div /> /* spacer */
+                    )}
+
+                    {createStep < 5 ? (
+                      <Button type="button" onClick={handleNext} disabled={!canContinue()} data-testid="action-continue">
+                        Continue <ChevronRight className="w-4 h-4 ml-2" />
+                      </Button>
+                    ) : (
+                      <Button type="button" onClick={handleCreate} disabled={createLeague.isPending} data-testid="action-create-league">
+                        {createLeague.isPending
+                          ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Creating…</>
+                          : "Create League"}
+                      </Button>
+                    )}
+                  </div>
+                </div>
               )}
             </DialogContent>
           </Dialog>

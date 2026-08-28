@@ -87,6 +87,7 @@ export interface TeamPlayerInput {
 export interface League {
   id: number;
   name: string;
+  competitionKey: string;
   /** @nullable */
   description?: string | null;
   code?: string;
@@ -104,9 +105,18 @@ export interface League {
   createdAt?: string;
 }
 
+export type LeagueInputCompetitionKey = typeof LeagueInputCompetitionKey[keyof typeof LeagueInputCompetitionKey];
+
+
+export const LeagueInputCompetitionKey = {
+  'premier-league': 'premier-league',
+  'serie-a': 'serie-a',
+} as const;
+
 export interface LeagueInput {
   /** @minLength 1 */
   name: string;
+  competitionKey: LeagueInputCompetitionKey;
   description?: string;
   /** @nullable */
   maxMembers?: number | null;

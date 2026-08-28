@@ -9,6 +9,7 @@
 export interface League {
   id: number;
   name: string;
+  competitionKey: string;
   /** @nullable */
   description?: string | null;
   code?: string;
