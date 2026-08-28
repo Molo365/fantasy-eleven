@@ -16,6 +16,8 @@ const migrations = [
   developmentOnly,
   path: fileURLToPath(new URL(`../../lib/db/drizzle/${name}.sql`, import.meta.url)),
 }));
+const allowCompetitionTeamsMigrationInProduction =
+  process.env.ALLOW_PRODUCTION_COMPETITION_TEAMS_MIGRATION === "true";
 const client = await pool.connect();
 
 try {
@@ -28,7 +30,14 @@ try {
   await client.query("SELECT pg_advisory_lock($1)", [760_110_002]);
 
   for (const migration of migrations) {
-    if (migration.developmentOnly && process.env.NODE_ENV === "production") {
+    if (
+      migration.developmentOnly &&
+      process.env.NODE_ENV === "production" &&
+      !(
+        migration.name === "0007_competition_teams" &&
+        allowCompetitionTeamsMigrationInProduction
+      )
+    ) {
       console.info(`Skipping development-only database migration ${migration.name} in production.`);
       continue;
     }
