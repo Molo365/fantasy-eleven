@@ -3,7 +3,7 @@ import {
   getGetLiveFixturesQueryKey,
   type LiveFixture,
 } from "@workspace/api-client-react";
-import { Calendar, AlertCircle, Activity } from "lucide-react";
+import { Calendar, AlertCircle } from "lucide-react";
 import { useEffect, useState, useMemo, useRef } from "react";
 import { format } from "date-fns";
 
@@ -15,22 +15,16 @@ const FIXTURE_LEAGUES: Array<{
   key: FixtureLeagueKey;
   name: string;
   image: string;
-  apiSportsLeagueId: string;
-  apiSportsSeason: string;
 }> = [
   {
     key: "premier-league",
     name: "Premier League",
     image: "/league-premier.png",
-    apiSportsLeagueId: "39",
-    apiSportsSeason: "2026",
   },
   {
     key: "serie-a",
     name: "Serie A",
     image: "/league-seriea.png",
-    apiSportsLeagueId: "135",
-    apiSportsSeason: "2026",
   },
 ];
 
@@ -193,20 +187,6 @@ export function Fixtures() {
     }
   }, [selectedGw]);
 
-  useEffect(() => {
-    if (activeLeagueKey !== "premier-league") return;
-
-    const existing = document.querySelector('script[src*="widgets.api-sports.io"]');
-    if (!existing) {
-      const script = document.createElement("script");
-      script.src = "https://widgets.api-sports.io/2.0.3/widgets.js";
-      script.type = "module";
-      document.body.appendChild(script);
-    }
-  }, [activeLeagueKey]);
-
-  const API_KEY = import.meta.env.VITE_API_SPORTS_KEY ?? "";
-
   const gwFixtures = useMemo(() => {
     if (!fixtures || selectedGw === null) return [];
     return fixtures.filter(f => f.gameweekNumber === selectedGw);
@@ -350,50 +330,6 @@ export function Fixtures() {
         </div>
       )}
 
-      {activeLeagueKey === "premier-league" && (
-        /* API-SPORTS WIDGETS */
-        <div className="pt-10 space-y-6 animate-in fade-in duration-1000 delay-300 fill-mode-both">
-          <div className="flex items-center gap-3">
-            <Activity className="text-amber-400" size={24} />
-            <h2 className="text-xl font-black uppercase tracking-widest text-slate-200">
-              Live Standings
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            <div className="rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-[#081128]/80 min-h-[400px]">
-              <div
-                id="wg-api-football-games"
-                data-host="v3.football.api-sports.io"
-                data-key={API_KEY}
-                data-league={activeLeague.apiSportsLeagueId}
-                data-season={activeLeague.apiSportsSeason}
-                data-theme="dark"
-                data-refresh="60"
-                data-show-toolbar="true"
-                data-show-errors="false"
-                data-show-logos="true"
-                data-modal-game="true"
-                data-modal-standings="true"
-                data-modal-show-logos="true"
-              />
-            </div>
-
-            <div className="rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-[#081128]/80 min-h-[400px]">
-              <div
-                id="wg-api-football-standings"
-                data-host="v3.football.api-sports.io"
-                data-key={API_KEY}
-                data-league={activeLeague.apiSportsLeagueId}
-                data-season={activeLeague.apiSportsSeason}
-                data-theme="dark"
-                data-show-errors="false"
-                data-show-logos="true"
-              />
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
