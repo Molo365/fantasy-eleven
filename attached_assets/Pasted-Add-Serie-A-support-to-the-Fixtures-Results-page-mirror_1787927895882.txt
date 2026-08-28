@@ -1,0 +1,60 @@
+Add Serie A support to the Fixtures & Results page, mirroring how Premier League fixtures already work.
+
+CONTEXT (confirmed by prior investigation, do not re-investigate):
+- artifacts/api-server/src/routes/fixtures.ts handles GET /api/fixtures?leagueKey=X
+  via a provider registry. It currently only has a "premier-league" provider that
+  fetches live from FPL's bootstrap-static and fixtures endpoints, with in-memory
+  caching (team names 24h, fixture results 60s).
+- artifacts/fanta11/src/pages/fixtures.tsx renders the page. It hardcodes
+  ACTIVE_FIXTURE_LEAGUE to "premier-league" and has no competition selector.
+  Gameweek tabs are built dynamically from each fixture's gameweekNumber
+  (deduped, sorted). Matches are grouped by date via groupByDate() and sorted
+  by kickoff. Live badge logic is in ScoreBlock (status: "live" | "finished" | scheduled).
+- API-Football Serie A constants (league 135, season 2026) already exist in
+  artifacts/api-server/src/lib/apiSports.ts and are used for player/team sync.
+  The /fixtures endpoint for league=135&season=2026 is confirmed live and returns
+  380 fixtures with date, status, round (e.g. "Regular Season - 1"), teams, scores,
+  venue, fixture ID.
+- The database is NOT used for this page for either league — do not add a migration
+  or persist fixtures to the DB. Keep the same live-fetch-with-cache pattern.
+
+TASKS:
+
+1. Backend (artifacts/api-server/src/routes/fixtures.ts and apiSports.ts):
+   - Add a "serie-a" provider to the fixture provider registry, calling
+     GET /fixtures?league=135&season=2026 from API-Football.
+   - Parse the numeric gameweek out of the "round" string (e.g. "Regular Season - 1"
+     -> gameweekNumber 1). Handle "Regular Season" rounds only; skip/ignore any
+     playoff or other round formats if present.
+   - Map API-Football's fixture status values to this app's existing status
+     vocabulary ("live", "finished", scheduled/upcoming) — check API-Football's
+     actual status codes (e.g. NS, 1H, FT, etc.) and map them correctly rather
+     than assuming they match FPL's started/finished booleans.
+   - Map team names, crests/logos if available in the response, kickoff time,
+     scores, venue into the same response shape the frontend already expects
+     from the premier-league provider.
+   - Cache appropriately given API-Football's rate limits (7500 req/day on the
+     current plan) — team/fixture list can cache longer than 60s since Serie A
+     has no live scoring pipeline yet; use your judgment but avoid hammering
+     the API on every page load.
+
+2. Frontend (artifacts/fanta11/src/pages/fixtures.tsx):
+   - Add a competition selector (Premier League / Serie A) to the Fixtures page,
+     matching the visual style already used for the competition selector in the
+     League creation wizard.
+   - On switching competition, refetch from GET /api/fixtures?leagueKey=serie-a
+     and rebuild the gameweek tabs from the new data (same dynamic dedupe/sort
+     logic already in place — don't hardcode Serie A gameweek count).
+   - The embedded API-Sports widgets (Games/Standings, currently hardcoded to
+     league 39) are Premier League-only and already broken — do NOT show them
+     when Serie A is selected. Leave them as-is for Premier League; we'll deal
+     with fixing/removing that widget in a separate task.
+   - Default the page to whichever competition the user last viewed if that's
+     easy to determine from existing state, otherwise default to Premier League.
+
+Do not touch the database schema, do not add a migration, do not create a
+fixtures/gameweeks DB sync job — this should stay entirely live-fetch, matching
+the existing Premier League implementation.
+
+After the change, tell me exactly what you changed, which files, and how you
+verified it works (e.g. did you load the page and see Serie A fixtures render).
