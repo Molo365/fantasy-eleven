@@ -319,6 +319,7 @@ export interface DashboardSummary {
   gameweekPoints: number;
   /** @nullable */
   globalRank: number | null;
+  competitionTeamCount: number;
   leagueCount: number;
   playerCount: number;
   budgetRemaining: number;
@@ -339,6 +340,8 @@ export interface DashboardSummary {
   currentGameweekName?: string | null;
   /** @nullable */
   currentGameweekNumber?: number | null;
+  /** @nullable */
+  nextKickoff: string | null;
 }
 
 export interface TopPerformer {
@@ -431,8 +434,28 @@ leagueKey?: string;
 };
 
 export type GetDashboardSummaryParams = {
-teamId?: number;
+competitionKey: GetDashboardSummaryCompetitionKey;
 };
+
+export type GetDashboardSummaryCompetitionKey = typeof GetDashboardSummaryCompetitionKey[keyof typeof GetDashboardSummaryCompetitionKey];
+
+
+export const GetDashboardSummaryCompetitionKey = {
+  'premier-league': 'premier-league',
+  'serie-a': 'serie-a',
+} as const;
+
+export type GetDashboardTopPerformersParams = {
+competitionKey: GetDashboardTopPerformersCompetitionKey;
+};
+
+export type GetDashboardTopPerformersCompetitionKey = typeof GetDashboardTopPerformersCompetitionKey[keyof typeof GetDashboardTopPerformersCompetitionKey];
+
+
+export const GetDashboardTopPerformersCompetitionKey = {
+  'premier-league': 'premier-league',
+  'serie-a': 'serie-a',
+} as const;
 
 export type GetDashboardSquadParams = {
 teamId: number;

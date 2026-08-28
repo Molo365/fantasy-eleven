@@ -34,6 +34,11 @@ type FixtureLeague = {
   provider: "fpl" | "serie-a";
 };
 
+type FixtureProviderResult = {
+  kickoff: string;
+  status: "scheduled" | "live" | "finished";
+};
+
 // Keep provider-specific details behind a league registry so adding another
 // league later does not require changing the route or the response shape.
 const fixtureLeagues: Record<string, FixtureLeague> = {
@@ -58,7 +63,7 @@ let teamNameCache: {
 const TEAM_NAME_TTL_MS = 24 * 60 * 60 * 1000;
 
 // Mapped-fixtures cache: 60-second TTL per league
-const fixtureCache = new Map<string, { at: number; data: unknown[] }>();
+const fixtureCache = new Map<string, { at: number; data: FixtureProviderResult[] }>();
 const FIXTURE_TTL_MS = 60 * 1000;
 
 async function getTeamNames(): Promise<Map<number, { name: string; code: number }>> {
@@ -73,7 +78,7 @@ async function getTeamNames(): Promise<Map<number, { name: string; code: number 
   return map;
 }
 
-async function fetchFplFixtures(league: FixtureLeague): Promise<unknown[]> {
+async function fetchFplFixtures(league: FixtureLeague): Promise<FixtureProviderResult[]> {
   const cached = fixtureCache.get(league.key);
   if (cached && Date.now() - cached.at < FIXTURE_TTL_MS) {
     return cached.data;
@@ -132,13 +137,29 @@ async function fetchFplFixtures(league: FixtureLeague): Promise<unknown[]> {
   return mapped;
 }
 
-async function fetchFixturesForLeague(league: FixtureLeague): Promise<unknown[]> {
+async function fetchFixturesForLeague(league: FixtureLeague): Promise<FixtureProviderResult[]> {
   switch (league.provider) {
     case "fpl":
       return fetchFplFixtures(league);
     case "serie-a":
       return getSerieAFixtures();
   }
+}
+
+export async function getNextKickoffForLeague(leagueKey: string): Promise<string | null> {
+  const league = fixtureLeagues[leagueKey];
+  if (!league) return null;
+
+  const now = Date.now();
+  const fixtures = await fetchFixturesForLeague(league);
+  const nextFixture = fixtures
+    .filter((fixture) =>
+      fixture.status === "scheduled" &&
+      new Date(fixture.kickoff).getTime() >= now
+    )
+    .sort((a, b) => a.kickoff.localeCompare(b.kickoff))[0];
+
+  return nextFixture?.kickoff ?? null;
 }
 
 // ─── Route ──────────────────────────────────────────────────────────────────

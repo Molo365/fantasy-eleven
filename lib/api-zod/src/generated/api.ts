@@ -539,16 +539,17 @@ export const GetLiveFixturesResponse = zod.array(GetLiveFixturesResponseItem)
 
 
 /**
- * @summary Get dashboard summary for a team
+ * @summary Get dashboard summary for a competition
  */
 export const GetDashboardSummaryQueryParams = zod.object({
-  "teamId": zod.coerce.number().optional()
+  "competitionKey": zod.enum(['premier-league', 'serie-a'])
 })
 
 export const GetDashboardSummaryResponse = zod.object({
   "teamPoints": zod.number(),
   "gameweekPoints": zod.number(),
   "globalRank": zod.number().nullable(),
+  "competitionTeamCount": zod.number(),
   "leagueCount": zod.number(),
   "playerCount": zod.number(),
   "budgetRemaining": zod.number(),
@@ -560,13 +561,18 @@ export const GetDashboardSummaryResponse = zod.object({
   "firstLeagueId": zod.number().nullish(),
   "firstLeagueName": zod.string().nullish(),
   "currentGameweekName": zod.string().nullish(),
-  "currentGameweekNumber": zod.number().nullish()
+  "currentGameweekNumber": zod.number().nullish(),
+  "nextKickoff": zod.string().nullable()
 })
 
 
 /**
- * @summary Get top 3 scoring players this gameweek
+ * @summary Get top 3 scoring players for a competition
  */
+export const GetDashboardTopPerformersQueryParams = zod.object({
+  "competitionKey": zod.enum(['premier-league', 'serie-a'])
+})
+
 export const GetDashboardTopPerformersResponseItem = zod.object({
   "id": zod.number(),
   "name": zod.string(),

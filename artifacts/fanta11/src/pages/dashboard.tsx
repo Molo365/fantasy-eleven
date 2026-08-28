@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import grassImg from "@/assets/Grass.jpg";
 import {
   useGetDashboardSummary,
   getGetDashboardSummaryQueryKey,
@@ -15,9 +14,11 @@ import {
   type LeaderboardEntry,
   type TopPerformer,
   type SquadPlayer,
+  type DashboardSummary
 } from "@workspace/api-client-react";
-import { Trophy, TrendingUp, Users, Wallet, Zap, ShieldHalf } from "lucide-react";
+import { Trophy, ShieldHalf } from "lucide-react";
 import { useAuth } from "@/contexts/auth";
+import { useLeagueContext } from "@/contexts/league";
 import { Link } from "wouter";
 import { format } from "date-fns";
 import { getPremierLeaguePhotoUrl } from "@/lib/player-photo";
@@ -104,9 +105,9 @@ const CARD: React.CSSProperties = {
 };
 
 // ── Today's Matches column ────────────────────────────────────────────────────
-function TodayMatchesCard() {
+function TodayMatchesCard({ competitionKey }: { competitionKey: string }) {
   const today = format(new Date(), "yyyy-MM-dd");
-  const fixtureParams = { leagueKey: "premier-league" };
+  const fixtureParams = { leagueKey: competitionKey };
   const { data: fixtures } = useGetLiveFixtures(fixtureParams, {
     query: { queryKey: getGetLiveFixturesQueryKey(fixtureParams), refetchInterval: 60_000 },
   });
@@ -121,7 +122,7 @@ function TodayMatchesCard() {
   const liveCount = todayMatches.filter((f: LiveFixture) => f.status === "live").length;
 
   return (
-    <div style={{ ...CARD, display: "flex", flexDirection: "column" }}>
+    <div data-testid="card-today-matches" style={{ ...CARD, display: "flex", flexDirection: "column" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "16px 16px 12px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
         <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: "#94a3b8" }}>
           Today's Matches
@@ -228,7 +229,7 @@ function MyLeagueCard({ leagueId, leagueName, teamId }: { leagueId: number; leag
   });
 
   return (
-    <div style={{ ...CARD, display: "flex", flexDirection: "column" }}>
+    <div data-testid="card-league-standings" style={{ ...CARD, display: "flex", flexDirection: "column" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 16px 12px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
         <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: "#94a3b8" }}>
           My League{leagueName ? ` · ${leagueName}` : ""}
@@ -239,7 +240,14 @@ function MyLeagueCard({ leagueId, leagueName, teamId }: { leagueId: number; leag
       </div>
 
       <div style={{ flex: 1, padding: 16 }}>
-        {isLoading ? (
+        {leagueId <= 0 ? (
+          <div className="flex flex-col items-center justify-center text-center py-6">
+             <p className="text-[13px] text-[#5d7ba8] mb-3">You haven't joined a league yet.</p>
+             <Link href="/leagues" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#06b6d4]/10 text-[#06b6d4] font-bold text-xs border border-[#06b6d4]/20 hover:bg-[#06b6d4]/20 transition-colors">
+               Find a League →
+             </Link>
+          </div>
+        ) : isLoading ? (
           <div className="grid grid-cols-2 gap-4 md:flex md:flex-col">
             {[1, 2, 3].map((i) => (
               <div key={i} className="animate-pulse" style={{ height: 112, borderRadius: 12, background: "rgba(255,255,255,0.05)" }} />
@@ -287,9 +295,10 @@ function MyLeagueCard({ leagueId, leagueName, teamId }: { leagueId: number; leag
 }
 
 // ── Top Performers column ─────────────────────────────────────────────────────
-function TopPerformersCard() {
-  const { data: performers } = useGetDashboardTopPerformers({
-    query: { queryKey: getGetDashboardTopPerformersQueryKey(), refetchInterval: 120_000 },
+function TopPerformersCard({ competitionKey }: { competitionKey: string }) {
+  const params = { competitionKey: (competitionKey === "serie-a" ? "serie-a" : "premier-league") as "serie-a" | "premier-league" };
+  const { data: performers } = useGetDashboardTopPerformers(params, {
+    query: { queryKey: getGetDashboardTopPerformersQueryKey(params), refetchInterval: 120_000 },
   });
 
   const MEDAL_STYLES = [
@@ -299,7 +308,7 @@ function TopPerformersCard() {
   ];
 
   return (
-    <div style={{ ...CARD, display: "flex", flexDirection: "column" }}>
+    <div data-testid="card-top-performers" style={{ ...CARD, display: "flex", flexDirection: "column" }}>
       <div style={{ padding: "16px 16px 12px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
         <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: "#8fa3c9" }}>
           Top Performers
@@ -465,7 +474,7 @@ function SquadStrip({ teamId }: { teamId: number }) {
   const squadList = squad as SquadPlayer[];
 
   return (
-    <div style={{ ...CARD }}>
+    <div data-testid="card-squad-strip" style={{ ...CARD }}>
       <div style={{ padding: "16px 16px 12px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: "#94a3b8" }}>
           My Squad · Active Players This GW
@@ -493,6 +502,7 @@ function SquadStrip({ teamId }: { teamId: number }) {
 function NoSquadPrompt() {
   return (
     <div
+      data-testid="state-no-squad"
       style={{ position: "relative", borderRadius: 16, overflow: "hidden", background: "rgba(8,17,40,0.6)", border: "1px solid rgba(255,255,255,0.06)", minHeight: 180 }}
     >
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "48px 24px", textAlign: "center" }}>
@@ -513,80 +523,149 @@ function NoSquadPrompt() {
   );
 }
 
+// ── Dashboard Strip ────────────────────────────────────────────────────────────
+function CompetitionStripItem({
+  competitionKey,
+  team,
+  summary,
+  isLoading,
+  isActive,
+  onClick
+}: {
+  competitionKey: string;
+  team: { id: number } | undefined;
+  summary: DashboardSummary | undefined;
+  isLoading: boolean;
+  isActive: boolean;
+  onClick: () => void;
+}) {
+  const label = competitionKey === "premier-league" ? "Premier League" : "Serie A";
+  const leagueMark = competitionKey === "premier-league" ? "PL" : "SA";
+  const leagueMarkColor = competitionKey === "premier-league" ? "#7ab4ff" : "#22c55e";
+
+  if (!team) {
+     return (
+       <button onClick={onClick} className={`flex-1 flex items-center justify-between rounded-xl p-3 text-left transition-all ${isActive ? 'bg-[#1a2c54] border-[#06b6d4]/50' : 'bg-[rgba(8,17,40,0.6)] border-[rgba(255,255,255,0.05)] hover:bg-[rgba(16,29,58,0.8)]'} border`} data-testid={`competition-strip-${competitionKey}`}>
+         <div className="flex items-center gap-3">
+            <span
+              className="flex h-9 w-9 items-center justify-center rounded-lg text-[11px] font-black tracking-wider opacity-60"
+              style={{ color: leagueMarkColor, background: `${leagueMarkColor}18`, border: `1px solid ${leagueMarkColor}35` }}
+            >
+              {leagueMark}
+            </span>
+           <div>
+             <p className="text-[10px] font-extrabold uppercase tracking-widest text-[#94a3b8]">{label}</p>
+             <p className="text-sm font-semibold text-[#5d7ba8]">No team yet</p>
+           </div>
+         </div>
+       </button>
+     )
+  }
+
+  if (isLoading) {
+     return <div className="flex-1 animate-pulse rounded-xl h-[68px]" style={{ background: "rgba(255,255,255,0.05)" }} />
+  }
+
+  return (
+    <button
+      onClick={onClick}
+      className={`flex-1 rounded-xl p-3 flex items-center justify-between transition-all border ${
+        isActive
+          ? 'bg-gradient-to-r from-[#1a2c54] to-[#101d3a] border-[#06b6d4]/40 shadow-[0_0_15px_rgba(6,182,212,0.15)]'
+          : 'bg-[rgba(8,17,40,0.4)] border-[rgba(255,255,255,0.1)] hover:bg-[rgba(16,29,58,0.6)]'
+      }`}
+      data-testid={`competition-strip-${competitionKey}`}
+    >
+       <div className="flex items-center gap-3">
+          <span
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-[11px] font-black tracking-wider"
+            style={{ color: leagueMarkColor, background: `${leagueMarkColor}18`, border: `1px solid ${leagueMarkColor}35` }}
+          >
+            {leagueMark}
+          </span>
+          <div className="text-left flex flex-col justify-center">
+             <p className={`text-[10px] font-extrabold uppercase tracking-widest ${isActive ? 'text-[#7ab4ff]' : 'text-[#64748b]'}`}>{label}</p>
+             <div className="flex items-center gap-3 mt-1">
+                <span className="text-sm font-bold text-[#e2e8f0]">
+                  {summary?.globalRank ? `#${summary.globalRank.toLocaleString()} ` : "Unranked"}
+                  <span className="text-[10px] font-medium text-[#64748b] ml-1">of {summary?.competitionTeamCount || 0}</span>
+                </span>
+                <div className="w-px h-3 bg-white/20" />
+                <span className="text-sm font-black text-[#ffc436]">{summary?.teamPoints ?? 0} <span className="text-[10px] font-bold text-[#ffc436]/70 ml-0.5">PTS</span></span>
+                <div className="w-px h-3 bg-white/20" />
+                <span className="text-sm font-bold text-[#e2e8f0]">£{(summary?.budgetRemaining ?? 100).toFixed(1)}<span className="text-[10px] font-medium text-[#64748b] ml-0.5">m</span></span>
+             </div>
+          </div>
+       </div>
+
+       <div className="text-right hidden sm:block">
+          <p className="text-[9px] font-bold text-[#64748b] uppercase tracking-widest mb-1">Next Kickoff</p>
+          {summary?.nextKickoff ? (
+             <span className="font-mono text-xs font-semibold text-[#f1f5f9] bg-black/30 px-2 py-1 rounded border border-white/10">
+               {format(new Date(summary.nextKickoff), "MMM d, HH:mm")}
+             </span>
+          ) : (
+             <span className="text-xs text-[#64748b]">—</span>
+          )}
+       </div>
+    </button>
+  )
+}
+
+function NoTeamPrompt({ competitionKey }: { competitionKey: string }) {
+  const label = competitionKey === "premier-league" ? "Premier League" : "Serie A";
+  return (
+    <div data-testid={`state-no-team-${competitionKey}`} style={{ position: "relative", borderRadius: 16, overflow: "hidden", background: "rgba(8,17,40,0.6)", border: "1px solid rgba(255,255,255,0.06)", minHeight: 180 }}>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "48px 24px", textAlign: "center" }}>
+        <div style={{ width: 56, height: 56, borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16, background: "rgba(6,182,212,0.12)", border: "1px solid rgba(6,182,212,0.25)" }}>
+          <Trophy size={28} style={{ color: "#06b6d4" }} />
+        </div>
+        <h2 style={{ fontSize: 20, fontWeight: 900, marginBottom: 8, color: "#f1f5f9" }}>No {label} Team</h2>
+        <p style={{ color: "#5d7ba8", fontSize: 13, marginBottom: 20 }}>You are not participating in the {label} competition.</p>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Dashboard ────────────────────────────────────────────────────────────
 export function Dashboard() {
   const { authState } = useAuth();
-  const teamId = authState.status === "authenticated" ? (authState.user.teamId ?? undefined) : undefined;
+  const user = authState.status === "authenticated" ? authState.user : null;
+  const { activeCompetitionKey, setActiveCompetitionKey, activeTeamId, activeLeagueId, activeLeague } = useLeagueContext();
 
-  const { data: summary, isLoading: isLoadingSummary } = useGetDashboardSummary(
-    { teamId },
-    { query: { queryKey: getGetDashboardSummaryQueryKey({ teamId }), enabled: authState.status === "authenticated" } }
+  const plTeam = user?.teams.find((t) => t.competitionKey === "premier-league");
+  const saTeam = user?.teams.find((t) => t.competitionKey === "serie-a");
+
+  const { data: summaryPL, isLoading: isLoadingPL } = useGetDashboardSummary(
+    { competitionKey: "premier-league" },
+    { query: { queryKey: getGetDashboardSummaryQueryKey({ competitionKey: "premier-league" }), enabled: !!plTeam } }
   );
 
-  if (isLoadingSummary || authState.status === "loading") {
+  const { data: summarySA, isLoading: isLoadingSA } = useGetDashboardSummary(
+    { competitionKey: "serie-a" },
+    { query: { queryKey: getGetDashboardSummaryQueryKey({ competitionKey: "serie-a" }), enabled: !!saTeam } }
+  );
+
+  if (authState.status === "loading") {
     return (
       <div
         className="animate-pulse"
-        style={{ display: "flex", flexDirection: "column", gap: 20, width: "100%", maxWidth: "100%", overflow: "hidden" }}
+        style={{ display: "flex", flexDirection: "column", gap: 20, width: "100%", maxWidth: "100%", overflow: "hidden", padding: 24 }}
       >
-        <div style={{ height: 200, borderRadius: 16, background: "rgba(8,17,40,0.6)" }} />
-        {/* Skeleton stat cards */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {[...Array(4)].map((_, i) => (
-            <div key={i} style={{ height: 112, borderRadius: 12, background: "rgba(8,17,40,0.5)" }} />
-          ))}
+        <div style={{ display: "flex", gap: 12 }}>
+           <div style={{ flex: 1, height: 68, borderRadius: 12, background: "rgba(8,17,40,0.5)" }} />
+           <div style={{ flex: 1, height: 68, borderRadius: 12, background: "rgba(8,17,40,0.5)" }} />
         </div>
-        {/* Skeleton 3-col */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          {[...Array(3)].map((_, i) => (
-            <div key={i} style={{ height: 256, borderRadius: 12, background: "rgba(8,17,40,0.5)" }} />
-          ))}
+        <div style={{ display: "flex", gap: 16 }}>
+           <div style={{ flex: 2, height: 400, borderRadius: 16, background: "rgba(8,17,40,0.6)" }} />
+           <div style={{ flex: 1, height: 400, borderRadius: 16, background: "rgba(8,17,40,0.6)" }} />
         </div>
       </div>
     );
   }
 
-  const hasSquad = summary?.hasSquad ?? false;
-
-  const gwLabel = summary?.currentGameweekNumber != null
-    ? `Gameweek ${summary.currentGameweekNumber}${summary.currentGameweekName ? ` · ${summary.currentGameweekName}` : ""}`
-    : "Live Match Week Overview";
-
-  const statCards = [
-    {
-      label: "GW Points",
-      value: String(summary?.gameweekPoints ?? 0),
-      sub: summary?.gameweekPoints ? "↑ Active GW" : "",
-      subColor: "#8fa3c9",
-      Icon: TrendingUp,
-      variant: "blue" as const,
-    },
-    {
-      label: "Global Rank",
-      value: summary?.globalRank != null ? `#${summary.globalRank.toLocaleString()}` : "—",
-      sub: summary?.globalRank != null ? `of ${summary.leagueCount > 0 ? `${summary.leagueCount + 1} managers` : "managers"}` : "Pending",
-      subColor: "#7a5200",
-      Icon: Trophy,
-      variant: "gold" as const,
-    },
-    {
-      label: "Captain",
-      value: summary?.captainName ?? "None",
-      sub: `${summary?.captainPoints ?? 0} pts`,
-      subColor: "#ffc436",
-      Icon: Users,
-      variant: "captain" as const,
-      smallValue: true,
-    },
-    {
-      label: "Budget",
-      value: `£${(summary?.budgetRemaining ?? 100).toFixed(1)}m`,
-      sub: "Available",
-      subColor: "#8fa3c9",
-      Icon: Wallet,
-      variant: "blue" as const,
-    },
-  ];
+  const activeSummary = activeCompetitionKey === "premier-league" ? summaryPL : summarySA;
+  const hasSquad = activeSummary?.hasSquad ?? false;
 
   return (
     <div
@@ -596,126 +675,55 @@ export function Dashboard() {
         width: "100%",
         maxWidth: "100%",
         overflowX: "hidden",
+        minHeight: "100dvh",
+        paddingBottom: 40
       }}
     >
-      {/* Content */}
       <div
-        className="animate-in fade-in slide-in-from-bottom-4 duration-500"
-        style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", gap: 16, width: "100%", overflowX: "hidden" }}
+        className="animate-in fade-in slide-in-from-bottom-4 duration-500 flex flex-col gap-6 w-full p-4 md:p-6"
+        style={{ position: "relative", zIndex: 1, overflowX: "hidden", maxWidth: 1200, margin: "0 auto" }}
       >
-        {/* ── Hero header ── */}
-        <div
-          style={{
-            position: "relative", borderRadius: 16, overflow: "hidden",
-            backgroundImage: `linear-gradient(135deg, rgba(10,21,48,0.55) 0%, rgba(19,35,72,0.60) 100%), url(${grassImg})`,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-            border: "1px solid rgba(122,180,255,0.3)",
-            minHeight: 140,
-          }}
-        >
-          {/* Gold radial glow — top-right */}
-          <div style={{ position: "absolute", inset: 0, pointerEvents: "none", background: "radial-gradient(ellipse at 90% 10%, rgba(255,196,54,0.22) 0%, transparent 55%)" }} />
-          {/* Blue radial glow — bottom-left */}
-          <div style={{ position: "absolute", inset: 0, pointerEvents: "none", background: "radial-gradient(ellipse at 10% 90%, rgba(93,156,236,0.28) 0%, transparent 55%)" }} />
-
-          <div style={{ position: "relative", zIndex: 10, padding: "24px 16px 0" }}>
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                <Zap size={13} color="#ffc436" style={{ filter: "drop-shadow(0 0 5px rgba(255,196,54,0.7))" }} />
-                <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.16em", textTransform: "uppercase", color: "#ffc436" }}>
-                  Live Overview
-                </span>
-              </div>
-              <h1 style={{ fontSize: 28, fontWeight: 900, letterSpacing: "-0.02em", color: "#f1f5f9", textShadow: "0 2px 20px rgba(0,0,0,0.6)", margin: 0 }}>
-                Command Center
-              </h1>
-              <p style={{ color: "#64748b", fontSize: 13, marginTop: 3 }}>{gwLabel}</p>
-            </div>
-
-            {/* ── Stat cards ── */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, paddingBottom: 16 }}>
-              {statCards.map(({ label, value, sub, subColor, Icon, variant, smallValue }) => {
-                const isGold    = variant === "gold";
-                const isCaptain = variant === "captain";
-                const isBlue    = variant === "blue";
-
-                const cardBg     = isGold ? "linear-gradient(135deg, #ffd873 0%, #e8a627 100%)" : "linear-gradient(135deg, #1a2c54 0%, #101d3a 100%)";
-                const cardBorder = isGold ? "1px solid rgba(255,196,54,0.5)" : isCaptain ? "1px solid rgba(255,196,54,0.35)" : "1px solid rgba(93,156,236,0.3)";
-                const cardShadow = isGold ? "0 4px 20px rgba(255,196,54,0.35)" : "0 2px 12px rgba(0,0,0,0.4)";
-                const labelColor = isGold ? "#7a5200" : "#8fa3c9";
-                const valueColor = isGold ? "#2a1900" : "#f1f5f9";
-
-                const iconBg     = isGold ? "rgba(0,0,0,0.15)" : isCaptain ? "linear-gradient(135deg, #ffd873, #e8a627)" : "rgba(122,180,255,0.12)";
-                const iconBorder = isGold ? "1px solid rgba(0,0,0,0.2)" : isCaptain ? "1px solid rgba(255,196,54,0.4)" : "1px solid rgba(122,180,255,0.25)";
-                const iconColor  = isGold ? "#2a1900" : isCaptain ? "#2a1900" : "#7ab4ff";
-
-                return (
-                  <div
-                    key={label}
-                    style={{
-                      position: "relative", overflow: "hidden", borderRadius: 10,
-                      background: cardBg,
-                      border: cardBorder,
-                      boxShadow: cardShadow,
-                      minHeight: 100,
-                    }}
-                  >
-                    {/* Subtle top-edge shimmer for non-gold cards */}
-                    {!isGold && <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 1, background: isCaptain ? "linear-gradient(90deg, transparent, rgba(255,196,54,0.5), transparent)" : "linear-gradient(90deg, transparent, rgba(122,180,255,0.4), transparent)" }} />}
-                    <div style={{ padding: "10px 12px", position: "relative", zIndex: 10 }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                        <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.10em", textTransform: "uppercase", color: labelColor }}>{label}</span>
-                        <div style={{ width: 22, height: 22, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", background: iconBg, border: iconBorder }}>
-                          <Icon size={11} style={{ color: iconColor }} />
-                        </div>
-                      </div>
-                      <div
-                        className="font-black leading-none tracking-tight"
-                        style={{ fontSize: smallValue ? 14 : 20, fontFamily: smallValue ? "inherit" : "monospace", color: valueColor }}
-                      >
-                        {value}
-                      </div>
-                      <div style={{ fontSize: 9, color: subColor ?? "#8fa3c9", marginTop: 4, fontWeight: 600 }}>{sub}</div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+        {/* Competition Strip */}
+        <div className="flex flex-col sm:flex-row gap-3 w-full">
+           <CompetitionStripItem
+              competitionKey="premier-league"
+              team={plTeam}
+              summary={summaryPL}
+              isLoading={isLoadingPL}
+              isActive={activeCompetitionKey === "premier-league"}
+              onClick={() => setActiveCompetitionKey("premier-league")}
+           />
+           <CompetitionStripItem
+              competitionKey="serie-a"
+              team={saTeam}
+              summary={summarySA}
+              isLoading={isLoadingSA}
+              isActive={activeCompetitionKey === "serie-a"}
+              onClick={() => setActiveCompetitionKey("serie-a")}
+           />
         </div>
 
-        {/* ── My Squad ── */}
-        {hasSquad && teamId ? (
-          <SquadStrip teamId={teamId} />
-        ) : (
-          <NoSquadPrompt />
-        )}
-
-        <div className="grid gap-4 md:grid-cols-2">
-          {/* ── My League ── */}
-          {summary?.firstLeagueId != null ? (
-            <MyLeagueCard
-              leagueId={summary.firstLeagueId}
-              leagueName={summary.firstLeagueName ?? null}
-              teamId={teamId}
-            />
-          ) : (
-            <div style={{ ...CARD, display: "flex", alignItems: "center", justifyContent: "center", minHeight: 200 }}>
-              <div style={{ textAlign: "center", padding: "0 16px" }}>
-                <p style={{ fontSize: 12, color: "#5d7ba8", marginBottom: 8 }}>No league joined yet</p>
-                <Link href="/leagues" style={{ fontSize: 11, fontWeight: 700, color: "#7ab4ff" }}>Browse leagues →</Link>
-              </div>
-            </div>
-          )}
-
-          {/* ── Top Performers ── */}
-          <TopPerformersCard />
+        {/* Squad and standings */}
+        <div className="grid gap-6 w-full items-start lg:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
+           <div className="flex flex-col gap-6 w-full min-w-0" data-testid="dashboard-main-column">
+             {!activeTeamId ? (
+                <NoTeamPrompt competitionKey={activeCompetitionKey} />
+             ) : !hasSquad ? (
+                <NoSquadPrompt />
+             ) : (
+                <SquadStrip teamId={activeTeamId} />
+             )}
+           </div>
+           <div className="flex flex-col gap-6 w-full min-w-0" data-testid="dashboard-sidebar">
+              <MyLeagueCard leagueId={activeLeagueId ?? 0} leagueName={activeLeague?.name ?? null} teamId={activeTeamId} />
+           </div>
         </div>
 
-        {/* ── Today's Matches ── */}
-        <TodayMatchesCard />
-
+        {/* Competition activity */}
+        <div className="grid gap-6 w-full md:grid-cols-2">
+          <TodayMatchesCard competitionKey={activeCompetitionKey} />
+          <TopPerformersCard competitionKey={activeCompetitionKey} />
+        </div>
       </div>
     </div>
   );

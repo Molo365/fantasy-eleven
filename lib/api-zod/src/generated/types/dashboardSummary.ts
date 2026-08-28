@@ -11,6 +11,7 @@ export interface DashboardSummary {
   gameweekPoints: number;
   /** @nullable */
   globalRank: number | null;
+  competitionTeamCount: number;
   leagueCount: number;
   playerCount: number;
   budgetRemaining: number;
@@ -31,4 +32,6 @@ export interface DashboardSummary {
   currentGameweekName?: string | null;
   /** @nullable */
   currentGameweekNumber?: number | null;
+  /** @nullable */
+  nextKickoff: string | null;
 }

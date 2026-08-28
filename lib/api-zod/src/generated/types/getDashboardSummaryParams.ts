@@ -5,7 +5,8 @@
  * FANTA11 Fantasy Soccer API
  * OpenAPI spec version: 0.1.0
  */
+import type { GetDashboardSummaryCompetitionKey } from './getDashboardSummaryCompetitionKey';
 
 export type GetDashboardSummaryParams = {
-teamId?: number;
+competitionKey: GetDashboardSummaryCompetitionKey;
 };

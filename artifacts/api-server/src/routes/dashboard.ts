@@ -5,12 +5,14 @@ import {
   GetDashboardSummaryQueryParams,
   GetRecentActivityQueryParams,
   GetDashboardSummaryResponse,
+  GetDashboardTopPerformersQueryParams,
   GetRecentActivityResponse,
   GetDashboardTopPerformersResponse,
   GetDashboardSquadQueryParams,
   GetDashboardSquadResponse,
 } from "@workspace/api-zod";
 import { asyncHandler } from "../lib/asyncHandler";
+import { getNextKickoffForLeague } from "./fixtures";
 
 const router: IRouter = Router();
 
@@ -21,15 +23,30 @@ router.get("/dashboard/summary", asyncHandler(async (req, res) => {
     return;
   }
 
-  const { teamId } = parsed.data;
-  const teamIdNum = teamId ? Number(teamId) : null;
+  const userId = req.session.userId;
+  if (!userId) {
+    res.status(401).json({ error: "Not authenticated" });
+    return;
+  }
+
+  const { competitionKey } = parsed.data;
 
   // ── Phase 1: queries independent of each other ───────────────────────────
-  const [teamRows, topPlayerRows, currentGwRows] = await Promise.all([
-    teamIdNum
-      ? db.select().from(teamsTable).where(eq(teamsTable.id, teamIdNum))
-      : Promise.resolve([] as (typeof teamsTable.$inferSelect)[]),
-    db.select().from(playersTable).orderBy(desc(playersTable.totalPoints)).limit(1),
+  const [teamRows, topPlayerRows, currentGwRows, competitionTeamRows, nextKickoff] = await Promise.all([
+    db
+      .select()
+      .from(teamsTable)
+      .where(and(
+        eq(teamsTable.userId, userId),
+        eq(teamsTable.competitionKey, competitionKey),
+      ))
+      .limit(1),
+    db
+      .select()
+      .from(playersTable)
+      .where(eq(playersTable.competitionKey, competitionKey))
+      .orderBy(desc(playersTable.totalPoints))
+      .limit(1),
     db.select({
         id:     gameweeksTable.id,
         status: gameweeksTable.status,
@@ -40,11 +57,18 @@ router.get("/dashboard/summary", asyncHandler(async (req, res) => {
       .where(or(eq(gameweeksTable.status, "active"), eq(gameweeksTable.status, "finished")))
       .orderBy(desc(gameweeksTable.id))
       .limit(1),
+    db
+      .select({ total: count() })
+      .from(teamsTable)
+      .where(eq(teamsTable.competitionKey, competitionKey)),
+    getNextKickoffForLeague(competitionKey),
   ]);
 
   const team      = teamRows[0] ?? null;
+  const teamIdNum = team?.id ?? null;
   const topPlayer = topPlayerRows[0] ?? null;
   const currentGw = currentGwRows[0] ?? null;
+  const competitionTeamCount = Number(competitionTeamRows[0]?.total ?? 0);
 
   // ── Phase 2: queries that depend on team / currentGw (still parallel) ────
   let playerCount   = 0;
@@ -73,7 +97,10 @@ router.get("/dashboard/summary", asyncHandler(async (req, res) => {
       // Global rank: COUNT teams with strictly more points → rank = count + 1
       db.select({ ahead: count() })
         .from(teamsTable)
-        .where(gt(teamsTable.totalPoints, team.totalPoints)),
+        .where(and(
+          eq(teamsTable.competitionKey, competitionKey),
+          gt(teamsTable.totalPoints, team.totalPoints),
+        )),
 
       // Captain
       team.captainId
@@ -110,6 +137,7 @@ router.get("/dashboard/summary", asyncHandler(async (req, res) => {
       teamPoints:           team?.totalPoints ?? 0,
       gameweekPoints,
       globalRank:           playerCount > 0 ? (globalRank || null) : null,
+      competitionTeamCount,
       leagueCount,
       playerCount,
       budgetRemaining:      team?.budget ?? 100,
@@ -122,11 +150,19 @@ router.get("/dashboard/summary", asyncHandler(async (req, res) => {
       firstLeagueName,
       currentGameweekName:   currentGw?.name ?? null,
       currentGameweekNumber: currentGw?.number ?? null,
+      nextKickoff,
     })
   );
 }));
 
 router.get("/dashboard/top-performers", asyncHandler(async (req, res) => {
+  const parsed = GetDashboardTopPerformersQueryParams.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const { competitionKey } = parsed.data;
+
   const players = await db
     .select({
       id:          playersTable.id,
@@ -136,6 +172,7 @@ router.get("/dashboard/top-performers", asyncHandler(async (req, res) => {
       totalPoints: playersTable.totalPoints,
     })
     .from(playersTable)
+    .where(eq(playersTable.competitionKey, competitionKey))
     .orderBy(desc(playersTable.totalPoints))
     .limit(3);
 

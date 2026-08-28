@@ -502,12 +502,14 @@ paths:
     get:
       operationId: getDashboardSummary
       tags: [dashboard]
-      summary: Get dashboard summary for a team
+      summary: Get dashboard summary for a competition
       parameters:
-        - name: teamId
+        - name: competitionKey
           in: query
+          required: true
           schema:
-            type: integer
+            type: string
+            enum: [premier-league, serie-a]
       responses:
         "200":
           description: Dashboard stats
@@ -520,7 +522,14 @@ paths:
     get:
       operationId: getDashboardTopPerformers
       tags: [dashboard]
-      summary: Get top 3 scoring players this gameweek
+      summary: Get top 3 scoring players for a competition
+      parameters:
+        - name: competitionKey
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [premier-league, serie-a]
       responses:
         "200":
           description: Top performers
@@ -981,7 +990,7 @@ components:
 
     DashboardSummary:
       type: object
-      required: [teamPoints, gameweekPoints, globalRank, leagueCount, playerCount, budgetRemaining, hasSquad]
+      required: [teamPoints, gameweekPoints, globalRank, competitionTeamCount, leagueCount, playerCount, budgetRemaining, hasSquad, nextKickoff]
       properties:
         teamPoints:
           type: integer
@@ -989,6 +998,8 @@ components:
           type: integer
         globalRank:
           type: ["integer", "null"]
+        competitionTeamCount:
+          type: integer
         leagueCount:
           type: integer
         playerCount:
@@ -1013,6 +1024,8 @@ components:
           type: ["string", "null"]
         currentGameweekNumber:
           type: ["integer", "null"]
+        nextKickoff:
+          type: ["string", "null"]
 
     TopPerformer:
       type: object
