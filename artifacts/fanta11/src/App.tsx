@@ -13,6 +13,7 @@ import { Fixtures } from "@/pages/fixtures";
 import { LandingPage } from "@/pages/landing";
 import { AdminDashboard } from "@/pages/admin-dashboard";
 import { AuthProvider, useAuth } from "@/contexts/auth";
+import { LeagueProvider } from "@/contexts/league";
 
 const ADMIN_EMAIL = "domenicg@gmx.com";
 
@@ -67,9 +68,11 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <AuthProvider>
-          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-            <AppRoutes />
-          </WouterRouter>
+          <LeagueProvider>
+            <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+              <AppRoutes />
+            </WouterRouter>
+          </LeagueProvider>
         </AuthProvider>
         <Toaster />
       </TooltipProvider>

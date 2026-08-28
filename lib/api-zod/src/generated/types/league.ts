@@ -14,6 +14,9 @@ export interface League {
   description?: string | null;
   code?: string;
   teamCount: number;
+  isMember: boolean;
+  /** @nullable */
+  myTeamId: number | null;
   /** @nullable */
   maxMembers?: number | null;
   entryFee?: string;

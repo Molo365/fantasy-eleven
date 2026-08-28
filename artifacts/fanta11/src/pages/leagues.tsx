@@ -12,7 +12,7 @@ import {
 } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, Users, Trophy, ChevronRight, Plus, Copy, Check, Medal, ShieldHalf, ArrowLeft } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { useQueryClient } from "@tanstack/react-query";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/auth";
+import { useLeagueContext } from "@/contexts/league";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
@@ -292,19 +293,10 @@ const CREATE_STEP_LABELS = [
 ];
 
 export function Leagues() {
-  const { authState } = useAuth();
-  const myTeamId = authState.status === "authenticated" ? (authState.user.teamId ?? 0) : 0;
+  const { refresh } = useAuth();
+  const { activeLeagueId: selectedLeagueId, setActiveLeagueId: setSelectedLeagueId } = useLeagueContext();
 
   const { data: leagues, isLoading } = useListLeagues();
-  const [selectedLeagueId, setSelectedLeagueId] = useState<number | null>(null);
-
-  // Auto-select first league that has members when the list loads
-  useEffect(() => {
-    if (leagues && leagues.length > 0 && selectedLeagueId === null) {
-      const firstWithMembers = leagues.find((l) => (l.teamCount ?? 0) > 0) ?? leagues[0];
-      setSelectedLeagueId(firstWithMembers.id);
-    }
-  }, [leagues, selectedLeagueId]);
 
   const { data: leaderboard, isLoading: isLoadingLeaderboard } =
     useGetLeagueLeaderboard(selectedLeagueId ?? 0, {
@@ -389,14 +381,9 @@ export function Leagues() {
       },
       {
         onSuccess: (newLeague) => {
-          joinLeague.mutate(
-            { id: 0, data: { teamId: myTeamId, code: newLeague.code ?? "" } },
-            {
-              onSettled: () => {
-                queryClient.invalidateQueries({ queryKey: getListLeaguesQueryKey() });
-              },
-            }
-          );
+          queryClient.invalidateQueries({ queryKey: getListLeaguesQueryKey() });
+          void refresh();
+          setSelectedLeagueId(newLeague.id);
           setCreatedLeague({ id: newLeague.id, name: newLeague.name, code: newLeague.code ?? "" });
           resetCreateForm();
         },
@@ -414,10 +401,11 @@ export function Leagues() {
     e.preventDefault();
     setJoinError("");
     joinLeague.mutate(
-      { id: 0, data: { teamId: myTeamId, code: joinCode.trim().toUpperCase() } },
+      { id: 0, data: { code: joinCode.trim().toUpperCase() } },
       {
         onSuccess: (league) => {
           queryClient.invalidateQueries({ queryKey: getListLeaguesQueryKey() });
+          void refresh();
           setIsJoinOpen(false);
           setJoinCode("");
           setSelectedLeagueId(league.id);

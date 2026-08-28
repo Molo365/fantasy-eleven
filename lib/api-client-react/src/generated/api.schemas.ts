@@ -42,8 +42,17 @@ export interface Player {
   crestUrl?: string | null;
 }
 
+export type TeamCompetitionKey = typeof TeamCompetitionKey[keyof typeof TeamCompetitionKey];
+
+
+export const TeamCompetitionKey = {
+  'premier-league': 'premier-league',
+  'serie-a': 'serie-a',
+} as const;
+
 export interface Team {
   id: number;
+  competitionKey: TeamCompetitionKey;
   name: string;
   managerName: string;
   totalPoints: number;
@@ -55,11 +64,20 @@ export interface Team {
   createdAt?: string;
 }
 
+export type TeamInputCompetitionKey = typeof TeamInputCompetitionKey[keyof typeof TeamInputCompetitionKey];
+
+
+export const TeamInputCompetitionKey = {
+  'premier-league': 'premier-league',
+  'serie-a': 'serie-a',
+} as const;
+
 export interface TeamInput {
   /** @minLength 1 */
   name: string;
   /** @minLength 1 */
   managerName: string;
+  competitionKey: TeamInputCompetitionKey;
 }
 
 export interface TeamUpdate {
@@ -95,6 +113,9 @@ export interface League {
   description?: string | null;
   code?: string;
   teamCount: number;
+  isMember: boolean;
+  /** @nullable */
+  myTeamId: number | null;
   /** @nullable */
   maxMembers?: number | null;
   entryFee?: string;
@@ -131,7 +152,7 @@ export interface LeagueInput {
 }
 
 export interface JoinLeagueInput {
-  teamId: number;
+  teamId?: number;
   code?: string;
 }
 

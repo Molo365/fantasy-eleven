@@ -7,6 +7,6 @@
  */
 
 export interface JoinLeagueInput {
-  teamId: number;
+  teamId?: number;
   code?: string;
 }

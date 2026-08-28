@@ -1,11 +1,19 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 
+export type AuthTeam = {
+  id: number;
+  competitionKey: string;
+  name: string;
+  managerName: string;
+};
+
 export type AuthUser = {
   id: number;
   username: string;
   email: string;
   displayName: string;
   teamId: number | null;
+  teams: AuthTeam[];
 };
 
 type AuthState =
@@ -18,6 +26,7 @@ type AuthContextValue = {
   login: (email: string, password: string) => Promise<void>;
   register: (displayName: string, username: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  refresh: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -81,7 +90,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ authState, login, register, logout }}>
+    <AuthContext.Provider value={{ authState, login, register, logout, refresh: fetchMe }}>
       {children}
     </AuthContext.Provider>
   );

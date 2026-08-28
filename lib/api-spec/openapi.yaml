@@ -628,10 +628,13 @@ components:
 
     Team:
       type: object
-      required: [id, name, totalPoints, budget, managerName]
+      required: [id, competitionKey, name, totalPoints, budget, managerName]
       properties:
         id:
           type: integer
+        competitionKey:
+          type: string
+          enum: [premier-league, serie-a]
         name:
           type: string
         managerName:
@@ -649,7 +652,7 @@ components:
 
     TeamInput:
       type: object
-      required: [name, managerName]
+      required: [name, managerName, competitionKey]
       properties:
         name:
           type: string
@@ -657,6 +660,9 @@ components:
         managerName:
           type: string
           minLength: 1
+        competitionKey:
+          type: string
+          enum: [premier-league, serie-a]
 
     TeamUpdate:
       type: object
@@ -702,7 +708,7 @@ components:
 
     League:
       type: object
-      required: [id, name, competitionKey, teamCount]
+      required: [id, name, competitionKey, teamCount, isMember, myTeamId]
       properties:
         id:
           type: integer
@@ -716,6 +722,10 @@ components:
           type: string
         teamCount:
           type: integer
+        isMember:
+          type: boolean
+        myTeamId:
+          type: ["integer", "null"]
         maxMembers:
           type: ["integer", "null"]
         entryFee:
@@ -758,7 +768,6 @@ components:
 
     JoinLeagueInput:
       type: object
-      required: [teamId]
       properties:
         teamId:
           type: integer

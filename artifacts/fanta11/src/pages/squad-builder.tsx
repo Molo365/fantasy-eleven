@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useAuth } from "@/contexts/auth";
+import { useLeagueContext } from "@/contexts/league";
 import {
   useGetTeam, useGetTeamPlayers, useRemovePlayerFromTeam,
   getGetTeamPlayersQueryKey, useUpdateTeam, getGetTeamQueryKey,
@@ -7,13 +7,14 @@ import {
   type TeamPlayer,
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useQueryClient } from "@tanstack/react-query";
 import { Loader2, Search, X, Info, Star } from "lucide-react";
 import { ListPlayersPosition } from "@workspace/api-client-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getPremierLeaguePhotoUrl } from "@/lib/player-photo";
+import { LeagueSwitcher } from "@/components/league-switcher";
 
 /* ─── National team kit colours ─────────────────────────────────── */
 const KIT: Record<string, [string, string]> = {
@@ -385,8 +386,12 @@ function StatRow({ label, value, accent }: { label: string; value: string; accen
 
 /* ─── Squad Builder page ─────────────────────────────────────────── */
 export function SquadBuilder() {
-  const { authState } = useAuth();
-  const TEAM_ID = authState.status === "authenticated" ? (authState.user.teamId ?? 0) : 0;
+  const {
+    activeTeamId: TEAM_ID,
+    activeCompetitionKey,
+    activeCompetitionLabel,
+    activeLeague,
+  } = useLeagueContext();
   const qc = useQueryClient();
 
   const { data: team,        isLoading: loadingTeam }    = useGetTeam(TEAM_ID,    { query: { enabled: TEAM_ID > 0, queryKey: getGetTeamQueryKey(TEAM_ID) } });
@@ -404,6 +409,7 @@ export function SquadBuilder() {
     {
       position: picker?.position as ListPlayersPosition,
       search: search || undefined,
+      competitionKey: activeCompetitionKey,
       limit: 2000,
     },
     {
@@ -412,6 +418,7 @@ export function SquadBuilder() {
         queryKey: getListPlayersQueryKey({
           position: picker?.position as ListPlayersPosition,
           search: search || undefined,
+          competitionKey: activeCompetitionKey,
           limit: 2000,
         }),
       },
@@ -431,6 +438,11 @@ export function SquadBuilder() {
     window.addEventListener("resize", h);
     return () => window.removeEventListener("resize", h);
   }, []);
+  useEffect(() => {
+    setPicker(null);
+    setSearch("");
+    setInfoPlayer(null);
+  }, [TEAM_ID]);
   const photoSize = Math.min(64, Math.max(44, Math.floor((vw - 540) / 5)));
 
   /* Nation counts + already-picked player IDs */
@@ -446,6 +458,21 @@ export function SquadBuilder() {
     return (
       <div className="flex justify-center items-center h-full">
         <Loader2 className="animate-spin w-8 h-8 text-primary" />
+      </div>
+    );
+  }
+  if (TEAM_ID === 0) {
+    return (
+      <div className="mx-auto flex min-h-[50vh] max-w-xl items-center justify-center">
+        <div className="w-full rounded-2xl border border-border bg-card p-8 text-center shadow-xl">
+          <h1 className="text-2xl font-black">No {activeCompetitionLabel} team yet</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Join or create a {activeCompetitionLabel} league before building this squad.
+          </p>
+          <div className="mt-5 flex justify-center">
+            <LeagueSwitcher />
+          </div>
+        </div>
       </div>
     );
   }
@@ -483,7 +510,7 @@ export function SquadBuilder() {
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-xl font-black tracking-tight">Squad Builder</h1>
-            <p className="text-xs text-muted-foreground">2 GK · 5 DEF · 5 MID · 3 FWD · Premier League</p>
+            <p className="text-xs text-muted-foreground">2 GK · 5 DEF · 5 MID · 3 FWD · {activeCompetitionLabel}</p>
 
           </div>
           <div className="text-right">
@@ -493,6 +520,7 @@ export function SquadBuilder() {
             </div>
           </div>
         </div>
+        <LeagueSwitcher className="w-full" />
 
         {/* Position groups */}
         {mobileGroups.map(({ label, singular, position, slots, color }) => {
@@ -664,12 +692,18 @@ export function SquadBuilder() {
         <div className="shrink-0 flex justify-between items-center">
           <div>
             <h1 className="text-2xl font-black tracking-tight">Squad Builder</h1>
-            <p className="text-xs text-muted-foreground">2 GK · 5 DEF · 5 MID · 3 FWD · World Cup 2026</p>
+            <p className="text-xs text-muted-foreground">
+              2 GK · 5 DEF · 5 MID · 3 FWD · {activeCompetitionLabel}
+              {activeLeague ? ` · ${activeLeague.name}` : ""}
+            </p>
           </div>
-          <div className="text-right">
+          <div className="flex items-center gap-3">
+            <LeagueSwitcher />
+            <div className="text-right">
             <div className="text-[10px] font-semibold tracking-widest uppercase text-muted-foreground">Budget</div>
             <div style={{ fontSize: 22, fontFamily: "monospace", fontWeight: 800, color: "#38bdf8", textShadow: "0 0 16px rgba(56,189,248,0.45)" }}>
               £{team?.budget?.toFixed(1) ?? "0.0"}m
+            </div>
             </div>
           </div>
         </div>
@@ -888,6 +922,9 @@ export function SquadBuilder() {
         >
           <DialogHeader>
             <DialogTitle>Select {picker?.position}</DialogTitle>
+            <DialogDescription>
+              Choose an active {activeCompetitionLabel} player for this squad slot.
+            </DialogDescription>
           </DialogHeader>
           <div className="relative mt-2 shrink-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -980,6 +1017,9 @@ export function SquadBuilder() {
               <>
                 <DialogHeader>
                   <DialogTitle>{rec.player.name}</DialogTitle>
+                  <DialogDescription>
+                    Review this player&apos;s club, price, points, and captain status.
+                  </DialogDescription>
                 </DialogHeader>
                 <div style={{ display: "flex", gap: 16, alignItems: "flex-start", marginTop: 8 }}>
                   <PlayerPhoto imageUrl={rec.player.imageUrl} crestUrl={rec.player.crestUrl} primary={kPri} secondary={kSec} label={rec.player.clubShortName ?? ""} name={rec.player.name} position={rec.player.position} size={72} />

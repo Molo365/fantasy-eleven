@@ -3,13 +3,17 @@ import { fileURLToPath } from "node:url";
 import { pool } from "@workspace/db";
 
 const migrations = [
-  "0002_lock_gameweek_scoring",
-  "0003_player_active",
-  "0004_gameweek_lineup_points",
-  "0005_league_competition",
-  "0006_player_competition",
-].map((name) => ({
+  { name: "0002_lock_gameweek_scoring" },
+  { name: "0003_player_active" },
+  { name: "0004_gameweek_lineup_points" },
+  { name: "0005_league_competition" },
+  { name: "0006_player_competition" },
+  // Keep the competition-team migration development-only until the user
+  // explicitly approves applying the verified migration to production.
+  { name: "0007_competition_teams", developmentOnly: true },
+].map(({ name, developmentOnly = false }) => ({
   name,
+  developmentOnly,
   path: fileURLToPath(new URL(`../../lib/db/drizzle/${name}.sql`, import.meta.url)),
 }));
 const client = await pool.connect();
@@ -24,6 +28,10 @@ try {
   await client.query("SELECT pg_advisory_lock($1)", [760_110_002]);
 
   for (const migration of migrations) {
+    if (migration.developmentOnly && process.env.NODE_ENV === "production") {
+      console.info(`Skipping development-only database migration ${migration.name} in production.`);
+      continue;
+    }
     const applied = await client.query<{ name: string }>(
       'SELECT "name" FROM "application_migrations" WHERE "name" = $1',
       [migration.name],

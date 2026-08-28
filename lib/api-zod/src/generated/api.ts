@@ -131,6 +131,7 @@ export const GetPlayerNationsResponse = zod.array(GetPlayerNationsResponseItem)
  */
 export const ListTeamsResponseItem = zod.object({
   "id": zod.number(),
+  "competitionKey": zod.enum(['premier-league', 'serie-a']),
   "name": zod.string(),
   "managerName": zod.string(),
   "totalPoints": zod.number(),
@@ -151,7 +152,8 @@ export const ListTeamsResponse = zod.array(ListTeamsResponseItem)
 
 export const CreateTeamBody = zod.object({
   "name": zod.string().min(1),
-  "managerName": zod.string().min(1)
+  "managerName": zod.string().min(1),
+  "competitionKey": zod.enum(['premier-league', 'serie-a'])
 })
 
 
@@ -164,6 +166,7 @@ export const GetTeamParams = zod.object({
 
 export const GetTeamResponse = zod.object({
   "id": zod.number(),
+  "competitionKey": zod.enum(['premier-league', 'serie-a']),
   "name": zod.string(),
   "managerName": zod.string(),
   "totalPoints": zod.number(),
@@ -189,6 +192,7 @@ export const UpdateTeamBody = zod.object({
 
 export const UpdateTeamResponse = zod.object({
   "id": zod.number(),
+  "competitionKey": zod.enum(['premier-league', 'serie-a']),
   "name": zod.string(),
   "managerName": zod.string(),
   "totalPoints": zod.number(),
@@ -269,6 +273,8 @@ export const ListLeaguesResponseItem = zod.object({
   "description": zod.string().nullish(),
   "code": zod.string().optional(),
   "teamCount": zod.number(),
+  "isMember": zod.boolean(),
+  "myTeamId": zod.number().nullable(),
   "maxMembers": zod.number().nullish(),
   "entryFee": zod.string().optional(),
   "prize1st": zod.string().nullish(),
@@ -313,6 +319,8 @@ export const GetLeagueResponse = zod.object({
   "description": zod.string().nullish(),
   "code": zod.string().optional(),
   "teamCount": zod.number(),
+  "isMember": zod.boolean(),
+  "myTeamId": zod.number().nullable(),
   "maxMembers": zod.number().nullish(),
   "entryFee": zod.string().optional(),
   "prize1st": zod.string().nullish(),
@@ -349,7 +357,7 @@ export const JoinLeagueParams = zod.object({
 })
 
 export const JoinLeagueBody = zod.object({
-  "teamId": zod.number(),
+  "teamId": zod.number().optional(),
   "code": zod.string().optional()
 })
 
@@ -360,6 +368,8 @@ export const JoinLeagueResponse = zod.object({
   "description": zod.string().nullish(),
   "code": zod.string().optional(),
   "teamCount": zod.number(),
+  "isMember": zod.boolean(),
+  "myTeamId": zod.number().nullable(),
   "maxMembers": zod.number().nullish(),
   "entryFee": zod.string().optional(),
   "prize1st": zod.string().nullish(),

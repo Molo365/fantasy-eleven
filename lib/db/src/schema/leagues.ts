@@ -1,6 +1,7 @@
-import { pgTable, text, serial, integer, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, timestamp, boolean, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
+import { teamsTable } from "./teams";
 
 export const leaguesTable = pgTable("leagues", {
   id: serial("id").primaryKey(),
@@ -20,9 +21,11 @@ export const leaguesTable = pgTable("leagues", {
 export const leagueTeamsTable = pgTable("league_teams", {
   id: serial("id").primaryKey(),
   leagueId: integer("league_id").notNull().references(() => leaguesTable.id, { onDelete: "cascade" }),
-  teamId: integer("team_id").notNull(),
+  teamId: integer("team_id").notNull().references(() => teamsTable.id, { onDelete: "cascade" }),
   joinedAt: timestamp("joined_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => [
+  uniqueIndex("league_teams_league_team_uq").on(table.leagueId, table.teamId),
+]);
 
 export const insertLeagueSchema = createInsertSchema(leaguesTable).omit({ id: true, createdAt: true });
 export type InsertLeague = z.infer<typeof insertLeagueSchema>;

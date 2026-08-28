@@ -12,6 +12,7 @@ import {
   GetLeagueLeaderboardResponse,
   JoinLeagueResponse,
 } from "@workspace/api-zod";
+import { getOrCreateCompetitionTeam } from "../lib/competitionTeam";
 
 const router: IRouter = Router();
 
@@ -36,39 +37,83 @@ async function getTeamCount(leagueId: number): Promise<number> {
   return Number(value);
 }
 
-router.get("/leagues", async (_req, res): Promise<void> => {
+async function getUserMemberships(userId: number | undefined) {
+  if (!userId) return new Map<number, number>();
+  const memberships = await db
+    .select({
+      leagueId: leagueTeamsTable.leagueId,
+      teamId: leagueTeamsTable.teamId,
+    })
+    .from(leagueTeamsTable)
+    .innerJoin(teamsTable, eq(leagueTeamsTable.teamId, teamsTable.id))
+    .where(eq(teamsTable.userId, userId));
+  return new Map(memberships.map((membership) => [membership.leagueId, membership.teamId]));
+}
+
+router.get("/leagues", async (req, res): Promise<void> => {
   const leagues = await db.select().from(leaguesTable);
+  const memberships = await getUserMemberships(req.session.userId);
   const result = await Promise.all(
     leagues.map(async (l) => ({
       ...serializeLeague(l),
       teamCount: await getTeamCount(l.id),
+      isMember: memberships.has(l.id),
+      myTeamId: memberships.get(l.id) ?? null,
     }))
   );
   res.json(ListLeaguesResponse.parse(result));
 });
 
 router.post("/leagues", async (req, res): Promise<void> => {
+  const userId = req.session.userId;
+  if (!userId) {
+    res.status(401).json({ error: "Not authenticated" });
+    return;
+  }
   const parsed = CreateLeagueBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const [league] = await db
-    .insert(leaguesTable)
-    .values({
-      name: parsed.data.name,
-      description: parsed.data.description ?? null,
-      competitionKey: parsed.data.competitionKey,
-      code: randomCode(),
-      maxMembers: parsed.data.maxMembers ?? null,
-      entryFee: parsed.data.entryFee ?? "Free",
-      prize1st: parsed.data.prize1st ?? null,
-      prize2nd: parsed.data.prize2nd ?? null,
-      prize3rd: parsed.data.prize3rd ?? null,
-      isPublic: parsed.data.isPublic ?? false,
-    })
-    .returning();
-  res.status(201).json(GetLeagueResponse.parse({ ...serializeLeague(league), teamCount: 0 }));
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
+  if (!user) {
+    res.status(401).json({ error: "User not found" });
+    return;
+  }
+  const { league, team } = await db.transaction(async (tx) => {
+    const [createdLeague] = await tx
+      .insert(leaguesTable)
+      .values({
+        name: parsed.data.name,
+        description: parsed.data.description ?? null,
+        competitionKey: parsed.data.competitionKey,
+        code: randomCode(),
+        maxMembers: parsed.data.maxMembers ?? null,
+        entryFee: parsed.data.entryFee ?? "Free",
+        prize1st: parsed.data.prize1st ?? null,
+        prize2nd: parsed.data.prize2nd ?? null,
+        prize3rd: parsed.data.prize3rd ?? null,
+        isPublic: parsed.data.isPublic ?? false,
+      })
+      .returning();
+    const competitionTeam = await getOrCreateCompetitionTeam(
+      tx,
+      userId,
+      createdLeague.competitionKey,
+      user.displayName,
+    );
+    await tx.insert(leagueTeamsTable).values({
+      leagueId: createdLeague.id,
+      teamId: competitionTeam.id,
+    });
+    return { league: createdLeague, team: competitionTeam };
+  });
+  res.status(201).json(GetLeagueResponse.parse({
+    ...serializeLeague(league),
+    teamCount: 1,
+    isMember: true,
+    myTeamId: team.id,
+  }));
 });
 
 router.get("/leagues/:id", async (req, res): Promise<void> => {
@@ -85,9 +130,13 @@ router.get("/leagues/:id", async (req, res): Promise<void> => {
     res.status(404).json({ error: "League not found" });
     return;
   }
-  res.json(
-    GetLeagueResponse.parse({ ...serializeLeague(league), teamCount: await getTeamCount(league.id) })
-  );
+  const memberships = await getUserMemberships(req.session.userId);
+  res.json(GetLeagueResponse.parse({
+    ...serializeLeague(league),
+    teamCount: await getTeamCount(league.id),
+    isMember: memberships.has(league.id),
+    myTeamId: memberships.get(league.id) ?? null,
+  }));
 });
 
 router.get("/leagues/:id/leaderboard", async (req, res): Promise<void> => {
@@ -156,6 +205,11 @@ router.get("/leagues/:id/leaderboard", async (req, res): Promise<void> => {
  *     The backend looks up the league by code from the request body.
  */
 router.post("/leagues/:id/join", async (req, res): Promise<void> => {
+  const userId = req.session.userId;
+  if (!userId) {
+    res.status(401).json({ error: "Not authenticated" });
+    return;
+  }
   const params = JoinLeagueParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -189,14 +243,50 @@ router.post("/leagues/:id/join", async (req, res): Promise<void> => {
     return;
   }
 
-  await db
-    .insert(leagueTeamsTable)
-    .values({ leagueId: league.id, teamId: parsed.data.teamId })
-    .onConflictDoNothing();
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
+  if (!user) {
+    res.status(401).json({ error: "User not found" });
+    return;
+  }
 
-  res.json(
-    JoinLeagueResponse.parse({ ...serializeLeague(league), teamCount: await getTeamCount(league.id) })
-  );
+  let submittedTeam: typeof teamsTable.$inferSelect | undefined;
+  if (parsed.data.teamId !== undefined) {
+    [submittedTeam] = await db
+      .select()
+      .from(teamsTable)
+      .where(eq(teamsTable.id, parsed.data.teamId));
+    if (!submittedTeam || submittedTeam.userId !== userId) {
+      res.status(403).json({ error: "The submitted team does not belong to the authenticated user" });
+      return;
+    }
+    if (submittedTeam.competitionKey !== league.competitionKey) {
+      res.status(409).json({
+        error: `A ${submittedTeam.competitionKey} team cannot join a ${league.competitionKey} league`,
+      });
+      return;
+    }
+  }
+
+  const team = await db.transaction(async (tx) => {
+    const competitionTeam = submittedTeam ?? await getOrCreateCompetitionTeam(
+      tx,
+      userId,
+      league.competitionKey,
+      user.displayName,
+    );
+    await tx
+      .insert(leagueTeamsTable)
+      .values({ leagueId: league.id, teamId: competitionTeam.id })
+      .onConflictDoNothing();
+    return competitionTeam;
+  });
+
+  res.json(JoinLeagueResponse.parse({
+    ...serializeLeague(league),
+    teamCount: await getTeamCount(league.id),
+    isMember: true,
+    myTeamId: team.id,
+  }));
 });
 
 export default router;

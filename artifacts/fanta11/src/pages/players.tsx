@@ -7,28 +7,38 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Search, TrendingUp, Star } from "lucide-react";
 import { ListPlayersPosition } from "@workspace/api-client-react";
+import { LeagueSwitcher } from "@/components/league-switcher";
+import { useLeagueContext } from "@/contexts/league";
 
 export function Players() {
+  const { activeCompetitionKey, activeCompetitionLabel } = useLeagueContext();
   const [search, setSearch] = useState("");
   const [position, setPosition] = useState<string>("ALL");
   const [nation, setNation] = useState<string>("ALL");
 
-  const { data: nations } = useGetPlayerNations();
+  const { data: nations } = useGetPlayerNations({ competitionKey: activeCompetitionKey });
 
   const { data: players, isLoading } = useListPlayers({ 
     search: search || undefined,
     position: position !== "ALL" ? (position as ListPlayersPosition) : undefined,
     club: nation !== "ALL" ? nation : undefined,
+    competitionKey: activeCompetitionKey,
     limit: 100,
   });
 
-  const { data: topPlayers, isLoading: isLoadingTop } = useGetTopPlayers({ limit: 3 });
+  const { data: topPlayers, isLoading: isLoadingTop } = useGetTopPlayers({
+    limit: 3,
+    competitionKey: activeCompetitionKey,
+  });
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Player Pool</h1>
-        <p className="text-muted-foreground mt-1">Discover, analyze, and recruit</p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Player Pool</h1>
+          <p className="text-muted-foreground mt-1">Discover {activeCompetitionLabel} players</p>
+        </div>
+        <LeagueSwitcher />
       </div>
 
       <style>{`

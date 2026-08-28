@@ -1,12 +1,44 @@
 import { Router, type IRouter } from "express";
 import bcrypt from "bcryptjs";
-import { eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { db, usersTable, teamsTable } from "@workspace/db";
 import { logger } from "../lib/logger";
+import { getOrCreateCompetitionTeam } from "../lib/competitionTeam";
 
 const ADMIN_EMAILS = new Set(["domenicg@gmx.com"]);
 
 const router: IRouter = Router();
+
+async function getAuthTeams(userId: number) {
+  return db
+    .select({
+      id: teamsTable.id,
+      competitionKey: teamsTable.competitionKey,
+      name: teamsTable.name,
+      managerName: teamsTable.managerName,
+    })
+    .from(teamsTable)
+    .where(eq(teamsTable.userId, userId))
+    .orderBy(asc(teamsTable.id));
+}
+
+async function serializeAuthUser(user: typeof usersTable.$inferSelect) {
+  let teams = await getAuthTeams(user.id);
+  if (teams.length === 0) {
+    await getOrCreateCompetitionTeam(db, user.id, "premier-league", user.displayName);
+    teams = await getAuthTeams(user.id);
+  }
+  const primaryTeam = teams.find((team) => team.competitionKey === "premier-league") ?? teams[0] ?? null;
+  return {
+    id: user.id,
+    username: user.username,
+    email: user.email,
+    displayName: user.displayName,
+    role: user.role,
+    teamId: primaryTeam?.id ?? null,
+    teams,
+  };
+}
 
 router.post("/auth/register", async (req, res): Promise<void> => {
   const { username, email, password, displayName } = req.body as Record<string, string>;
@@ -49,21 +81,8 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     .returning();
   req.session.userId = user.id;
   req.log.info({ userId: user.id }, "User registered");
-  // Auto-create a team for the new user so they start with £100m budget immediately
-  const [newTeam] = await db.insert(teamsTable).values({
-    userId: user.id,
-    name: `${displayName}'s Team`,
-    managerName: displayName,
-    budget: 100,
-  }).returning({ id: teamsTable.id });
-  res.status(201).json({
-    id: user.id,
-    username: user.username,
-    email: user.email,
-    displayName: user.displayName,
-    role: user.role,
-    teamId: newTeam?.id ?? null,
-  });
+  await getOrCreateCompetitionTeam(db, user.id, "premier-league", displayName);
+  res.status(201).json(await serializeAuthUser(user));
 });
 
 router.post("/auth/login", async (req, res): Promise<void> => {
@@ -88,25 +107,7 @@ router.post("/auth/login", async (req, res): Promise<void> => {
   }
   req.session.userId = user.id;
   req.log.info({ userId: user.id }, "User logged in");
-  let [loginTeam] = await db.select({ id: teamsTable.id }).from(teamsTable).where(eq(teamsTable.userId, user.id));
-  // Back-fill: create a team for users who registered before auto-creation was added
-  if (!loginTeam) {
-    [loginTeam] = await db.insert(teamsTable).values({
-      userId: user.id,
-      name: `${user.displayName}'s Team`,
-      managerName: user.displayName,
-      budget: 100,
-    }).returning({ id: teamsTable.id });
-    req.log.info({ userId: user.id, teamId: loginTeam?.id }, "Auto-created missing team on login");
-  }
-  res.json({
-    id: user.id,
-    username: user.username,
-    email: user.email,
-    displayName: user.displayName,
-    role: user.role,
-    teamId: loginTeam?.id ?? null,
-  });
+  res.json(await serializeAuthUser(user));
 });
 
 router.post("/auth/logout", async (req, res): Promise<void> => {
@@ -132,15 +133,7 @@ router.get("/auth/me", async (req, res): Promise<void> => {
     res.status(401).json({ error: "User not found" });
     return;
   }
-  const [team] = await db.select({ id: teamsTable.id }).from(teamsTable).where(eq(teamsTable.userId, userId));
-  res.json({
-    id: user.id,
-    username: user.username,
-    email: user.email,
-    displayName: user.displayName,
-    role: user.role,
-    teamId: team?.id ?? null,
-  });
+  res.json(await serializeAuthUser(user));
 });
 
 export default router;
