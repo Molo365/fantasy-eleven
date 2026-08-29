@@ -27,24 +27,6 @@ import { getPremierLeaguePhotoUrl } from "@/lib/player-photo";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const ABBREV_MAP: Record<string, string> = {
-  "United States": "USA", "United States of America": "USA",
-  "South Korea": "KOR", "Korea Republic": "KOR", "Korea DPR": "PRK",
-  "Czech Republic": "CZE", "Czechia": "CZE",
-  "Bosnia and Herzegovina": "BIH", "Bosnia & Herzegovina": "BIH",
-  "Saudi Arabia": "KSA", "Ivory Coast": "CIV", "DR Congo": "COD",
-  "New Zealand": "NZL", "Costa Rica": "CRC", "Trinidad and Tobago": "TTO",
-  "United Arab Emirates": "UAE",
-};
-
-function teamAbbrev(name: string): string {
-  if (ABBREV_MAP[name]) return ABBREV_MAP[name];
-  const words = name.split(/\s+/);
-  if (words.length === 1) return name.slice(0, 3).toUpperCase();
-  if (words.length === 2) return (words[0].slice(0, 2) + words[1].slice(0, 1)).toUpperCase();
-  return words.map((w) => w[0]).join("").slice(0, 3).toUpperCase();
-}
-
 const FLAG_MAP: Record<string, string> = {
   Afghanistan: "AF", Albania: "AL", Algeria: "DZ", Argentina: "AR", Australia: "AU",
   Austria: "AT", Bahrain: "BH", Belgium: "BE", Bolivia: "BO", Brazil: "BR",
@@ -218,8 +200,12 @@ function TodayMatchesCard() {
                 {/* Home */}
                 <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0 }}>
                   <span style={{ fontSize: 15 }}>{toFlagEmoji(f.homeTeam)}</span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: "#e2e8f0", letterSpacing: "0.04em" }}>
-                    {teamAbbrev(f.homeTeam)}
+                  <span
+                    title={f.homeTeam}
+                    className="min-w-0 truncate"
+                    style={{ fontSize: 12, fontWeight: 700, color: "#e2e8f0", letterSpacing: "0.02em" }}
+                  >
+                    {f.homeTeam}
                   </span>
                 </div>
 
@@ -260,8 +246,12 @@ function TodayMatchesCard() {
 
                 {/* Away */}
                 <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0, justifyContent: "flex-end" }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: "#e2e8f0", letterSpacing: "0.04em" }}>
-                    {teamAbbrev(f.awayTeam)}
+                  <span
+                    title={f.awayTeam}
+                    className="min-w-0 truncate text-right"
+                    style={{ fontSize: 12, fontWeight: 700, color: "#e2e8f0", letterSpacing: "0.02em" }}
+                  >
+                    {f.awayTeam}
                   </span>
                   <span style={{ fontSize: 15 }}>{toFlagEmoji(f.awayTeam)}</span>
                 </div>
