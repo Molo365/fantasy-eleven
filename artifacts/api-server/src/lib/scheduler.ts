@@ -1,7 +1,11 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { db, gameweeksTable } from "@workspace/db";
 import { logger } from "./logger";
-import { processFplGameweekScoring, processGameweekScoring } from "./scoring";
+import {
+  processFplGameweekScoring,
+  processGameweekScoring,
+  processSerieAGameweekScoring,
+} from "./scoring";
 
 const INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
 
@@ -10,6 +14,7 @@ let isRunning = false;
 const scorersByCompetition: Record<string, typeof processFplGameweekScoring> = {
   "premier-league": processFplGameweekScoring,
   "world-cup-2026": processGameweekScoring,
+  "serie-a": processSerieAGameweekScoring,
 };
 
 async function runScoring(): Promise<void> {

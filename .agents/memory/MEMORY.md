@@ -12,3 +12,4 @@
 - [Tracked SQL migrations](tracked-sql-migrations.md) — add every numbered SQL file to the application migration runner; never force a Drizzle push that wants to drop its tracking table.
 - [API-Football Serie A roster source](api-football-serie-a.md) — squads are authoritative; paginated league players are enrichment only and may omit roster members or nationality.
 - [Ad-hoc tsx integration scripts](tsx-integration-scripts.md) — TypeScript scripts outside an ESM package may compile as CJS; use an async entry function instead of top-level await.
+- [Artifact builds need runtime env](artifact-build-environment.md) — workspace-wide builds need each artifact's PORT and BASE_PATH values when run outside managed workflows.

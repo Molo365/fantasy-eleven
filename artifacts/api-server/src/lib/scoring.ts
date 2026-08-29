@@ -1,6 +1,11 @@
 import { db, playersTable, teamsTable, teamPlayersTable, gameweeksTable, gameweekTeamLineupPlayersTable, gameweekTeamScoresTable, usersTable } from "@workspace/db";
 import { and, eq, isNotNull, sql, sum, inArray } from "drizzle-orm";
 import { logger } from "./logger";
+import {
+  SERIE_A_COMPETITION_KEY,
+  SERIE_A_LEAGUE_ID,
+  SERIE_A_SEASON,
+} from "./apiSports";
 
 const API_BASE = "https://v3.football.api-sports.io";
 const WC_LEAGUE_ID = 1;
@@ -347,10 +352,32 @@ async function scoreAndPersistTeams(
   });
 }
 
-// ─── WC scoring (API-Sports) ───────────────────────────────────────────────────
+// ─── API-Sports scoring ────────────────────────────────────────────────────────
 
-export async function processGameweekScoring(
+type ApiSportsScoringConfig = {
+  competitionKey: string;
+  competitionName: string;
+  leagueId: number;
+  season: number;
+};
+
+const WORLD_CUP_SCORING: ApiSportsScoringConfig = {
+  competitionKey: WORLD_CUP_COMPETITION_KEY,
+  competitionName: "World Cup",
+  leagueId: WC_LEAGUE_ID,
+  season: WC_SEASON,
+};
+
+const SERIE_A_SCORING: ApiSportsScoringConfig = {
+  competitionKey: SERIE_A_COMPETITION_KEY,
+  competitionName: "Serie A",
+  leagueId: SERIE_A_LEAGUE_ID,
+  season: SERIE_A_SEASON,
+};
+
+async function processApiSportsGameweekScoring(
   gameweekId: number,
+  config: ApiSportsScoringConfig,
   options: ScoringOptions = {},
 ): Promise<ScoringResult> {
   // 1. Load the gameweek for date range
@@ -361,9 +388,9 @@ export async function processGameweekScoring(
 
   if (!gameweek) throw new Error(`Gameweek ${gameweekId} not found`);
   assertGameweekCanBeScored(gameweek);
-  if (gameweek.competitionKey !== WORLD_CUP_COMPETITION_KEY) {
+  if (gameweek.competitionKey !== config.competitionKey) {
     throw new GameweekScoringConflictError(
-      `World Cup scoring cannot process ${gameweek.competitionKey} gameweek ${gameweek.number}.`,
+      `${config.competitionName} scoring cannot process ${gameweek.competitionKey} gameweek ${gameweek.number}.`,
     );
   }
 
@@ -376,7 +403,7 @@ export async function processGameweekScoring(
       position: playersTable.position,
     })
     .from(playersTable)
-    .where(eq(playersTable.competitionKey, WORLD_CUP_COMPETITION_KEY));
+    .where(eq(playersTable.competitionKey, config.competitionKey));
 
   const byExternalId = new Map<number, typeof allPlayers[0]>();
   const byNameLower = new Map<string, typeof allPlayers[0]>();
@@ -386,7 +413,7 @@ export async function processGameweekScoring(
   }
 
   // 3. Fetch finished fixtures from API-Sports
-  let fixtureUrl = `/fixtures?league=${WC_LEAGUE_ID}&season=${WC_SEASON}&status=FT`;
+  let fixtureUrl = `/fixtures?league=${config.leagueId}&season=${config.season}&status=FT`;
   if (gameweek.startDate && gameweek.endDate) {
     const from = new Date(gameweek.startDate).toISOString().slice(0, 10);
     const toD = new Date(gameweek.endDate);
@@ -493,16 +520,16 @@ export async function processGameweekScoring(
   );
 
   // 6. Update current player rows for the dashboard and squad views.
-  const worldCupPlayerIds = allPlayers.map((player) => player.id);
-  if (worldCupPlayerIds.length > 0) {
+  const competitionPlayerIds = allPlayers.map((player) => player.id);
+  if (competitionPlayerIds.length > 0) {
     await db
       .update(playersTable)
       .set({ totalPoints: 0 })
-      .where(inArray(playersTable.id, worldCupPlayerIds));
+      .where(inArray(playersTable.id, competitionPlayerIds));
     await db
       .update(teamPlayersTable)
       .set({ points: 0 })
-      .where(inArray(teamPlayersTable.playerId, worldCupPlayerIds));
+      .where(inArray(teamPlayersTable.playerId, competitionPlayerIds));
   }
 
   let playersUpdated = 0;
@@ -534,6 +561,20 @@ export async function processGameweekScoring(
   );
 
   return { fixturesProcessed, playersUpdated, teamsUpdated, totalPointsAwarded };
+}
+
+export async function processGameweekScoring(
+  gameweekId: number,
+  options: ScoringOptions = {},
+): Promise<ScoringResult> {
+  return processApiSportsGameweekScoring(gameweekId, WORLD_CUP_SCORING, options);
+}
+
+export async function processSerieAGameweekScoring(
+  gameweekId: number,
+  options: ScoringOptions = {},
+): Promise<ScoringResult> {
+  return processApiSportsGameweekScoring(gameweekId, SERIE_A_SCORING, options);
 }
 
 // ─── FPL live scoring (Premier League) ────────────────────────────────────────

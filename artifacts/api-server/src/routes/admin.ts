@@ -6,7 +6,12 @@ import {
 } from "@workspace/db";
 import { logger } from "../lib/logger";
 import { clearAndSyncWorldCupPlayers, syncSerieAPlayers, syncZafronixPlayers } from "../lib/apiSports";
-import { GameweekScoringConflictError, processGameweekScoring, processFplGameweekScoring } from "../lib/scoring";
+import {
+  GameweekScoringConflictError,
+  processGameweekScoring,
+  processFplGameweekScoring,
+  processSerieAGameweekScoring,
+} from "../lib/scoring";
 
 const ADMIN_EMAIL = "domenicg@gmx.com";
 
@@ -379,7 +384,15 @@ router.post("/admin/gameweeks/:id/process", requireAdmin, async (req, res): Prom
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
 
   try {
-    const scoring = await processGameweekScoring(id, { finalize: true });
+    const [targetGameweek] = await db
+      .select({ competitionKey: gameweeksTable.competitionKey })
+      .from(gameweeksTable)
+      .where(eq(gameweeksTable.id, id));
+
+    const scorer = targetGameweek?.competitionKey === "serie-a"
+      ? processSerieAGameweekScoring
+      : processGameweekScoring;
+    const scoring = await scorer(id, { finalize: true });
     const [gameweek] = await db.select().from(gameweeksTable).where(eq(gameweeksTable.id, id));
     req.log.info({ gameweekId: id, ...scoring }, "Admin finalized and locked gameweek");
     res.json({ gameweek: gameweek ? serializeGwAdmin(gameweek) : null, scoring });

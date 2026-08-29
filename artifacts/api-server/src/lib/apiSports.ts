@@ -4,9 +4,9 @@ import { logger } from "./logger";
 
 const API_BASE = "https://v3.football.api-sports.io";
 const WC_LEAGUE_ID = 1;
-const SERIE_A_LEAGUE_ID = 135;
-const SERIE_A_SEASON = 2026;
-const SERIE_A_COMPETITION_KEY = "serie-a";
+export const SERIE_A_LEAGUE_ID = 135;
+export const SERIE_A_SEASON = 2026;
+export const SERIE_A_COMPETITION_KEY = "serie-a";
 const WORLD_CUP_COMPETITION_KEY = "world-cup-2026";
 
 // ─── Nation code map ──────────────────────────────────────────────────────────
