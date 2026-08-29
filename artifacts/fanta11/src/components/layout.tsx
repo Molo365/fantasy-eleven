@@ -66,6 +66,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const { authState, logout } = useAuth();
   const user = authState.status === "authenticated" ? authState.user : null;
   const isAdmin = user?.email?.toLowerCase() === ADMIN_EMAIL;
+  const hasBluePageFrame = location === "/" || location.startsWith("/squad") || location.startsWith("/players");
 
   const isActive = (href: string) =>
     href === "/" ? location === "/" : location.startsWith(href);
@@ -288,8 +289,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
       {/* ── Main Content ── */}
       <div className="flex-1 md:ml-72 flex flex-col min-h-screen" style={{ overflowX: "hidden" }}>
-        <main className="flex-1 p-4 md:p-8 pt-16 md:pt-16 pb-24 md:pb-8 overflow-y-auto">
-          <div className="max-w-7xl mx-auto">{children}</div>
+        <main
+          className="flex-1 p-4 md:p-8 pt-16 md:pt-16 pb-24 md:pb-8 overflow-y-auto"
+          style={{ background: hasBluePageFrame ? "hsl(var(--page-frame))" : undefined }}
+        >
+          <div
+            className="max-w-7xl mx-auto"
+            style={{ background: hasBluePageFrame ? "hsl(var(--background))" : undefined }}
+          >
+            {children}
+          </div>
         </main>
       </div>
 

@@ -1,0 +1,12 @@
+The previous background change was applied incorrectly and needs correction across Dashboard, Squad Builder, and Player Pool.
+
+What went wrong: the bright blue (--primary, 217 91% 55%) was applied directly as the background of the main content area itself, rather than the outer page frame/margin area that was previously black (visible as a thin black outline/border around the rounded content block, e.g. visible in the Dashboard behind and around the main blue card block). This caused readability problems, especially on Player Pool where light gray/white text now has poor contrast against the bright blue, and on Squad Builder where the pitch/bench area looks visually broken.
+
+Fix:
+1. On all three pages (Dashboard, Squad Builder, Player Pool), apply the royal blue ONLY to the outermost page background/frame — the area that was previously plain black around the edges of the main content block — not to the content area or hero sections themselves.
+2. Use a noticeably DARKER shade of the royal blue for this outer frame than --primary's default 217 91% 55% — something like reducing lightness to around 25-30% (e.g. try 217 91% 25-28%) so there's clear contrast between the darker outer frame and the existing card/content colors sitting on top of it, rather than everything blending into one flat bright blue.
+3. Revert any background changes made directly to hero sections, pitch areas, bench areas, "Top Performer" cards, or any other content blocks on these three pages — those should return to their original dark navy/black styling as they were before this whole change. Only the true outer page margin should carry the new darker blue.
+4. Specifically check Player Pool's hero text and "Top Performer" cards — confirm text is fully readable again after reverting their background.
+5. Specifically check Squad Builder's bench/pitch area — confirm it looks clean again, not mixed with blue.
+
+After the change, take screenshots of all three pages and confirm: the outer frame is a darker royal blue, all card/content areas are back to their original readable styling, and nothing looks washed out or hard to read. Report which files/values changed.

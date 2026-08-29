@@ -77,6 +77,7 @@ html, body {
 
   /* Royal blue — logo blue */
   --primary: 217 91% 55%;
+  --page-frame: 217 91% 27%;
   --primary-foreground: 222 47% 6%;
 
   --secondary: 222 40% 16%;
@@ -127,6 +128,7 @@ html, body {
   --popover-border: 222 40% 18%;
 
   --primary: 217 91% 55%;
+  --page-frame: 217 91% 27%;
   --primary-foreground: 222 47% 6%;
 
   --secondary: 222 40% 16%;

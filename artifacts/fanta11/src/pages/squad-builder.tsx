@@ -456,14 +456,14 @@ export function SquadBuilder() {
 
   if (loadingTeam || loadingPlayers) {
     return (
-      <div className="flex justify-center items-center h-full" style={{ background: "hsl(var(--primary))" }}>
+      <div className="flex justify-center items-center h-full">
         <Loader2 className="animate-spin w-8 h-8 text-primary" />
       </div>
     );
   }
   if (TEAM_ID === 0) {
     return (
-      <div className="mx-auto flex min-h-[50vh] max-w-xl items-center justify-center" style={{ background: "hsl(var(--primary))" }}>
+      <div className="mx-auto flex min-h-[50vh] max-w-xl items-center justify-center">
         <div className="w-full rounded-2xl border border-border bg-card p-8 text-center shadow-xl">
           <h1 className="text-2xl font-black">No {activeCompetitionLabel} team yet</h1>
           <p className="mt-2 text-sm text-muted-foreground">
@@ -499,7 +499,7 @@ export function SquadBuilder() {
   ];
 
   return (
-    <div style={{ background: "hsl(var(--primary))" }}>
+    <div>
 
       {/* ══════════════════════════════════════════
           MOBILE LIST VIEW  (visible below md / 768px)

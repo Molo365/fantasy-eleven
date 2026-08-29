@@ -740,7 +740,7 @@ export function Dashboard() {
     return (
       <div
         className="animate-pulse"
-        style={{ display: "flex", flexDirection: "column", gap: 20, width: "100%", maxWidth: "100%", overflow: "hidden", padding: 24, background: "hsl(var(--primary))" }}
+        style={{ display: "flex", flexDirection: "column", gap: 20, width: "100%", maxWidth: "100%", overflow: "hidden", padding: 24 }}
       >
         <div style={{ display: "flex", gap: 12 }}>
            <div style={{ flex: 1, height: 68, borderRadius: 12, background: "rgba(8,17,40,0.5)" }} />
@@ -761,7 +761,7 @@ export function Dashboard() {
     <div
       style={{
         position: "relative",
-        background: "hsl(var(--primary))",
+        background: "hsl(var(--sidebar-accent))",
         width: "100%",
         maxWidth: "100%",
         overflowX: "hidden",
