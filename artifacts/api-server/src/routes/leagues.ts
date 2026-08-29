@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { and, eq, count, inArray } from "drizzle-orm";
+import { and, eq, count, desc, inArray, sql } from "drizzle-orm";
 import { db, leaguesTable, leagueTeamsTable, teamsTable, usersTable, gameweeksTable, gameweekTeamScoresTable } from "@workspace/db";
 import {
   CreateLeagueBody,
@@ -154,18 +154,25 @@ router.get("/leagues/:id/leaderboard", async (req, res): Promise<void> => {
     res.json([]);
     return;
   }
-  // Find the active gameweek so we can show its per-team score in the GW Pts column.
-  // If no gameweek is active (e.g. between rounds) the column falls back to 0.
+  // Find the active gameweek for this league's competition so its per-team score
+  // cannot be taken from another competition running at the same time.
   const [activeGw] = await db
     .select({ id: gameweeksTable.id })
     .from(gameweeksTable)
-    .where(eq(gameweeksTable.status, "active"))
+    .innerJoin(leaguesTable, eq(leaguesTable.competitionKey, gameweeksTable.competitionKey))
+    .where(and(
+      eq(leaguesTable.id, params.data.id),
+      eq(gameweeksTable.status, "active"),
+    ))
+    .orderBy(desc(gameweeksTable.id))
     .limit(1);
 
   const rows = await db
     .select({
       id:              teamsTable.id,
-      totalPoints:     teamsTable.totalPoints,
+      // Include the active game's provisional score so leaderboard totals reflect
+      // the current standings while preserving locked season totals in the DB.
+      totalPoints:     sql<number>`${teamsTable.totalPoints} + coalesce(${gameweekTeamScoresTable.points}, 0)`,
       teamName:        teamsTable.name,
       managerName:     teamsTable.managerName,
       userDisplayName: usersTable.displayName,

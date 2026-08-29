@@ -1,0 +1,34 @@
+Fix two related display/query issues around gameweek points, discovered via investigation. Do NOT touch scoring calculation logic — processSerieAGameweekScoring, scoreAndPersistTeams, and all point aggregation are confirmed correct and working. This is purely about which fields get displayed/queried.
+
+CONTEXT (confirmed by investigation, do not re-investigate):
+- The Dashboard's "My League" card (GET /api/leagues/:id/leaderboard) displays row.totalPoints,
+  sourced from teams.total_points — which by design only sums LOCKED/finalized gameweeks.
+- For any competition's current, still-active, unlocked gameweek, this correctly shows 0 even
+  though real provisional points exist in gameweek_team_scores.points / teams.gameweek_points.
+  This isn't unique to Serie A — Premier League would show the same thing for its current
+  gameweek if its prior gameweek weren't already locked, masking the same underlying issue.
+- Separately, the leaderboard endpoint currently selects "the first active gameweek globally"
+  without filtering by the league's own competition. With both a Premier League and Serie A
+  gameweek active at once (confirmed in production right now), this can cause a league's
+  gameweekPoints to incorrectly join against a different competition's active gameweek.
+
+TASKS:
+1. Fix the Dashboard's "My League" card to show a meaningful current total — likely
+   locked/finalized total_points PLUS the current active gameweek's provisional points
+   (teams.gameweek_points or gameweek_team_scores.points), so managers see their real
+   current standing rather than a number that ignores the in-progress gameweek entirely.
+   Confirm what the full Leagues page does today (it apparently already shows both totalPoints
+   and gameweekPoints as separate columns) and decide whether the Dashboard card should show
+   a combined number or add a second field — your call on the cleanest fix, but the end result
+   must reflect real current standing including in-progress points.
+2. Fix the leaderboard endpoint's active-gameweek selection to filter by the league's own
+   competitionKey, not just "first active gameweek globally" — so it can never join against
+   a different competition's gameweek when multiple competitions have active gameweeks
+   simultaneously.
+
+After the change:
+- Confirm typecheck and production build pass.
+- Verify against real production data: domrella's Serie A team should now show 5 points
+  reflected somewhere sensible on the Dashboard (not stuck at 0), and confirm Premier League's
+  own current-gameweek display is unaffected/correct too.
+- Report exactly what changed and how you verified both competitions display correctly.
