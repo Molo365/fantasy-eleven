@@ -223,9 +223,29 @@ async function rejectLockedGameweek(id: number, res: Response): Promise<boolean>
 }
 
 router.post("/admin/gameweeks", requireAdmin, async (req, res): Promise<void> => {
-  const { name, startDate, endDate, round = "group", fplGameweekNumber } = req.body as Record<string, string>;
+  const {
+    name,
+    startDate,
+    endDate,
+    round = "group",
+    fplGameweekNumber,
+    competitionKey: requestedCompetitionKey,
+  } = req.body as Record<string, unknown>;
   if (!name || !startDate || !endDate) {
     res.status(400).json({ error: "name, startDate, and endDate are required" });
+    return;
+  }
+  const validCompetitionKeys = ["premier-league", "serie-a", "world-cup-2026"] as const;
+  const hasExplicitCompetition = requestedCompetitionKey !== undefined;
+  const competitionKey = hasExplicitCompetition
+    ? String(requestedCompetitionKey)
+    : fplGameweekNumber !== undefined && String(fplGameweekNumber).trim() !== ""
+      ? "premier-league"
+      : "world-cup-2026";
+  if (!validCompetitionKeys.includes(competitionKey as typeof validCompetitionKeys[number])) {
+    res.status(400).json({
+      error: "competitionKey must be premier-league, serie-a, or world-cup-2026",
+    });
     return;
   }
   const hasFplGameweekNumber =
@@ -238,9 +258,18 @@ router.post("/admin/gameweeks", requireAdmin, async (req, res): Promise<void> =>
     res.status(400).json({ error: "fplGameweekNumber must be an integer from 1–38" });
     return;
   }
-  const competitionKey = fplGwNum !== null
-    ? "premier-league"
-    : "world-cup-2026";
+  if (competitionKey !== "premier-league" && fplGwNum !== null) {
+    res.status(400).json({
+      error: `${competitionKey} gameweeks cannot have an FPL gameweek number`,
+    });
+    return;
+  }
+  if (hasExplicitCompetition && competitionKey === "premier-league" && fplGwNum === null) {
+    res.status(400).json({
+      error: "Premier League gameweeks require an FPL gameweek number from 1–38",
+    });
+    return;
+  }
   const existing = await db
     .select({ n: gameweeksTable.number })
     .from(gameweeksTable)
@@ -249,11 +278,11 @@ router.post("/admin/gameweeks", requireAdmin, async (req, res): Promise<void> =>
   const [gw] = await db.insert(gameweeksTable).values({
     competitionKey,
     number: maxNum + 1,
-    name,
-    round,
+    name: String(name),
+    round: String(round),
     status: "upcoming",
-    startDate: new Date(startDate),
-    endDate: new Date(endDate),
+    startDate: new Date(String(startDate)),
+    endDate: new Date(String(endDate)),
     fplGameweekNumber: fplGwNum,
   }).returning();
   req.log.info({ gameweekId: gw.id, name }, "Admin created gameweek");

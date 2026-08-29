@@ -11,6 +11,7 @@ type AdminUser = { id: number; username: string; email: string; displayName: str
 type AdminPlayer = { id: number; competitionKey: string; name: string; club: string; clubShortName: string; position: string; price: number; totalPoints: number };
 type AdminGameweek = {
   id: number;
+  competitionKey: "premier-league" | "serie-a" | "world-cup-2026";
   number: number;
   name: string;
   round: string;
@@ -245,7 +246,13 @@ function EditPlayerModal({
 
 // ─── Create Gameweek Modal ────────────────────────────────────────────────────
 
-type CreateGwForm = { name: string; startDate: string; endDate: string; fplGameweekNumber: string };
+type CreateGwForm = {
+  name: string;
+  startDate: string;
+  endDate: string;
+  competitionKey: "premier-league" | "serie-a" | "world-cup-2026";
+  fplGameweekNumber: string;
+};
 
 function CreateGameweekModal({
   open, loading, error, form, onFormChange, onSubmit, onClose,
@@ -279,6 +286,27 @@ function CreateGameweekModal({
         ))}
         <div style={{ marginBottom: 12 }}>
           <label style={{ fontSize: 11, color: "#64748b", fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: "0.06em", display: "block", marginBottom: 4 }}>
+            Competition
+          </label>
+          <select
+            style={{ ...S.input, cursor: "pointer" }}
+            value={form.competitionKey}
+            onChange={e => onFormChange({
+              ...form,
+              competitionKey: e.target.value as CreateGwForm["competitionKey"],
+              fplGameweekNumber: e.target.value === "premier-league" ? form.fplGameweekNumber : "",
+            })}
+          >
+            <option value="world-cup-2026">World Cup 2026</option>
+            <option value="serie-a">Serie A</option>
+            <option value="premier-league">Premier League</option>
+          </select>
+          <p style={{ fontSize: 11, color: "#475569", marginTop: 4, marginBottom: 0 }}>
+            Serie A uses API-Football scoring and does not use an FPL gameweek number.
+          </p>
+        </div>
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ fontSize: 11, color: "#64748b", fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: "0.06em", display: "block", marginBottom: 4 }}>
             FPL Gameweek Number <span style={{ color: "#475569", fontWeight: 400, textTransform: "none" as const }}>(optional, 1–38)</span>
           </label>
           <input
@@ -288,10 +316,13 @@ function CreateGameweekModal({
             max={38}
             value={form.fplGameweekNumber}
             placeholder="e.g. 1"
+            disabled={form.competitionKey !== "premier-league"}
             onChange={e => onFormChange({ ...form, fplGameweekNumber: e.target.value })}
           />
           <p style={{ fontSize: 11, color: "#475569", marginTop: 4, marginBottom: 0 }}>
-            The FPL gameweek ID used to fetch live Premier League scores. Set it before the final scoring run.
+            {form.competitionKey === "premier-league"
+              ? "The FPL gameweek ID used to fetch live Premier League scores."
+              : "Not used for this competition."}
           </p>
         </div>
         {error && <p style={{ fontSize: 12, color: "#ef4444", marginBottom: 8 }}>{error}</p>}
@@ -344,7 +375,13 @@ export function AdminDashboard() {
   } | null>(null);
   const [processingGwId, setProcessingGwId] = useState<number | null>(null);
   const [createGwOpen, setCreateGwOpen] = useState(false);
-  const [createGwForm, setCreateGwForm] = useState<CreateGwForm>({ name: "", startDate: "", endDate: "", fplGameweekNumber: "" });
+  const [createGwForm, setCreateGwForm] = useState<CreateGwForm>({
+    name: "",
+    startDate: "",
+    endDate: "",
+    competitionKey: "world-cup-2026",
+    fplGameweekNumber: "",
+  });
   const [createGwLoading, setCreateGwLoading] = useState(false);
   const [createGwError, setCreateGwError] = useState<string | null>(null);
   const [autoCreating, setAutoCreating] = useState(false);
@@ -491,12 +528,19 @@ export function AdminDashboard() {
           name: createGwForm.name,
           startDate: new Date(createGwForm.startDate).toISOString(),
           endDate: new Date(createGwForm.endDate).toISOString(),
+          competitionKey: createGwForm.competitionKey,
           fplGameweekNumber: fplNum !== "" ? fplNum : undefined,
         }),
       }) as AdminGameweek;
       setGameweeks(gs => [...gs, gw].sort((a, b) => a.number - b.number));
       setCreateGwOpen(false);
-      setCreateGwForm({ name: "", startDate: "", endDate: "", fplGameweekNumber: "" });
+      setCreateGwForm({
+        name: "",
+        startDate: "",
+        endDate: "",
+        competitionKey: "world-cup-2026",
+        fplGameweekNumber: "",
+      });
     } catch (err) {
       setCreateGwError(String(err));
     } finally {
@@ -1050,7 +1094,7 @@ export function AdminDashboard() {
                 <table style={S.table}>
                   <thead>
                     <tr style={{ background: "#0a1628" }}>
-                      {["GW", "Name", "Status", "FPL GW#", "Activate", "Finalize Gameweek", "Finalize FPL"].map(h => (
+                      {["Competition", "GW", "Name", "Status", "FPL GW#", "Activate", "Finalize Gameweek", "Finalize FPL"].map(h => (
                         <th key={h} style={S.th}>{h}</th>
                       ))}
                     </tr>
@@ -1063,6 +1107,9 @@ export function AdminDashboard() {
                       const isLocked = g.status === "finished" || g.lockedAt !== null;
                       return (
                         <tr key={g.id}>
+                          <td style={{ ...S.td, color: g.competitionKey === "serie-a" ? "#60a5fa" : g.competitionKey === "premier-league" ? "#4ade80" : "#fbbf24", fontWeight: 700, fontSize: 11 }}>
+                            {g.competitionKey === "serie-a" ? "Serie A" : g.competitionKey === "premier-league" ? "Premier League" : "World Cup"}
+                          </td>
                           <td style={{ ...S.td, color: "#475569", fontFamily: "monospace" }}>{g.number}</td>
                           <td style={{ ...S.td, fontWeight: 600 }}>{g.name}</td>
                           <td style={S.td}>
@@ -1070,26 +1117,30 @@ export function AdminDashboard() {
                           </td>
                           {/* FPL GW# inline edit */}
                           <td style={S.td}>
-                            <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                              <input
-                                type="number"
-                                min={1}
-                                max={38}
-                                value={displayVal}
-                                placeholder="—"
-                                disabled={isLocked}
-                                onChange={e => setFplGwEdits(ev => ({ ...ev, [g.id]: e.target.value }))}
-                                style={{ ...S.input, width: 52, padding: "3px 6px", fontSize: 12, textAlign: "center" as const, opacity: isLocked ? 0.5 : 1 }}
-                              />
-                              {isDirty && !isLocked && (
-                                <button
-                                  style={{ ...S.actionBtn("teal"), fontSize: 10, padding: "3px 8px" }}
-                                  onClick={() => saveFplGwNumber(g.id, g.name)}
-                                >
-                                  Set
-                                </button>
-                              )}
-                            </div>
+                            {g.competitionKey === "premier-league" ? (
+                              <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                                <input
+                                  type="number"
+                                  min={1}
+                                  max={38}
+                                  value={displayVal}
+                                  placeholder="—"
+                                  disabled={isLocked}
+                                  onChange={e => setFplGwEdits(ev => ({ ...ev, [g.id]: e.target.value }))}
+                                  style={{ ...S.input, width: 52, padding: "3px 6px", fontSize: 12, textAlign: "center" as const, opacity: isLocked ? 0.5 : 1 }}
+                                />
+                                {isDirty && !isLocked && (
+                                  <button
+                                    style={{ ...S.actionBtn("teal"), fontSize: 10, padding: "3px 8px" }}
+                                    onClick={() => saveFplGwNumber(g.id, g.name)}
+                                  >
+                                    Set
+                                  </button>
+                                )}
+                              </div>
+                            ) : (
+                              <span style={{ color: "#334155" }}>—</span>
+                            )}
                           </td>
                           <td style={S.td}>
                             {g.status !== "active" && !isLocked && (
