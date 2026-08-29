@@ -169,13 +169,19 @@ router.get("/fixtures", async (req, res): Promise<void> => {
     const requestedLeagueKey = typeof req.query.leagueKey === "string"
       ? req.query.leagueKey
       : DEFAULT_LEAGUE_KEY;
-    const league = fixtureLeagues[requestedLeagueKey];
-    if (!league) {
+    const leagues = requestedLeagueKey === "all"
+      ? Object.values(fixtureLeagues)
+      : fixtureLeagues[requestedLeagueKey]
+        ? [fixtureLeagues[requestedLeagueKey]]
+        : null;
+    if (!leagues) {
       res.status(400).json({ error: `Unknown fixture league: ${requestedLeagueKey}` });
       return;
     }
 
-    const fixtures = await fetchFixturesForLeague(league);
+    const fixtures = (await Promise.all(leagues.map(fetchFixturesForLeague)))
+      .flat()
+      .sort((a, b) => a.kickoff.localeCompare(b.kickoff));
     res.json(GetLiveFixturesResponse.parse(fixtures));
   } catch (err) {
     req.log.error({ err }, "Failed to fetch fixtures");

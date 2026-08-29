@@ -430,8 +430,17 @@ competitionKey?: string;
 };
 
 export type GetLiveFixturesParams = {
-leagueKey?: string;
+leagueKey?: GetLiveFixturesLeagueKey;
 };
+
+export type GetLiveFixturesLeagueKey = typeof GetLiveFixturesLeagueKey[keyof typeof GetLiveFixturesLeagueKey];
+
+
+export const GetLiveFixturesLeagueKey = {
+  'premier-league': 'premier-league',
+  'serie-a': 'serie-a',
+  all: 'all',
+} as const;
 
 export type GetDashboardSummaryParams = {
 competitionKey: GetDashboardSummaryCompetitionKey;

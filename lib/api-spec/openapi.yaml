@@ -487,6 +487,7 @@ paths:
           required: false
           schema:
             type: string
+            enum: [premier-league, serie-a, all]
             default: premier-league
       responses:
         "200":

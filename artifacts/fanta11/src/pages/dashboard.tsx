@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   useGetDashboardSummary,
   getGetDashboardSummaryQueryKey,
@@ -14,11 +14,13 @@ import {
   type LeaderboardEntry,
   type TopPerformer,
   type SquadPlayer,
-  type DashboardSummary
+  type DashboardSummary,
+  type GetLiveFixturesParams,
 } from "@workspace/api-client-react";
-import { Trophy, ShieldHalf } from "lucide-react";
+import { ChevronDown, Trophy, ShieldHalf } from "lucide-react";
 import { useAuth } from "@/contexts/auth";
 import { useLeagueContext } from "@/contexts/league";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Link } from "wouter";
 import { format } from "date-fns";
 import { getPremierLeaguePhotoUrl } from "@/lib/player-photo";
@@ -94,8 +96,6 @@ function playerInitials(name: string): string {
   return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
 }
 
-const STATUS_SORT: Record<string, number> = { live: 0, scheduled: 1, finished: 2 };
-
 const CARD: React.CSSProperties = {
   background: "rgba(8,17,40,0.68)",
   border: "1px solid rgba(255,255,255,0.07)",
@@ -104,24 +104,182 @@ const CARD: React.CSSProperties = {
   overflow: "hidden",
 };
 
+function useMediaQuery(query: string): boolean {
+  const [matches, setMatches] = useState(() =>
+    typeof window !== "undefined" && window.matchMedia(query).matches
+  );
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia(query);
+    const updateMatches = () => setMatches(mediaQuery.matches);
+    updateMatches();
+    mediaQuery.addEventListener("change", updateMatches);
+    return () => mediaQuery.removeEventListener("change", updateMatches);
+  }, [query]);
+
+  return matches;
+}
+
+function ResponsiveDisclosure({
+  title,
+  count,
+  liveCount,
+  testId,
+  desktopContent,
+  mobileContent,
+}: {
+  title: string;
+  count?: string;
+  liveCount?: number;
+  testId: string;
+  desktopContent: ReactNode;
+  mobileContent: ReactNode;
+}) {
+  const isDesktop = useMediaQuery("(min-width: 768px)");
+  const [open, setOpen] = useState(false);
+
+  if (isDesktop) return desktopContent;
+
+  return (
+    <Collapsible
+      open={open}
+      onOpenChange={setOpen}
+      data-testid={testId}
+      style={{ ...CARD, display: "flex", flexDirection: "column" }}
+    >
+      <CollapsibleTrigger asChild>
+        <button
+          type="button"
+          className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+          style={{ color: "#e2e8f0", borderBottom: open ? "1px solid rgba(255,255,255,0.06)" : "none" }}
+        >
+          <span className="flex min-w-0 items-center gap-2">
+            <span className="truncate text-[10px] font-extrabold uppercase tracking-[0.12em] text-[#94a3b8]">
+              {title}
+            </span>
+            {liveCount ? (
+              <span
+                className="animate-pulse rounded-full px-1.5 py-0.5 text-[9px] font-black uppercase tracking-[0.1em]"
+                style={{ background: "rgba(239,68,68,0.18)", color: "#f87171", border: "1px solid rgba(239,68,68,0.35)" }}
+              >
+                {liveCount} Live
+              </span>
+            ) : null}
+          </span>
+          <span className="flex shrink-0 items-center gap-3">
+            {count ? <span className="text-[10px] font-bold text-[#64748b]">{count}</span> : null}
+            <ChevronDown
+              size={16}
+              aria-hidden="true"
+              className={`text-[#7ab4ff] transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+            />
+          </span>
+        </button>
+      </CollapsibleTrigger>
+      <CollapsibleContent>{mobileContent}</CollapsibleContent>
+    </Collapsible>
+  );
+}
+
 // ── Today's Matches column ────────────────────────────────────────────────────
-function TodayMatchesCard({ competitionKey }: { competitionKey: string }) {
+function TodayMatchesCard() {
   const today = format(new Date(), "yyyy-MM-dd");
-  const fixtureParams = { leagueKey: competitionKey };
+  const fixtureParams: GetLiveFixturesParams = { leagueKey: "all" };
   const { data: fixtures } = useGetLiveFixtures(fixtureParams, {
     query: { queryKey: getGetLiveFixturesQueryKey(fixtureParams), refetchInterval: 60_000 },
   });
 
   const todayMatches = (fixtures ?? [])
     .filter((f: LiveFixture) => format(new Date(f.kickoff), "yyyy-MM-dd") === today)
-    .sort((a: LiveFixture, b: LiveFixture) => {
-      const sDiff = (STATUS_SORT[a.status] ?? 9) - (STATUS_SORT[b.status] ?? 9);
-      return sDiff !== 0 ? sDiff : a.kickoff.localeCompare(b.kickoff);
-    });
+    .sort((a: LiveFixture, b: LiveFixture) => a.kickoff.localeCompare(b.kickoff));
 
   const liveCount = todayMatches.filter((f: LiveFixture) => f.status === "live").length;
 
-  return (
+  const matchesBody = (
+    <div style={{ flex: 1, overflowY: "auto", maxHeight: 280 }}>
+      {todayMatches.length === 0 ? (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 16px" }}>
+          <span style={{ fontSize: 14, lineHeight: 1 }}>⚽</span>
+          <p style={{ fontSize: 12, color: "#5d7ba8", margin: 0 }}>No matches today</p>
+        </div>
+      ) : (
+        todayMatches.map((f: LiveFixture, i) => {
+          const isLive = f.status === "live";
+          return (
+            <div
+              key={`${f.leagueKey}-${f.id}`}
+              style={{
+                borderBottom: i < todayMatches.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none",
+                borderLeft: isLive ? "3px solid rgba(239,68,68,0.7)" : "3px solid transparent",
+                padding: "10px 14px",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                {/* Home */}
+                <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0 }}>
+                  <span style={{ fontSize: 15 }}>{toFlagEmoji(f.homeTeam)}</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: "#e2e8f0", letterSpacing: "0.04em" }}>
+                    {teamAbbrev(f.homeTeam)}
+                  </span>
+                </div>
+
+                {/* Centre: time/score */}
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
+                  {f.status === "scheduled" ? (
+                    <span
+                      className="font-mono text-xs font-bold"
+                      style={{ background: "rgba(99,102,241,0.15)", border: "1px solid rgba(99,102,241,0.3)", color: "#818cf8", padding: "2px 8px", borderRadius: 4 }}
+                    >
+                      {format(new Date(f.kickoff), "HH:mm")}
+                    </span>
+                  ) : (
+                    <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                      {isLive && (
+                        <span
+                          className="animate-pulse"
+                          style={{ width: 6, height: 6, borderRadius: "50%", background: "#ef4444", boxShadow: "0 0 4px #ef4444", flexShrink: 0, display: "inline-block" }}
+                        />
+                      )}
+                      <span
+                        className="font-mono font-black"
+                        style={{ fontSize: 14, color: isLive ? "#f87171" : "#cbd5e1" }}
+                      >
+                        {f.homeScore ?? 0} - {f.awayScore ?? 0}
+                      </span>
+                    </div>
+                  )}
+                  {isLive && (
+                    <span style={{ fontSize: 9, fontWeight: 700, color: "#f87171", letterSpacing: "0.08em", marginTop: 2 }}>
+                      LIVE · {f.elapsed != null ? `${f.elapsed}'` : "—"}
+                    </span>
+                  )}
+                  {f.status === "finished" && (
+                    <span style={{ fontSize: 9, fontWeight: 700, color: "#475569", letterSpacing: "0.08em", marginTop: 2 }}>FT</span>
+                  )}
+                </div>
+
+                {/* Away */}
+                <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0, justifyContent: "flex-end" }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: "#e2e8f0", letterSpacing: "0.04em" }}>
+                    {teamAbbrev(f.awayTeam)}
+                  </span>
+                  <span style={{ fontSize: 15 }}>{toFlagEmoji(f.awayTeam)}</span>
+                </div>
+              </div>
+
+              {f.venue && (
+                <p style={{ fontSize: 10, color: "#475569", marginTop: 4, textAlign: "center", letterSpacing: "0.02em" }}>
+                  {f.venue}
+                </p>
+              )}
+            </div>
+          );
+        })
+      )}
+    </div>
+  );
+
+  const desktopContent = (
     <div data-testid="card-today-matches" style={{ ...CARD, display: "flex", flexDirection: "column" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "16px 16px 12px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
         <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: "#94a3b8" }}>
@@ -136,89 +294,18 @@ function TodayMatchesCard({ competitionKey }: { competitionKey: string }) {
           </span>
         )}
       </div>
-
-      <div style={{ flex: 1, overflowY: "auto", maxHeight: 280 }}>
-        {todayMatches.length === 0 ? (
-          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 16px" }}>
-            <span style={{ fontSize: 14, lineHeight: 1 }}>⚽</span>
-            <p style={{ fontSize: 12, color: "#5d7ba8", margin: 0 }}>No matches today</p>
-          </div>
-        ) : (
-          todayMatches.map((f: LiveFixture, i) => {
-            const isLive = f.status === "live";
-            return (
-              <div
-                key={f.id}
-                style={{
-                  borderBottom: i < todayMatches.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none",
-                  borderLeft: isLive ? "3px solid rgba(239,68,68,0.7)" : "3px solid transparent",
-                  padding: "10px 14px",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  {/* Home */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0 }}>
-                    <span style={{ fontSize: 15 }}>{toFlagEmoji(f.homeTeam)}</span>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: "#e2e8f0", letterSpacing: "0.04em" }}>
-                      {teamAbbrev(f.homeTeam)}
-                    </span>
-                  </div>
-
-                  {/* Centre: time/score */}
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
-                    {f.status === "scheduled" ? (
-                      <span
-                        className="font-mono text-xs font-bold"
-                        style={{ background: "rgba(99,102,241,0.15)", border: "1px solid rgba(99,102,241,0.3)", color: "#818cf8", padding: "2px 8px", borderRadius: 4 }}
-                      >
-                        {format(new Date(f.kickoff), "HH:mm")}
-                      </span>
-                    ) : (
-                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                        {isLive && (
-                          <span
-                            className="animate-pulse"
-                            style={{ width: 6, height: 6, borderRadius: "50%", background: "#ef4444", boxShadow: "0 0 4px #ef4444", flexShrink: 0, display: "inline-block" }}
-                          />
-                        )}
-                        <span
-                          className="font-mono font-black"
-                          style={{ fontSize: 14, color: isLive ? "#f87171" : "#cbd5e1" }}
-                        >
-                          {f.homeScore ?? 0} - {f.awayScore ?? 0}
-                        </span>
-                      </div>
-                    )}
-                    {isLive && (
-                      <span style={{ fontSize: 9, fontWeight: 700, color: "#f87171", letterSpacing: "0.08em", marginTop: 2 }}>
-                        LIVE · {f.elapsed != null ? `${f.elapsed}'` : "—"}
-                      </span>
-                    )}
-                    {f.status === "finished" && (
-                      <span style={{ fontSize: 9, fontWeight: 700, color: "#475569", letterSpacing: "0.08em", marginTop: 2 }}>FT</span>
-                    )}
-                  </div>
-
-                  {/* Away */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0, justifyContent: "flex-end" }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: "#e2e8f0", letterSpacing: "0.04em" }}>
-                      {teamAbbrev(f.awayTeam)}
-                    </span>
-                    <span style={{ fontSize: 15 }}>{toFlagEmoji(f.awayTeam)}</span>
-                  </div>
-                </div>
-
-                {f.venue && (
-                  <p style={{ fontSize: 10, color: "#475569", marginTop: 4, textAlign: "center", letterSpacing: "0.02em" }}>
-                    {f.venue}
-                  </p>
-                )}
-              </div>
-            );
-          })
-        )}
-      </div>
+      {matchesBody}
     </div>
+  );
+
+  return (
+    <ResponsiveDisclosure
+      title="Today's Matches"
+      liveCount={liveCount}
+      testId="card-today-matches"
+      desktopContent={desktopContent}
+      mobileContent={matchesBody}
+    />
   );
 }
 
@@ -470,8 +557,18 @@ function SquadStrip({ teamId }: { teamId: number }) {
   if (!squad?.length) return null;
 
   const squadList = squad as SquadPlayer[];
+  const squadListContent = (
+    <div
+      className="flex flex-col gap-4 p-4 md:grid md:grid-cols-3"
+      style={{ scrollbarWidth: "thin" }}
+    >
+      {squadList.map((p) => (
+        <SquadPlayerCard key={p.playerId} p={p} />
+      ))}
+    </div>
+  );
 
-  return (
+  const desktopContent = (
     <div data-testid="card-squad-strip" style={{ ...CARD }}>
       <div style={{ padding: "16px 16px 12px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: "#94a3b8" }}>
@@ -481,18 +578,18 @@ function SquadStrip({ teamId }: { teamId: number }) {
           {squadList.length}/15
         </span>
       </div>
-
-      <div
-        className="flex flex-col gap-4 p-4 md:grid md:grid-cols-3"
-        style={{
-          scrollbarWidth: "thin",
-        }}
-      >
-        {squadList.map((p) => (
-          <SquadPlayerCard key={p.playerId} p={p} />
-        ))}
-      </div>
+      {squadListContent}
     </div>
+  );
+
+  return (
+    <ResponsiveDisclosure
+      title="My Squad · Active Players This GW"
+      count={`${squadList.length}/15`}
+      testId="card-squad-strip"
+      desktopContent={desktopContent}
+      mobileContent={squadListContent}
+    />
   );
 }
 
@@ -710,7 +807,7 @@ export function Dashboard() {
 
         {/* Squad and standings */}
         <div className="grid gap-6 w-full items-start lg:grid-cols-[minmax(280px,1fr)_minmax(0,2fr)]">
-           <div className="flex flex-col gap-6 w-full min-w-0 lg:order-2" data-testid="dashboard-main-column">
+           <div className="order-2 flex flex-col gap-6 w-full min-w-0 lg:order-2" data-testid="dashboard-main-column">
              {!activeTeamId ? (
                 <NoTeamPrompt competitionKey={activeCompetitionKey} />
              ) : !hasSquad ? (
@@ -719,14 +816,14 @@ export function Dashboard() {
                 <SquadStrip teamId={activeTeamId} />
              )}
            </div>
-           <div className="flex flex-col gap-6 w-full min-w-0 lg:order-1" data-testid="dashboard-sidebar">
+           <div className="order-1 flex flex-col gap-6 w-full min-w-0 lg:order-1" data-testid="dashboard-sidebar">
               <MyLeagueCard leagueId={activeLeagueId ?? 0} leagueName={activeLeague?.name ?? null} teamId={activeTeamId} />
            </div>
         </div>
 
         {/* Competition activity */}
         <div className="grid gap-6 w-full md:grid-cols-2">
-          <TodayMatchesCard competitionKey={activeCompetitionKey} />
+          <TodayMatchesCard />
           <TopPerformersCard competitionKey={activeCompetitionKey} />
         </div>
       </div>

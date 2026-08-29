@@ -1,0 +1,17 @@
+Restructure the Dashboard page (artifacts/fanta11/src/pages/dashboard.tsx) on mobile breakpoints only, to fix excessive page length, and fix Today's Matches to show all competitions instead of just Premier League. Desktop layout must remain completely unchanged except for the Today's Matches data fix (see below), which applies everywhere.
+
+PART 1 — Today's Matches multi-competition fix (applies to both mobile and desktop):
+Currently TodayMatchesCard hardcodes leagueKey: "premier-league" against GET /api/fixtures. Change it to fetch today's fixtures from every competition the app currently supports (Premier League and Serie A, via the existing fixture provider registry) and merge them into a single combined list, sorted by kickoff time. Do NOT create separate tabs or sections per competition — one unified "Today's Matches" list containing games from all supported competitions together. This should be built so it naturally extends if more competitions are added later, rather than hardcoding to these two specifically wherever avoidable.
+
+PART 2 — Mobile-only section restructuring:
+New mobile section order and behavior, top to bottom:
+
+1. Premier League / Serie A competition strip — unchanged, always visible, not collapsible.
+2. "My League" standings — moves to directly beneath the competition strip. Stays as a normal always-visible compact section (already compact from the earlier mobile fix) — not collapsible.
+3. "My Squad · Active Players This GW" — convert to a collapsible accordion/dropdown section. Collapsed by default on mobile. Tapping the header (with a chevron indicator that rotates on expand) reveals the full squad list. Keep the "15/15" count visible in the collapsed header.
+4. "Today's Matches" (now showing all competitions per Part 1) — convert to a collapsible accordion/dropdown section, same pattern as squad, collapsed by default. Keep the live match count badge (e.g. "1 LIVE") visible in the collapsed header if present.
+5. "Top Performers" — stays as a normal always-visible section, not collapsible (only 3 entries).
+
+Use a simple, accessible disclosure/accordion pattern consistent with the rest of the app's existing component style if one already exists in the codebase (check for shadcn/ui Accordion or similar before building a custom one). Apply the reordering/collapsing ONLY at mobile breakpoints — desktop should retain its current order (My League left, My Squad right, both always expanded, Today's Matches and Top Performers below), just with the Part 1 multi-competition fix applied to whatever matches it shows.
+
+After the change, confirm at a 390px mobile viewport that: the order matches what's specified, Squad and Today's Matches start collapsed, tapping each expands/collapses correctly, Today's Matches shows fixtures from both Premier League and Serie A together, and the overall page is meaningfully shorter when both are collapsed. Also confirm desktop layout order is unaffected (only its Today's Matches data changes). Report which files/lines changed.

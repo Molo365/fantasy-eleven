@@ -24,6 +24,7 @@ export * from './getDashboardSummaryCompetitionKey';
 export * from './getDashboardSummaryParams';
 export * from './getDashboardTopPerformersCompetitionKey';
 export * from './getDashboardTopPerformersParams';
+export * from './getLiveFixturesLeagueKey';
 export * from './getLiveFixturesParams';
 export * from './getPlayerNationsParams';
 export * from './getRecentActivityParams';

@@ -514,7 +514,7 @@ export const GetGameweekFixturesResponse = zod.array(GetGameweekFixturesResponse
 export const getLiveFixturesQueryLeagueKeyDefault = `premier-league`;
 
 export const GetLiveFixturesQueryParams = zod.object({
-  "leagueKey": zod.coerce.string().default(getLiveFixturesQueryLeagueKeyDefault)
+  "leagueKey": zod.enum(['premier-league', 'serie-a', 'all']).default(getLiveFixturesQueryLeagueKeyDefault)
 })
 
 export const GetLiveFixturesResponseItem = zod.object({
