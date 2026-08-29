@@ -526,6 +526,7 @@ function CompetitionStripItem({
   competitionKey,
   team,
   summary,
+  leagueName,
   isLoading,
   isActive,
   onClick
@@ -533,6 +534,7 @@ function CompetitionStripItem({
   competitionKey: string;
   team: { id: number } | undefined;
   summary: DashboardSummary | undefined;
+  leagueName: string | null | undefined;
   isLoading: boolean;
   isActive: boolean;
   onClick: () => void;
@@ -543,7 +545,7 @@ function CompetitionStripItem({
 
   if (!team) {
      return (
-       <button onClick={onClick} className={`flex-1 flex items-center justify-between rounded-xl p-3 text-left transition-all ${isActive ? 'bg-[#1a2c54] border-[#06b6d4]/50' : 'bg-[rgba(8,17,40,0.6)] border-[rgba(255,255,255,0.05)] hover:bg-[rgba(16,29,58,0.8)]'} border`} data-testid={`competition-strip-${competitionKey}`}>
+        <button onClick={onClick} className={`flex-1 flex items-center justify-between rounded-xl p-3 md:min-h-[104px] md:p-4 text-left transition-all ${isActive ? 'bg-[#1a2c54] border-[#06b6d4]/50' : 'bg-[rgba(8,17,40,0.6)] border-[rgba(255,255,255,0.05)] hover:bg-[rgba(16,29,58,0.8)]'} border`} data-testid={`competition-strip-${competitionKey}`}>
          <div className="flex items-center gap-3">
             <span
               className="flex h-9 w-9 items-center justify-center rounded-lg text-[11px] font-black tracking-wider opacity-60"
@@ -561,13 +563,13 @@ function CompetitionStripItem({
   }
 
   if (isLoading) {
-     return <div className="flex-1 animate-pulse rounded-xl h-[68px]" style={{ background: "rgba(255,255,255,0.05)" }} />
+      return <div className="flex-1 animate-pulse rounded-xl h-[68px] md:h-[104px]" style={{ background: "rgba(255,255,255,0.05)" }} />
   }
 
   return (
     <button
       onClick={onClick}
-      className={`flex-1 rounded-xl p-3 flex items-center justify-between transition-all border ${
+       className={`flex-1 rounded-xl p-3 md:min-h-[104px] md:p-4 flex items-center justify-between transition-all border ${
         isActive
           ? 'bg-gradient-to-r from-[#1a2c54] to-[#101d3a] border-[#06b6d4]/40 shadow-[0_0_15px_rgba(6,182,212,0.15)]'
           : 'bg-[rgba(8,17,40,0.4)] border-[rgba(255,255,255,0.1)] hover:bg-[rgba(16,29,58,0.6)]'
@@ -582,8 +584,11 @@ function CompetitionStripItem({
             {leagueMark}
           </span>
           <div className="text-left flex flex-col justify-center">
-             <p className={`text-[10px] font-extrabold uppercase tracking-widest ${isActive ? 'text-[#7ab4ff]' : 'text-[#64748b]'}`}>{label}</p>
-             <div className="flex items-center gap-3 mt-1">
+              <p className={`text-[10px] font-extrabold uppercase tracking-widest ${isActive ? 'text-[#7ab4ff]' : 'text-[#64748b]'}`}>{label}</p>
+              <p className="hidden md:block mt-0.5 max-w-[190px] truncate text-xs font-semibold text-[#e2e8f0]">
+                {leagueName ?? "No league joined"}
+              </p>
+              <div className="flex items-center gap-3 mt-1 md:mt-2">
                 <span className="text-sm font-bold text-[#e2e8f0]">
                   {summary?.globalRank ? `#${summary.globalRank.toLocaleString()} ` : "Unranked"}
                   <span className="text-[10px] font-medium text-[#64748b] ml-1">of {summary?.competitionTeamCount || 0}</span>
@@ -687,6 +692,7 @@ export function Dashboard() {
               competitionKey="premier-league"
               team={plTeam}
               summary={summaryPL}
+              leagueName={summaryPL?.firstLeagueName}
               isLoading={isLoadingPL}
               isActive={activeCompetitionKey === "premier-league"}
               onClick={() => setActiveCompetitionKey("premier-league")}
@@ -695,6 +701,7 @@ export function Dashboard() {
               competitionKey="serie-a"
               team={saTeam}
               summary={summarySA}
+              leagueName={summarySA?.firstLeagueName}
               isLoading={isLoadingSA}
               isActive={activeCompetitionKey === "serie-a"}
               onClick={() => setActiveCompetitionKey("serie-a")}
@@ -702,8 +709,8 @@ export function Dashboard() {
         </div>
 
         {/* Squad and standings */}
-        <div className="grid gap-6 w-full items-start lg:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
-           <div className="flex flex-col gap-6 w-full min-w-0" data-testid="dashboard-main-column">
+        <div className="grid gap-6 w-full items-start lg:grid-cols-[minmax(280px,1fr)_minmax(0,2fr)]">
+           <div className="flex flex-col gap-6 w-full min-w-0 lg:order-2" data-testid="dashboard-main-column">
              {!activeTeamId ? (
                 <NoTeamPrompt competitionKey={activeCompetitionKey} />
              ) : !hasSquad ? (
@@ -712,7 +719,7 @@ export function Dashboard() {
                 <SquadStrip teamId={activeTeamId} />
              )}
            </div>
-           <div className="flex flex-col gap-6 w-full min-w-0" data-testid="dashboard-sidebar">
+           <div className="flex flex-col gap-6 w-full min-w-0 lg:order-1" data-testid="dashboard-sidebar">
               <MyLeagueCard leagueId={activeLeagueId ?? 0} leagueName={activeLeague?.name ?? null} teamId={activeTeamId} />
            </div>
         </div>
