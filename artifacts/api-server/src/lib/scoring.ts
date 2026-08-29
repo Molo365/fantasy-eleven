@@ -513,7 +513,7 @@ async function processApiSportsGameweekScoring(
   // values can be reset, leaving the locked gameweek untouched.
   const { teamsUpdated } = await scoreAndPersistTeams(
     gameweekId,
-    WORLD_CUP_COMPETITION_KEY,
+    config.competitionKey,
     playerEarned,
     playerById,
     options,
