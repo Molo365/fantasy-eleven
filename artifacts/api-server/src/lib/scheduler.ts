@@ -1,15 +1,20 @@
-import { and, eq, isNotNull, isNull } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { db, gameweeksTable } from "@workspace/db";
 import { logger } from "./logger";
-import { processFplGameweekScoring } from "./scoring";
+import { processFplGameweekScoring, processGameweekScoring } from "./scoring";
 
 const INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
 
 let isRunning = false;
 
-async function runFplScoring(): Promise<void> {
+const scorersByCompetition: Record<string, typeof processFplGameweekScoring> = {
+  "premier-league": processFplGameweekScoring,
+  "world-cup-2026": processGameweekScoring,
+};
+
+async function runScoring(): Promise<void> {
   if (isRunning) {
-    logger.info("scheduler: previous FPL scoring run still in progress — skipping this tick");
+    logger.info("scheduler: previous scoring run still in progress — skipping this tick");
     return;
   }
 
@@ -17,37 +22,61 @@ async function runFplScoring(): Promise<void> {
   const startedAt = new Date().toISOString();
 
   try {
-    // Only active, unlocked gameweeks receive provisional FPL refreshes.
+    // Query all active competition-scoped gameweeks; the dispatch registry
+    // decides which provider-specific scorer owns each competition.
     const activeGws = await db
-      .select({ id: gameweeksTable.id, fplGameweekNumber: gameweeksTable.fplGameweekNumber })
+      .select({
+        id: gameweeksTable.id,
+        competitionKey: gameweeksTable.competitionKey,
+        fplGameweekNumber: gameweeksTable.fplGameweekNumber,
+      })
       .from(gameweeksTable)
       .where(and(
         eq(gameweeksTable.status, "active"),
         isNull(gameweeksTable.lockedAt),
-        isNotNull(gameweeksTable.fplGameweekNumber),
       ));
 
     if (activeGws.length === 0) {
-      logger.info({ startedAt }, "scheduler: no active FPL gameweeks found — skipping");
+      logger.info({ startedAt }, "scheduler: no active gameweeks found — skipping");
       return;
     }
 
     logger.info(
       { startedAt, gameweekIds: activeGws.map((g) => g.id) },
-      "scheduler: starting FPL scoring run",
+      "scheduler: starting competition scoring run",
     );
 
     for (const gw of activeGws) {
-      try {
-        const result = await processFplGameweekScoring(gw.id);
+      const scorer = scorersByCompetition[gw.competitionKey];
+      if (!scorer) {
         logger.info(
-          { startedAt, gameweekId: gw.id, fplGw: gw.fplGameweekNumber, ...result },
-          "scheduler: FPL scoring succeeded",
+          { startedAt, gameweekId: gw.id, competitionKey: gw.competitionKey },
+          "scheduler: no scorer registered for active competition — skipping",
+        );
+        continue;
+      }
+      try {
+        const result = await scorer(gw.id);
+        logger.info(
+          {
+            startedAt,
+            gameweekId: gw.id,
+            competitionKey: gw.competitionKey,
+            fplGw: gw.fplGameweekNumber,
+            ...result,
+          },
+          "scheduler: competition scoring succeeded",
         );
       } catch (err) {
         logger.error(
-          { startedAt, gameweekId: gw.id, fplGw: gw.fplGameweekNumber, err },
-          "scheduler: FPL scoring failed for gameweek",
+          {
+            startedAt,
+            gameweekId: gw.id,
+            competitionKey: gw.competitionKey,
+            fplGw: gw.fplGameweekNumber,
+            err,
+          },
+          "scheduler: competition scoring failed for gameweek",
         );
       }
     }
@@ -59,10 +88,13 @@ async function runFplScoring(): Promise<void> {
 }
 
 export function startScheduler(): void {
-  logger.info({ intervalMs: INTERVAL_MS }, "scheduler: FPL auto-scoring started");
+  logger.info(
+    { intervalMs: INTERVAL_MS, competitions: Object.keys(scorersByCompetition) },
+    "scheduler: competition auto-scoring started",
+  );
   setInterval(() => {
-    runFplScoring().catch((err) =>
-      logger.error({ err }, "scheduler: unexpected error in runFplScoring"),
+    runScoring().catch((err) =>
+      logger.error({ err }, "scheduler: unexpected error in runScoring"),
     );
   }, INTERVAL_MS);
 }

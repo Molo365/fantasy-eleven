@@ -1,0 +1,49 @@
+Fix competition-scoping in the gameweek scoring pipeline before adding Serie A scoring, per the investigation findings below. This is a schema change plus a fix to shared scoring logic — Premier League scoring must continue working correctly after this change, with no regression.
+
+CONTEXT (confirmed by prior investigation, do not re-investigate):
+- gameweeks table (lib/db/src/schema/gameweeks.ts) currently has no competitionKey column.
+- The shared persistence routine scoreAndPersistTeams (artifacts/api-server/src/lib/scoring.ts:145-333)
+  snapshots EVERY fantasy team and squad across ALL competitions whenever any scoring run
+  executes, regardless of which competition is actually being scored. Today this is silently
+  harmless because non-matching players just score zero, but it's not sound: two competitions
+  running live scoring in parallel would both be writing against overlapping team/gameweek
+  state without real isolation.
+- gameweek_team_lineup_players and gameweek_team_scores (also in gameweeks.ts) are the tables
+  that get written by this snapshot process.
+- There is a PL scorer (processFPLGameweekScoring, uses FPL's total_points directly) and a
+  World Cup scorer (processGameweekScoring, scoring.ts:338-511, computes points from
+  API-Football player stats) — both currently call the same shared scoreAndPersistTeams.
+- The scheduler (artifacts/api-server/src/lib/scheduler.ts) runs every 15 minutes and only
+  processes gameweeks with status=active, not locked, and an fplGameweekNumber assigned —
+  this scheduler is currently PL-specific in its query filter.
+
+TASKS:
+1. Add a competitionKey column to the gameweeks table (migration required — this is schema-changing,
+   follow the existing migration runner pattern used for prior migrations like 0007). Backfill
+   existing gameweek rows with the correct competitionKey based on their current usage (PL gameweeks
+   get "premier-league", World Cup gameweeks get "world-cup-2026" — inspect actual current data to
+   confirm before writing the backfill).
+2. Update scoreAndPersistTeams so it only snapshots and scores teams/squads belonging to the
+   competitionKey of the gameweek being processed — not all teams across all competitions. This is
+   the core fix. Make sure team/squad lookups are filtered by competitionKey throughout this routine.
+3. Update both existing scorers (processFPLGameweekScoring and processGameweekScoring) to pass the
+   correct competitionKey through to scoreAndPersistTeams explicitly, rather than relying on any
+   implicit/global behavior.
+4. Update the scheduler's active-gameweek query to be competition-aware rather than PL-specific,
+   so it can eventually support scoring multiple competitions' active gameweeks without assuming
+   only fplGameweekNumber-based PL gameweeks exist. Don't wire in Serie A scoring itself yet — just
+   make the scheduler's query structure not falsely PL-exclusive.
+5. Do NOT implement Serie A scoring in this task — that's a separate follow-up once this foundation
+   is in place. Do NOT touch bench exclusion — that's a separate known gap, out of scope here.
+
+Since this touches a live production database with existing PL scoring data and gameweeks, treat
+the migration as production-sensitive: follow the same gated pattern used for migration 0007
+(temporary opt-in env var, confirm applied via Railway Deploy Logs, then remove the var) rather
+than an unguarded automatic migration.
+
+After the change:
+- Confirm typecheck and production build pass.
+- Confirm existing Premier League scoring still works correctly — verify a live or test scoring
+  run still produces correct gameweek_team_scores for PL teams only, with no cross-contamination
+  from other competitions' teams.
+- Report exactly what changed, the migration details, and how you verified no PL scoring regression.

@@ -5,6 +5,8 @@ import { logger } from "./logger";
 const API_BASE = "https://v3.football.api-sports.io";
 const WC_LEAGUE_ID = 1;
 const WC_SEASON = 2026;
+const PREMIER_LEAGUE_COMPETITION_KEY = "premier-league";
+const WORLD_CUP_COMPETITION_KEY = "world-cup-2026";
 
 async function apiFetch<T>(path: string): Promise<T> {
   const key = process.env.API_SPORTS_KEY;
@@ -144,6 +146,7 @@ type PlayerEarned = Map<number, { pts: number; minutes: number; goals: number; a
 
 async function scoreAndPersistTeams(
   gameweekId: number,
+  competitionKey: string,
   playerEarned: PlayerEarned,
   playerById: Map<number, string>,
   options: ScoringOptions = {},
@@ -159,10 +162,18 @@ async function scoreAndPersistTeams(
 
     if (!gameweek) throw new Error(`Gameweek ${gameweekId} not found`);
     assertGameweekCanBeScored(gameweek);
+    if (gameweek.competitionKey !== competitionKey) {
+      throw new GameweekScoringConflictError(
+        `Gameweek ${gameweek.number} belongs to ${gameweek.competitionKey}, not ${competitionKey}.`,
+      );
+    }
 
     if (!gameweek.lineupSnapshottedAt) {
       const [capturedTeams, currentSquad] = await Promise.all([
-        tx.select({ teamId: teamsTable.id }).from(teamsTable),
+        tx
+          .select({ teamId: teamsTable.id })
+          .from(teamsTable)
+          .where(eq(teamsTable.competitionKey, competitionKey)),
         tx
           .select({
             teamId: teamPlayersTable.teamId,
@@ -172,7 +183,8 @@ async function scoreAndPersistTeams(
             viceCaptainId: teamsTable.viceCaptainId,
           })
           .from(teamPlayersTable)
-          .innerJoin(teamsTable, eq(teamPlayersTable.teamId, teamsTable.id)),
+          .innerJoin(teamsTable, eq(teamPlayersTable.teamId, teamsTable.id))
+          .where(eq(teamsTable.competitionKey, competitionKey)),
       ]);
 
       if (currentSquad.length > 0) {
@@ -222,7 +234,8 @@ async function scoreAndPersistTeams(
       tx
         .select({ teamId: teamsTable.id, username: usersTable.username })
         .from(teamsTable)
-        .leftJoin(usersTable, eq(teamsTable.userId, usersTable.id)),
+        .leftJoin(usersTable, eq(teamsTable.userId, usersTable.id))
+        .where(eq(teamsTable.competitionKey, competitionKey)),
       tx
         .select({
           teamId: gameweekTeamLineupPlayersTable.teamId,
@@ -321,6 +334,7 @@ async function scoreAndPersistTeams(
         .where(and(
           eq(gameweekTeamScoresTable.teamId, scoredTeam.teamId),
           isNotNull(gameweeksTable.lockedAt),
+          eq(gameweeksTable.competitionKey, competitionKey),
         ));
 
       await tx
@@ -347,6 +361,11 @@ export async function processGameweekScoring(
 
   if (!gameweek) throw new Error(`Gameweek ${gameweekId} not found`);
   assertGameweekCanBeScored(gameweek);
+  if (gameweek.competitionKey !== WORLD_CUP_COMPETITION_KEY) {
+    throw new GameweekScoringConflictError(
+      `World Cup scoring cannot process ${gameweek.competitionKey} gameweek ${gameweek.number}.`,
+    );
+  }
 
   // 2. Pre-load all our players for position lookup (external id + name)
   const allPlayers = await db
@@ -357,7 +376,7 @@ export async function processGameweekScoring(
       position: playersTable.position,
     })
     .from(playersTable)
-    .where(eq(playersTable.competitionKey, "world-cup-2026"));
+    .where(eq(playersTable.competitionKey, WORLD_CUP_COMPETITION_KEY));
 
   const byExternalId = new Map<number, typeof allPlayers[0]>();
   const byNameLower = new Map<string, typeof allPlayers[0]>();
@@ -465,7 +484,13 @@ export async function processGameweekScoring(
   // 5. Freeze/persist the team scores before touching current player displays.
   // A concurrent finalization will reject this operation before mutable player
   // values can be reset, leaving the locked gameweek untouched.
-  const { teamsUpdated } = await scoreAndPersistTeams(gameweekId, playerEarned, playerById, options);
+  const { teamsUpdated } = await scoreAndPersistTeams(
+    gameweekId,
+    WORLD_CUP_COMPETITION_KEY,
+    playerEarned,
+    playerById,
+    options,
+  );
 
   // 6. Update current player rows for the dashboard and squad views.
   const worldCupPlayerIds = allPlayers.map((player) => player.id);
@@ -525,6 +550,11 @@ export async function processFplGameweekScoring(
 
   if (!gameweek) throw new Error(`Gameweek ${gameweekId} not found`);
   assertGameweekCanBeScored(gameweek);
+  if (gameweek.competitionKey !== PREMIER_LEAGUE_COMPETITION_KEY) {
+    throw new GameweekScoringConflictError(
+      `FPL scoring cannot process ${gameweek.competitionKey} gameweek ${gameweek.number}.`,
+    );
+  }
   if (!gameweek.fplGameweekNumber) {
     throw new Error(
       `Gameweek ${gameweekId} has no FPL gameweek number set. ` +
@@ -541,7 +571,7 @@ export async function processFplGameweekScoring(
       position:   playersTable.position,
     })
     .from(playersTable)
-    .where(eq(playersTable.competitionKey, "premier-league"));
+    .where(eq(playersTable.competitionKey, PREMIER_LEAGUE_COMPETITION_KEY));
 
   const byExternalId = new Map<number, typeof plPlayers[0]>();
   const playerById   = new Map<number, string>();
@@ -592,7 +622,13 @@ export async function processFplGameweekScoring(
   // 5. Persist frozen gameweek scores before mutating current player displays.
   // The score transaction re-checks the gameweek lock after the FPL response
   // has been fetched, protecting against a concurrent admin finalization.
-  const { teamsUpdated } = await scoreAndPersistTeams(gameweekId, playerEarned, playerById, options);
+  const { teamsUpdated } = await scoreAndPersistTeams(
+    gameweekId,
+    PREMIER_LEAGUE_COMPETITION_KEY,
+    playerEarned,
+    playerById,
+    options,
+  );
 
   // 6. Write current PL player + teamPlayers rows.
   const plPlayerIds = plPlayers.map(p => p.id);

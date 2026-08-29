@@ -54,7 +54,10 @@ router.get("/dashboard/summary", asyncHandler(async (req, res) => {
         number: gameweeksTable.number,
       })
       .from(gameweeksTable)
-      .where(or(eq(gameweeksTable.status, "active"), eq(gameweeksTable.status, "finished")))
+      .where(and(
+        eq(gameweeksTable.competitionKey, competitionKey),
+        or(eq(gameweeksTable.status, "active"), eq(gameweeksTable.status, "finished")),
+      ))
       .orderBy(desc(gameweeksTable.id))
       .limit(1),
     db

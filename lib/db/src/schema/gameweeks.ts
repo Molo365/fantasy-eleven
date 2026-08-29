@@ -1,10 +1,11 @@
-import { boolean, pgTable, text, serial, integer, timestamp, unique } from "drizzle-orm/pg-core";
+import { boolean, pgTable, text, serial, integer, timestamp, unique, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
 export const gameweeksTable = pgTable("gameweeks", {
   id: serial("id").primaryKey(),
-  number: integer("number").notNull().unique(),
+  competitionKey: text("competition_key").notNull(),
+  number: integer("number").notNull(),
   name: text("name").notNull().default(""),        // e.g. "Group Stage 1", "Round of 16"
   round: text("round").notNull().default("group"), // group | r16 | qf | sf | final
   status: text("status").notNull().default("upcoming"), // upcoming, active, finished
@@ -16,7 +17,9 @@ export const gameweeksTable = pgTable("gameweeks", {
   highestPoints: integer("highest_points"),
   fplGameweekNumber: integer("fpl_gameweek_number"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => [
+  uniqueIndex("gameweeks_competition_number_uq").on(table.competitionKey, table.number),
+]);
 
 export const fixturesTable = pgTable("fixtures", {
   id: serial("id").primaryKey(),

@@ -11,3 +11,4 @@
 - [Migration 0001 covers crest_url and fpl_gameweek_number](migration-0001.md) — both columns were added outside migrations; 0001 back-fills them with IF NOT EXISTS; applied to dev and Railway production via psql.
 - [Tracked SQL migrations](tracked-sql-migrations.md) — add every numbered SQL file to the application migration runner; never force a Drizzle push that wants to drop its tracking table.
 - [API-Football Serie A roster source](api-football-serie-a.md) — squads are authoritative; paginated league players are enrichment only and may omit roster members or nationality.
+- [Ad-hoc tsx integration scripts](tsx-integration-scripts.md) — TypeScript scripts outside an ESM package may compile as CJS; use an async entry function instead of top-level await.

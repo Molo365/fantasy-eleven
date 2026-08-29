@@ -11,6 +11,9 @@ const migrations = [
   // Keep the competition-team migration development-only until the user
   // explicitly approves applying the verified migration to production.
   { name: "0007_competition_teams", developmentOnly: true },
+  // Keep gameweek competition scoping gated until its production preflight and
+  // deployment have been explicitly approved.
+  { name: "0008_gameweek_competition", developmentOnly: true },
 ].map(({ name, developmentOnly = false }) => ({
   name,
   developmentOnly,
@@ -18,6 +21,11 @@ const migrations = [
 }));
 const allowCompetitionTeamsMigrationInProduction =
   process.env.ALLOW_PRODUCTION_COMPETITION_TEAMS_MIGRATION === "true";
+const allowGameweekCompetitionMigrationInProduction =
+  process.env.ALLOW_PRODUCTION_GAMEWEEK_COMPETITION_MIGRATION === "true";
+const productionMigrationAllowed = (name: string): boolean =>
+  (name === "0007_competition_teams" && allowCompetitionTeamsMigrationInProduction) ||
+  (name === "0008_gameweek_competition" && allowGameweekCompetitionMigrationInProduction);
 const client = await pool.connect();
 
 try {
@@ -33,10 +41,7 @@ try {
     if (
       migration.developmentOnly &&
       process.env.NODE_ENV === "production" &&
-      !(
-        migration.name === "0007_competition_teams" &&
-        allowCompetitionTeamsMigrationInProduction
-      )
+      !productionMigrationAllowed(migration.name)
     ) {
       console.info(`Skipping development-only database migration ${migration.name} in production.`);
       continue;

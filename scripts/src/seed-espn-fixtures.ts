@@ -7,7 +7,7 @@
  */
 
 import { db, gameweeksTable, fixturesTable } from "@workspace/db";
-import { sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 const ESPN_URL =
   "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?limit=100&dates=20260611-20260719";
@@ -73,9 +73,12 @@ async function main() {
     { number: 3, name: "Group Stage — Matchday 3", events: gw3Events },
   ];
 
-  // Clear existing gameweeks (fixtures cascade-delete)
-  console.log("Clearing existing gameweeks and fixtures…");
-  await db.execute(sql`TRUNCATE TABLE fixtures, gameweeks RESTART IDENTITY CASCADE`);
+  // Clear only World Cup gameweeks; fixtures and score history cascade-delete.
+  // Other competitions must remain untouched.
+  console.log("Clearing existing World Cup gameweeks and fixtures…");
+  await db
+    .delete(gameweeksTable)
+    .where(eq(gameweeksTable.competitionKey, "world-cup-2026"));
 
   for (const gw of gwGroups) {
     const dates = gw.events.map((e) => new Date(e.date));
@@ -87,6 +90,7 @@ async function main() {
     const [gameweek] = await db
       .insert(gameweeksTable)
       .values({
+        competitionKey: "world-cup-2026",
         number: gw.number,
         name: gw.name,
         round: "group",

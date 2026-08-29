@@ -190,6 +190,7 @@ function serializeGwAdmin(g: {
   averagePoints: number | null;
   highestPoints: number | null;
   fplGameweekNumber: number | null;
+  competitionKey: string;
 }) {
   return {
     ...g,
@@ -222,30 +223,51 @@ router.post("/admin/gameweeks", requireAdmin, async (req, res): Promise<void> =>
     res.status(400).json({ error: "name, startDate, and endDate are required" });
     return;
   }
-  const existing = await db.select({ n: gameweeksTable.number }).from(gameweeksTable);
+  const hasFplGameweekNumber =
+    fplGameweekNumber !== undefined && String(fplGameweekNumber).trim() !== "";
+  const fplGwNum = hasFplGameweekNumber ? Number(fplGameweekNumber) : null;
+  if (
+    fplGwNum !== null &&
+    (!Number.isInteger(fplGwNum) || fplGwNum < 1 || fplGwNum > 38)
+  ) {
+    res.status(400).json({ error: "fplGameweekNumber must be an integer from 1–38" });
+    return;
+  }
+  const competitionKey = fplGwNum !== null
+    ? "premier-league"
+    : "world-cup-2026";
+  const existing = await db
+    .select({ n: gameweeksTable.number })
+    .from(gameweeksTable)
+    .where(eq(gameweeksTable.competitionKey, competitionKey));
   const maxNum = existing.reduce((m, r) => Math.max(m, r.n), 0);
-  const fplGwNum = fplGameweekNumber ? parseInt(fplGameweekNumber, 10) : null;
   const [gw] = await db.insert(gameweeksTable).values({
+    competitionKey,
     number: maxNum + 1,
     name,
     round,
     status: "upcoming",
     startDate: new Date(startDate),
     endDate: new Date(endDate),
-    fplGameweekNumber: fplGwNum && !isNaN(fplGwNum) ? fplGwNum : null,
+    fplGameweekNumber: fplGwNum,
   }).returning();
   req.log.info({ gameweekId: gw.id, name }, "Admin created gameweek");
   res.status(201).json(serializeGwAdmin(gw));
 });
 
 router.post("/admin/gameweeks/auto-create", requireAdmin, async (req, res): Promise<void> => {
-  const existing = await db.select({ number: gameweeksTable.number }).from(gameweeksTable);
+  const competitionKey = "world-cup-2026";
+  const existing = await db
+    .select({ number: gameweeksTable.number })
+    .from(gameweeksTable)
+    .where(eq(gameweeksTable.competitionKey, competitionKey));
   const existingNums = new Set(existing.map(r => r.number));
   let created = 0, skipped = 0;
   const inserted: ReturnType<typeof serializeGwAdmin>[] = [];
   for (const gw of WC_2026_GAMEWEEKS) {
     if (existingNums.has(gw.number)) { skipped++; continue; }
     const [row] = await db.insert(gameweeksTable).values({
+      competitionKey,
       number: gw.number,
       name: gw.name,
       round: gw.round,
@@ -265,9 +287,23 @@ router.patch("/admin/gameweeks/:id/fpl-gameweek", requireAdmin, async (req, res)
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   if (await rejectLockedGameweek(id, res)) return;
   const { fplGameweekNumber } = req.body as { fplGameweekNumber: number | null };
-  const fplGwNum = fplGameweekNumber != null ? Number(fplGameweekNumber) : null;
-  if (fplGwNum !== null && (isNaN(fplGwNum) || fplGwNum < 1 || fplGwNum > 38)) {
-    res.status(400).json({ error: "fplGameweekNumber must be 1–38 or null" });
+  const fplGwNum = Number(fplGameweekNumber);
+  if (!Number.isInteger(fplGwNum) || fplGwNum < 1 || fplGwNum > 38) {
+    res.status(400).json({ error: "Premier League gameweeks require an FPL gameweek number from 1–38" });
+    return;
+  }
+  const [existingGameweek] = await db
+    .select({ competitionKey: gameweeksTable.competitionKey })
+    .from(gameweeksTable)
+    .where(eq(gameweeksTable.id, id));
+  if (!existingGameweek) {
+    res.status(404).json({ error: "Gameweek not found" });
+    return;
+  }
+  if (existingGameweek.competitionKey !== "premier-league") {
+    res.status(409).json({
+      error: `Cannot assign an FPL gameweek number to a ${existingGameweek.competitionKey} gameweek`,
+    });
     return;
   }
   const [updated] = await db.update(gameweeksTable)
@@ -322,7 +358,11 @@ router.post("/admin/gameweeks/:id/activate", requireAdmin, async (req, res): Pro
 
     await tx.update(gameweeksTable)
       .set({ status: "upcoming" })
-      .where(and(eq(gameweeksTable.status, "active"), ne(gameweeksTable.id, id)));
+      .where(and(
+        eq(gameweeksTable.status, "active"),
+        eq(gameweeksTable.competitionKey, target.competitionKey),
+        ne(gameweeksTable.id, id),
+      ));
     return target;
   });
   if (!updated) {
