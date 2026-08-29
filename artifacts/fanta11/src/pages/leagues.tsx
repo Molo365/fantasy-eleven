@@ -579,7 +579,9 @@ export function Leagues() {
                                 }}
                                 className={`relative rounded-xl border-2 p-3 transition-all flex flex-col items-center gap-2 text-center overflow-hidden
                                   ${comp.available ? "cursor-pointer hover:border-primary/50" : "opacity-60 grayscale cursor-not-allowed disabled:pointer-events-none"}
-                                  ${isSelected ? "border-primary bg-primary/5" : "border-border bg-card"}
+                                  ${comp.available
+                                    ? (isSelected ? "border-primary bg-[#806d32]" : "border-border bg-[#685526]")
+                                    : (isSelected ? "border-primary bg-primary/5" : "border-border bg-card")}
                                 `}
                               >
                                 {isSelected && (
