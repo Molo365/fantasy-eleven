@@ -12,7 +12,7 @@ import {
 } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, Users, Trophy, ChevronRight, Plus, Copy, Check, Medal, ShieldHalf, ArrowLeft } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -30,6 +30,7 @@ import { useLeagueContext } from "@/contexts/league";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { useLocation } from "wouter";
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -293,6 +294,7 @@ const CREATE_STEP_LABELS = [
 ];
 
 export function Leagues() {
+  const [location] = useLocation();
   const { refresh } = useAuth();
   const { activeLeagueId: selectedLeagueId, setActiveLeagueId: setSelectedLeagueId } = useLeagueContext();
 
@@ -334,6 +336,16 @@ export function Leagues() {
     setEntryFee(""); setPrize1st(""); setPrize2nd(""); setPrize3rd("");
     setShowPrize2(false); setShowPrize3(false); setIsPublic(false);
   };
+
+  useEffect(() => {
+    const query = location.split("?")[1]?.split("#")[0] ?? "";
+    const shouldOpenCreateWizard = new URLSearchParams(query).get("create") === "1";
+    if (shouldOpenCreateWizard) {
+      setCreatedLeague(null);
+      resetCreateForm();
+      setIsCreateOpen(true);
+    }
+  }, [location]);
 
   const [joinCode, setJoinCode] = useState("");
   const [joinError, setJoinError] = useState("");

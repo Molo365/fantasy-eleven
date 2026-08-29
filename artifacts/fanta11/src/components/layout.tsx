@@ -9,12 +9,14 @@ import {
   X,
   LogOut,
   User,
+  Plus,
   ShieldCheck,
   History,
 } from "lucide-react";
 import { useState } from "react";
 import logoSrc from "../assets/logo.png";
 import { useAuth } from "@/contexts/auth";
+import { Button } from "@/components/ui/button";
 
 const ADMIN_EMAIL = "domenicg@gmx.com";
 
@@ -188,8 +190,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
           {/* Desktop spacer so right-side items stay right */}
           <span className="hidden md:block" />
 
-          {/* Right: username + admin badge + sign out */}
+          {/* Right: create league + username + admin badge + sign out */}
           <div className="flex items-center gap-2.5">
+            <Button asChild>
+              <Link href="/leagues?create=1" data-testid="button-create-league">
+                <Plus className="w-4 h-4 mr-2" /> Create League
+              </Link>
+            </Button>
             <div className="flex items-center gap-1.5">
               <User size={13} className="text-blue-300/60" />
               <span className="text-sm font-semibold text-white/90 max-w-[120px] truncate">
