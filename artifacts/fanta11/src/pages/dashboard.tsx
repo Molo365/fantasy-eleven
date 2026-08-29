@@ -761,7 +761,7 @@ export function Dashboard() {
     <div
       style={{
         position: "relative",
-        background: "linear-gradient(180deg, #0a1530 0%, #132348 100%)",
+        background: "hsl(var(--sidebar-accent))",
         width: "100%",
         maxWidth: "100%",
         overflowX: "hidden",
