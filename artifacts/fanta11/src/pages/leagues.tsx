@@ -338,8 +338,7 @@ export function Leagues() {
   };
 
   useEffect(() => {
-    const query = location.split("?")[1]?.split("#")[0] ?? "";
-    const shouldOpenCreateWizard = new URLSearchParams(query).get("create") === "1";
+    const shouldOpenCreateWizard = new URLSearchParams(window.location.search).get("create") === "1";
     if (shouldOpenCreateWizard) {
       setCreatedLeague(null);
       resetCreateForm();
