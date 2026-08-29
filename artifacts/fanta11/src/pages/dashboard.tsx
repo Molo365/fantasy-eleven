@@ -300,10 +300,27 @@ function TodayMatchesCard() {
 }
 
 // ── My League column ──────────────────────────────────────────────────────────
-function MyLeagueCard({ leagueId, leagueName, teamId }: { leagueId: number; leagueName: string | null; teamId: number | undefined }) {
+function MyLeagueCard({
+  leagueId,
+  leagueName,
+  teamId,
+  selectedTeamId,
+  onSelectTeam,
+}: {
+  leagueId: number;
+  leagueName: string | null;
+  teamId: number | undefined;
+  selectedTeamId: number;
+  onSelectTeam: (row: LeaderboardEntry) => void;
+}) {
   const { data: rows, isLoading } = useGetLeagueLeaderboard(leagueId, {
     query: { queryKey: getGetLeagueLeaderboardQueryKey(leagueId), enabled: leagueId > 0 },
   });
+
+  useEffect(() => {
+    if (isLoading || !rows?.length || rows.some((row) => row.teamId === selectedTeamId)) return;
+    onSelectTeam(rows.find((row) => row.teamId === teamId) ?? rows[0]);
+  }, [isLoading, onSelectTeam, rows, selectedTeamId, teamId]);
 
   return (
     <div data-testid="card-league-standings" style={{ ...CARD, display: "flex", flexDirection: "column" }}>
@@ -337,29 +354,35 @@ function MyLeagueCard({ leagueId, leagueName, teamId }: { leagueId: number; leag
             {(rows as LeaderboardEntry[]).map((row) => {
               const isMe = row.teamId === teamId;
               const isFirst = row.rank === 1;
+              const isSelected = row.teamId === selectedTeamId;
               return (
-                <div
+                <button
+                  type="button"
                   key={row.teamId}
-                  className="flex flex-row items-center gap-3 min-h-0 px-3 py-3 rounded-xl"
+                  onClick={() => onSelectTeam(row)}
+                  aria-pressed={isSelected}
+                  aria-label={`View ${row.managerName}'s squad`}
+                  data-testid={`league-manager-${row.teamId}`}
+                  className="flex w-full flex-row items-center gap-3 min-h-0 rounded-xl px-3 py-3 text-left transition-all hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ffc436] focus-visible:ring-offset-2 focus-visible:ring-offset-[#081128]"
                   style={{
-                    background: isFirst
+                    background: isSelected
                       ? "linear-gradient(135deg, #ffd873 0%, #e8a627 100%)"
                       : "linear-gradient(135deg, #1a2c54 0%, #101d3a 100%)",
-                    border: isMe ? "1px solid rgba(6,182,212,0.7)" : isFirst ? "1px solid rgba(255,196,54,0.5)" : "1px solid rgba(93,156,236,0.3)",
-                    boxShadow: isFirst ? "0 4px 20px rgba(255,196,54,0.25)" : "0 2px 12px rgba(0,0,0,0.3)",
+                    border: isSelected ? "1px solid rgba(255,196,54,0.7)" : isMe ? "1px solid rgba(6,182,212,0.7)" : "1px solid rgba(93,156,236,0.3)",
+                    boxShadow: isSelected ? "0 4px 20px rgba(255,196,54,0.25)" : "0 2px 12px rgba(0,0,0,0.3)",
                   }}
                 >
-                  <span className="shrink-0" style={{ fontSize: 11, fontWeight: 900, color: isFirst ? "#2a1900" : "#7ab4ff" }}>
+                  <span className="shrink-0" style={{ fontSize: 11, fontWeight: 900, color: isSelected ? "#2a1900" : "#7ab4ff" }}>
                     {isFirst ? "🥇" : `#${row.rank}`}
                   </span>
-                  <span className="truncate flex-1 min-w-0" style={{ fontSize: 14, fontWeight: 700, color: isFirst ? "#2a1900" : "#e2e8f0" }}>
+                  <span className="truncate flex-1 min-w-0" style={{ fontSize: 14, fontWeight: 700, color: isSelected ? "#2a1900" : "#e2e8f0" }}>
                     {row.managerName}
-                    {isMe && <span style={{ marginLeft: 6, fontSize: 11, color: isFirst ? "#7a5200" : "#06b6d4" }}>(you)</span>}
+                    {isMe && <span style={{ marginLeft: 6, fontSize: 11, color: isSelected ? "#7a5200" : "#06b6d4" }}>(you)</span>}
                   </span>
-                  <span className="tabular-nums shrink-0" style={{ fontSize: 18, fontWeight: 900, color: isFirst ? "#2a1900" : isMe ? "#06b6d4" : "#f1f5f9" }}>
+                  <span className="tabular-nums shrink-0" style={{ fontSize: 18, fontWeight: 900, color: isSelected ? "#2a1900" : isMe ? "#06b6d4" : "#f1f5f9" }}>
                     {row.totalPoints}
                   </span>
-                </div>
+                </button>
               );
             })}
           </div>
@@ -538,23 +561,38 @@ function SquadPlayerCard({ p }: { p: SquadPlayer }) {
 }
 
 // ── Squad List ─────────────────────────────────────────────────────────────────
-function SquadStrip({ teamId }: { teamId: number }) {
-  const { data: squad } = useGetDashboardSquad(
-    { teamId },
-    { query: { queryKey: getGetDashboardSquadQueryKey({ teamId }), enabled: teamId > 0 } }
+function SquadStrip({
+  leagueId,
+  teamId,
+  managerName,
+  isOwnTeam,
+}: {
+  leagueId: number;
+  teamId: number;
+  managerName: string | null;
+  isOwnTeam: boolean;
+}) {
+  const { data: squad, isLoading } = useGetDashboardSquad(
+    { teamId, leagueId },
+    { query: { queryKey: getGetDashboardSquadQueryKey({ teamId, leagueId }), enabled: teamId > 0 && leagueId > 0 } }
   );
 
-  if (!squad?.length) return null;
-
-  const squadList = squad as SquadPlayer[];
+  const squadList = (squad ?? []) as SquadPlayer[];
+  const squadTitle = isOwnTeam || !managerName ? "My Squad" : `${managerName}'s Squad`;
   const squadListContent = (
     <div
       className="flex flex-col gap-4 p-4 md:grid md:grid-cols-3"
       style={{ scrollbarWidth: "thin" }}
     >
-      {squadList.map((p) => (
-        <SquadPlayerCard key={p.playerId} p={p} />
-      ))}
+      {isLoading ? (
+        Array.from({ length: 6 }, (_, index) => (
+          <div key={index} className="animate-pulse rounded-xl" style={{ height: 70, background: "rgba(255,255,255,0.05)" }} />
+        ))
+      ) : squadList.length > 0 ? (
+        squadList.map((p) => <SquadPlayerCard key={p.playerId} p={p} />)
+      ) : (
+        <p className="py-4 text-center text-xs text-[#5d7ba8] md:col-span-3">No squad players available.</p>
+      )}
     </div>
   );
 
@@ -562,7 +600,7 @@ function SquadStrip({ teamId }: { teamId: number }) {
     <div data-testid="card-squad-strip" style={{ ...CARD }}>
       <div style={{ padding: "16px 16px 12px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: "#94a3b8" }}>
-          My Squad · Active Players This GW
+          {squadTitle} · Active Players This GW
         </span>
         <span style={{ fontSize: 10, fontWeight: 700, color: "#475569" }}>
           {squadList.length}/15
@@ -574,7 +612,7 @@ function SquadStrip({ teamId }: { teamId: number }) {
 
   return (
     <ResponsiveDisclosure
-      title="My Squad · Active Players This GW"
+      title={`${squadTitle} · Active Players This GW`}
       count={`${squadList.length}/15`}
       testId="card-squad-strip"
       desktopContent={desktopContent}
@@ -722,6 +760,7 @@ export function Dashboard() {
   const { authState } = useAuth();
   const user = authState.status === "authenticated" ? authState.user : null;
   const { activeCompetitionKey, setActiveCompetitionKey, activeTeamId, activeLeagueId, activeLeague } = useLeagueContext();
+  const [selectedSquadByCompetition, setSelectedSquadByCompetition] = useState<Record<string, { teamId: number; managerName: string }>>({});
 
   const plTeam = user?.teams.find((t) => t.competitionKey === "premier-league");
   const saTeam = user?.teams.find((t) => t.competitionKey === "serie-a");
@@ -735,6 +774,18 @@ export function Dashboard() {
     { competitionKey: "serie-a" },
     { query: { queryKey: getGetDashboardSummaryQueryKey({ competitionKey: "serie-a" }), enabled: !!saTeam } }
   );
+
+  useEffect(() => {
+    if (activeTeamId <= 0) return;
+    setSelectedSquadByCompetition((previous) => {
+      const selected = previous[activeCompetitionKey];
+      if (selected && selected.teamId === activeTeamId) return previous;
+      return {
+        ...previous,
+        [activeCompetitionKey]: { teamId: activeTeamId, managerName: "" },
+      };
+    });
+  }, [activeCompetitionKey, activeLeagueId, activeTeamId]);
 
   if (authState.status === "loading") {
     return (
@@ -756,6 +807,11 @@ export function Dashboard() {
 
   const activeSummary = activeCompetitionKey === "premier-league" ? summaryPL : summarySA;
   const hasSquad = activeSummary?.hasSquad ?? false;
+  const selectedSquad = selectedSquadByCompetition[activeCompetitionKey];
+  const selectedTeamId = selectedSquad?.teamId ?? activeTeamId;
+  const selectedIsOwnTeam = selectedTeamId === activeTeamId;
+  const selectedManagerName = selectedIsOwnTeam ? null : (selectedSquad?.managerName ?? null);
+  const displayedLeagueId = activeLeague?.competitionKey === activeCompetitionKey ? (activeLeagueId ?? 0) : 0;
 
   return (
     <div
@@ -800,14 +856,30 @@ export function Dashboard() {
            <div className="order-2 flex flex-col gap-6 w-full min-w-0 lg:order-2" data-testid="dashboard-main-column">
              {!activeTeamId ? (
                 <NoTeamPrompt competitionKey={activeCompetitionKey} />
-             ) : !hasSquad ? (
+             ) : selectedIsOwnTeam && !hasSquad ? (
                 <NoSquadPrompt />
              ) : (
-                <SquadStrip teamId={activeTeamId} />
+                <SquadStrip
+                  leagueId={displayedLeagueId}
+                  teamId={selectedTeamId}
+                  managerName={selectedManagerName}
+                  isOwnTeam={selectedIsOwnTeam}
+                />
              )}
            </div>
            <div className="order-1 flex flex-col gap-6 w-full min-w-0 lg:order-1" data-testid="dashboard-sidebar">
-              <MyLeagueCard leagueId={activeLeagueId ?? 0} leagueName={activeLeague?.name ?? null} teamId={activeTeamId} />
+              <MyLeagueCard
+                leagueId={displayedLeagueId}
+                leagueName={activeLeague?.name ?? null}
+                teamId={activeTeamId}
+                selectedTeamId={selectedTeamId}
+                onSelectTeam={(row) => {
+                  setSelectedSquadByCompetition((previous) => ({
+                    ...previous,
+                    [activeCompetitionKey]: { teamId: row.teamId, managerName: row.managerName },
+                  }));
+                }}
+              />
            </div>
         </div>
 

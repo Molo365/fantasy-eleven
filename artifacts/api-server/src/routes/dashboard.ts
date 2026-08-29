@@ -188,7 +188,58 @@ router.get("/dashboard/squad", asyncHandler(async (req, res) => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const { teamId } = parsed.data;
+  const userId = req.session.userId;
+  if (!userId) {
+    res.status(401).json({ error: "Not authenticated" });
+    return;
+  }
+
+  const { teamId, leagueId } = parsed.data;
+  const [league] = await db
+    .select({
+      competitionKey: leaguesTable.competitionKey,
+      isPublic: leaguesTable.isPublic,
+    })
+    .from(leaguesTable)
+    .where(eq(leaguesTable.id, leagueId));
+
+  if (!league) {
+    res.status(404).json({ error: "League not found" });
+    return;
+  }
+
+  const [targetMembershipRows, viewerMembershipRows] = await Promise.all([
+    db
+      .select({ competitionKey: teamsTable.competitionKey })
+      .from(leagueTeamsTable)
+      .innerJoin(teamsTable, eq(leagueTeamsTable.teamId, teamsTable.id))
+      .where(and(
+        eq(leagueTeamsTable.leagueId, leagueId),
+        eq(leagueTeamsTable.teamId, teamId),
+      ))
+      .limit(1),
+    db
+      .select({ teamId: teamsTable.id })
+      .from(leagueTeamsTable)
+      .innerJoin(teamsTable, eq(leagueTeamsTable.teamId, teamsTable.id))
+      .where(and(
+        eq(leagueTeamsTable.leagueId, leagueId),
+        eq(teamsTable.userId, userId),
+      ))
+      .limit(1),
+  ]);
+  const targetMembership = targetMembershipRows[0];
+  const viewerMembership = viewerMembershipRows[0];
+
+  if (!targetMembership || targetMembership.competitionKey !== league.competitionKey) {
+    res.status(404).json({ error: "Team is not part of this league" });
+    return;
+  }
+
+  if (!league.isPublic && !viewerMembership) {
+    res.status(403).json({ error: "You cannot view squads in this league" });
+    return;
+  }
 
   const rows = await db
     .select({
@@ -196,9 +247,8 @@ router.get("/dashboard/squad", asyncHandler(async (req, res) => {
       slot:          teamPlayersTable.slot,
       isCaptain:     teamPlayersTable.isCaptain,
       isViceCaptain: teamPlayersTable.isViceCaptain,
-      // Use players.total_points (accumulated season points) — same source as Squad Builder.
-      // team_players.points is the per-GW tally which starts at 0 each gameweek.
-      points:        playersTable.totalPoints,
+      // team_players.points is the current competition gameweek tally.
+      points:        teamPlayersTable.points,
       name:          playersTable.name,
       position:      playersTable.position,
       imageUrl:      playersTable.imageUrl,

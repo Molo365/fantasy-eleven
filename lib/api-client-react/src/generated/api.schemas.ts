@@ -468,6 +468,7 @@ export const GetDashboardTopPerformersCompetitionKey = {
 
 export type GetDashboardSquadParams = {
 teamId: number;
+leagueId: number;
 };
 
 export type GetRecentActivityParams = {

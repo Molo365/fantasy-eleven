@@ -8,4 +8,5 @@
 
 export type GetDashboardSquadParams = {
 teamId: number;
+leagueId: number;
 };

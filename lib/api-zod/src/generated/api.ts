@@ -587,7 +587,8 @@ export const GetDashboardTopPerformersResponse = zod.array(GetDashboardTopPerfor
  * @summary Get user squad with player details and GW points
  */
 export const GetDashboardSquadQueryParams = zod.object({
-  "teamId": zod.coerce.number()
+  "teamId": zod.coerce.number(),
+  "leagueId": zod.coerce.number()
 })
 
 export const GetDashboardSquadResponseItem = zod.object({
