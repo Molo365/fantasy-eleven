@@ -1,0 +1,15 @@
+Investigate feasibility of showing a per-player score breakdown (e.g. "+2 appearance, -2 own goal = 0") instead of just a final points total, across all three competitions. Do NOT make any code changes yet.
+
+Report back:
+
+1. For the Serie A/World Cup scorer (scorePlayer in scoring.ts): does it currently compute each scoring component (appearance, goals, assists, clean sheet, cards, own goals) as separate values before summing, or does it calculate a running total inline without preserving the individual pieces? If separate, how hard would it be to have it return the breakdown alongside the total rather than just the total?
+
+2. For Premier League: does FPL's live endpoint (https://fantasy.premierleague.com/api/event/{gameweek}/live/) actually include a per-player breakdown of scoring stats (minutes, goals_scored, assists, clean_sheets, goals_conceded, saves, bonus, cards, own_goals, etc.) in its response, separate from the total_points field? If so, is the app currently capturing any of those individual fields already, or discarding everything except total_points?
+
+3. Where would a breakdown need to be stored to be displayed later — does gameweek_team_lineup_players (or wherever per-player-per-gameweek points currently live) have room for a JSON/structured breakdown column, or would this need a new column/table? Estimate whether this is a schema migration or can be added without one.
+
+4. On the frontend, where are player points currently rendered (Dashboard squad list, Squad Builder, League standings squad view, etc.)? How many separate components would need to be touched to add a click-to-expand or tooltip breakdown, given the same player-points display seems to appear in multiple places tonight (Dashboard, the League standings squad-click feature, Squad Builder)?
+
+5. Would this need to work retroactively for already-scored gameweeks (meaning past data would need backfilling or would just show blank breakdowns), or only apply going forward from whenever it's implemented?
+
+Reply with a plain-text summary of findings only — no code edits.
