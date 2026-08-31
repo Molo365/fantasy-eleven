@@ -1,4 +1,4 @@
-import { db, playersTable, teamsTable, teamPlayersTable, gameweeksTable, gameweekTeamLineupPlayersTable, gameweekTeamScoresTable, usersTable } from "@workspace/db";
+import { db, playersTable, teamsTable, teamPlayersTable, gameweeksTable, gameweekTeamLineupPlayersTable, gameweekTeamScoresTable, gameweekPlayerFixtureScoresTable, gameweekPlayerScoringStateTable, usersTable } from "@workspace/db";
 import { and, eq, isNotNull, sql, sum, inArray } from "drizzle-orm";
 import { logger } from "./logger";
 import {
@@ -35,7 +35,8 @@ const CLEAN_SHEET_PTS: Record<string, number> = { GK: 4, DEF: 4, MID: 1, FWD: 0 
 // ─── API types ─────────────────────────────────────────────────────────────────
 
 type ApiFixture = {
-  fixture: { id: number; status: { short: string } };
+  fixture: { id: number; date?: string; status: { short: string } };
+  league?: { id: number; season: number };
   teams: {
     home: { id: number; name: string };
     away: { id: number; name: string };
@@ -46,20 +47,26 @@ type ApiFixture = {
 type PlayerStat = {
   player: { id: number; name: string };
   statistics: Array<{
-    games: { minutes: number | null };
-    goals: {
+    games?: { minutes?: number | null };
+    goals?: {
       total: number | null;
       assists: number | null;
       conceded: number | null;
       owngoals: number | null;
     };
-    cards: { yellow: number | null; red: number | null };
+    cards?: { yellow: number | null; red: number | null };
   }>;
 };
 
 type FixtureTeamStats = {
   team: { id: number; name: string };
   players: PlayerStat[];
+};
+
+type FixtureLineup = {
+  team: { id: number; name: string };
+  startXI: Array<{ player: { id: number; name: string } }>;
+  substitutes: Array<{ player: { id: number; name: string } }>;
 };
 
 type FplLiveResponse = {
@@ -85,24 +92,24 @@ function scorePlayer(
   position: string,
   cleanSheet: boolean,
 ): number {
-  const mins = stat.games.minutes ?? 0;
+  const mins = stat.games?.minutes ?? 0;
   if (mins === 0) return 0;
 
   let pts = mins >= 60 ? 2 : 1;
 
-  const goals = stat.goals.total ?? 0;
+  const goals = stat.goals?.total ?? 0;
   pts += goals * (GOAL_PTS[position] ?? 4);
 
-  const assists = stat.goals.assists ?? 0;
+  const assists = stat.goals?.assists ?? 0;
   pts += assists * 3;
 
   if (cleanSheet) {
     pts += CLEAN_SHEET_PTS[position] ?? 0;
   }
 
-  pts += (stat.cards.yellow ?? 0) * -1;
-  pts += (stat.cards.red ?? 0) * -3;
-  pts += (stat.goals.owngoals ?? 0) * -2;
+  pts += (stat.cards?.yellow ?? 0) * -1;
+  pts += (stat.cards?.red ?? 0) * -3;
+  pts += (stat.goals?.owngoals ?? 0) * -2;
 
   return pts;
 }
@@ -128,6 +135,10 @@ export type ScoringOptions = {
   finalize?: boolean;
 };
 
+type ScoreAndPersistOptions = ScoringOptions & {
+  preserveExistingScores?: boolean;
+};
+
 function assertGameweekCanBeScored(gameweek: typeof gameweeksTable.$inferSelect): void {
   if (gameweek.lockedAt || gameweek.status === "finished") {
     throw new GameweekScoringConflictError(
@@ -147,14 +158,214 @@ function assertGameweekCanBeScored(gameweek: typeof gameweeksTable.$inferSelect)
 // Captures a lineup once, applies captain ×2 / VC ×2-if-captain-didn't-play,
 // upserts provisional scores, and only totals locked historical gameweeks.
 
-type PlayerEarned = Map<number, { pts: number; minutes: number; goals: number; assists: number; cleanSheets: number }>;
+type PlayerEarnedValue = {
+  pts: number;
+  minutes: number;
+  goals: number;
+  assists: number;
+  cleanSheets: number;
+};
+type PlayerEarned = Map<number, PlayerEarnedValue>;
+
+type FixtureScoreUpdate = {
+  fixtureExternalId: number;
+  source: "live" | "finished";
+  playerEarned: PlayerEarned;
+};
+
+function mergePlayerEarned(target: PlayerEarned, source: PlayerEarned): void {
+  for (const [playerId, earned] of source) {
+    const previous = target.get(playerId) ?? {
+      pts: 0,
+      minutes: 0,
+      goals: 0,
+      assists: 0,
+      cleanSheets: 0,
+    };
+    target.set(playerId, {
+      pts: previous.pts + earned.pts,
+      minutes: previous.minutes + earned.minutes,
+      goals: previous.goals + earned.goals,
+      assists: previous.assists + earned.assists,
+      cleanSheets: previous.cleanSheets + earned.cleanSheets,
+    });
+  }
+}
+
+async function persistSerieAFixtureScores(
+  gameweekId: number,
+  updates: FixtureScoreUpdate[],
+  replaceAll: boolean,
+): Promise<PlayerEarned> {
+  const rows = await db.transaction(async (tx) => {
+    const [gameweek] = await tx
+      .select()
+      .from(gameweeksTable)
+      .where(eq(gameweeksTable.id, gameweekId))
+      .for("update");
+    if (!gameweek) throw new Error(`Gameweek ${gameweekId} not found`);
+    assertGameweekCanBeScored(gameweek);
+    if (gameweek.competitionKey !== SERIE_A_COMPETITION_KEY) {
+      throw new GameweekScoringConflictError(
+        `Fixture score snapshots cannot be written for ${gameweek.competitionKey}.`,
+      );
+    }
+
+    if (replaceAll) {
+      await tx
+        .delete(gameweekPlayerFixtureScoresTable)
+        .where(eq(gameweekPlayerFixtureScoresTable.gameweekId, gameweekId));
+    }
+
+    for (const update of updates) {
+      if (!replaceAll && update.source === "finished") {
+        await tx
+          .delete(gameweekPlayerFixtureScoresTable)
+          .where(and(
+            eq(gameweekPlayerFixtureScoresTable.gameweekId, gameweekId),
+            eq(gameweekPlayerFixtureScoresTable.fixtureExternalId, update.fixtureExternalId),
+          ));
+      }
+
+      const values = [...update.playerEarned].map(([playerId, earned]) => ({
+        gameweekId,
+        playerId,
+        fixtureExternalId: update.fixtureExternalId,
+        source: update.source,
+        points: earned.pts,
+        minutes: earned.minutes,
+        goals: earned.goals,
+        assists: earned.assists,
+        cleanSheets: earned.cleanSheets,
+        updatedAt: new Date(),
+      }));
+      if (values.length === 0) continue;
+
+      await tx
+        .insert(gameweekPlayerFixtureScoresTable)
+        .values(values)
+        .onConflictDoUpdate({
+          target: [
+            gameweekPlayerFixtureScoresTable.gameweekId,
+            gameweekPlayerFixtureScoresTable.playerId,
+            gameweekPlayerFixtureScoresTable.fixtureExternalId,
+          ],
+          set: update.source === "live"
+            ? {
+                source: update.source,
+                points: sql`CASE WHEN ${gameweekPlayerFixtureScoresTable.minutes} > 0 AND excluded.minutes = 0 THEN ${gameweekPlayerFixtureScoresTable.points} ELSE excluded.points END`,
+                minutes: sql`CASE WHEN ${gameweekPlayerFixtureScoresTable.minutes} > 0 AND excluded.minutes = 0 THEN ${gameweekPlayerFixtureScoresTable.minutes} ELSE excluded.minutes END`,
+                goals: sql`CASE WHEN ${gameweekPlayerFixtureScoresTable.minutes} > 0 AND excluded.minutes = 0 THEN ${gameweekPlayerFixtureScoresTable.goals} ELSE excluded.goals END`,
+                assists: sql`CASE WHEN ${gameweekPlayerFixtureScoresTable.minutes} > 0 AND excluded.minutes = 0 THEN ${gameweekPlayerFixtureScoresTable.assists} ELSE excluded.assists END`,
+                cleanSheets: sql`CASE WHEN ${gameweekPlayerFixtureScoresTable.minutes} > 0 AND excluded.minutes = 0 THEN ${gameweekPlayerFixtureScoresTable.cleanSheets} ELSE excluded.clean_sheets END`,
+                updatedAt: new Date(),
+              }
+            : {
+                source: update.source,
+                points: sql`excluded.points`,
+                minutes: sql`excluded.minutes`,
+                goals: sql`excluded.goals`,
+                assists: sql`excluded.assists`,
+                cleanSheets: sql`excluded.clean_sheets`,
+                updatedAt: new Date(),
+              },
+        });
+    }
+
+    return tx
+      .select()
+      .from(gameweekPlayerFixtureScoresTable)
+      .where(eq(gameweekPlayerFixtureScoresTable.gameweekId, gameweekId));
+  });
+
+  const aggregated: PlayerEarned = new Map();
+  for (const row of rows) {
+    mergePlayerEarned(aggregated, new Map([
+      [row.playerId, {
+        pts: row.points,
+        minutes: row.minutes,
+        goals: row.goals,
+        assists: row.assists,
+        cleanSheets: row.cleanSheets,
+      }],
+    ]));
+  }
+  return aggregated;
+}
+
+async function updateSerieAPlayerScoringState(
+  gameweekId: number,
+  playerEarned: PlayerEarned,
+): Promise<Map<number, number>> {
+  const playerIds = [...playerEarned.keys()];
+  if (playerIds.length === 0) return new Map();
+
+  return db.transaction(async (tx) => {
+    const [gameweek] = await tx
+      .select()
+      .from(gameweeksTable)
+      .where(eq(gameweeksTable.id, gameweekId))
+      .for("update");
+    if (!gameweek) throw new Error(`Gameweek ${gameweekId} not found`);
+    assertGameweekCanBeScored(gameweek);
+    if (gameweek.competitionKey !== SERIE_A_COMPETITION_KEY) {
+      throw new GameweekScoringConflictError(
+        `Serie A player scoring state cannot be written for ${gameweek.competitionKey}.`,
+      );
+    }
+
+    const currentPlayers = await tx
+      .select({
+        id: playersTable.id,
+        totalPoints: playersTable.totalPoints,
+      })
+      .from(playersTable)
+      .where(inArray(playersTable.id, playerIds));
+    const currentTotals = new Map(
+      currentPlayers.map((player) => [player.id, player.totalPoints]),
+    );
+
+    for (const [playerId, earned] of playerEarned) {
+      await tx
+        .insert(gameweekPlayerScoringStateTable)
+        .values({
+          gameweekId,
+          playerId,
+          baselineTotalPoints: currentTotals.get(playerId) ?? 0,
+          currentPoints: earned.pts,
+          updatedAt: new Date(),
+        })
+        .onConflictDoUpdate({
+          target: [
+            gameweekPlayerScoringStateTable.gameweekId,
+            gameweekPlayerScoringStateTable.playerId,
+          ],
+          set: {
+            currentPoints: earned.pts,
+            updatedAt: new Date(),
+          },
+        });
+    }
+
+    const states = await tx
+      .select()
+      .from(gameweekPlayerScoringStateTable)
+      .where(eq(gameweekPlayerScoringStateTable.gameweekId, gameweekId));
+    return new Map(
+      states.map((state) => [
+        state.playerId,
+        state.baselineTotalPoints + state.currentPoints,
+      ]),
+    );
+  });
+}
 
 async function scoreAndPersistTeams(
   gameweekId: number,
   competitionKey: string,
   playerEarned: PlayerEarned,
   playerById: Map<number, string>,
-  options: ScoringOptions = {},
+  options: ScoreAndPersistOptions = {},
 ): Promise<{ teamsUpdated: number }> {
   return db.transaction(async (tx) => {
     // Serialize snapshot creation/finalization so concurrent scheduler and admin
@@ -245,6 +456,7 @@ async function scoreAndPersistTeams(
         .select({
           teamId: gameweekTeamLineupPlayersTable.teamId,
           playerId: gameweekTeamLineupPlayersTable.playerId,
+          points: gameweekTeamLineupPlayersTable.points,
           isCaptain: gameweekTeamLineupPlayersTable.isCaptain,
           isViceCaptain: gameweekTeamLineupPlayersTable.isViceCaptain,
         })
@@ -261,7 +473,7 @@ async function scoreAndPersistTeams(
       .select({ teamId: gameweekTeamScoresTable.teamId })
       .from(gameweekTeamScoresTable)
       .where(eq(gameweekTeamScoresTable.gameweekId, gameweekId));
-    const teamSquads = new Map<number, Array<{ playerId: number; isCaptain: boolean; isViceCaptain: boolean }>>(
+    const teamSquads = new Map<number, Array<{ playerId: number; points: number | null; isCaptain: boolean; isViceCaptain: boolean }>>(
       capturedTeamRows.map((team) => [team.teamId, []]),
     );
     for (const lineup of lineupRows) {
@@ -273,7 +485,8 @@ async function scoreAndPersistTeams(
       const captainEntry = squad.find((player) => player.isCaptain);
       const captainEarned = captainEntry ? playerEarned.get(captainEntry.playerId) : undefined;
       const captainMinutes = captainEarned?.minutes ?? 0;
-      const captainPlayed = captainMinutes > 0;
+      const captainStateKnown = !captainEntry || captainEarned !== undefined;
+      const captainPlayed = captainStateKnown && captainMinutes > 0;
       const captainName = captainEntry ? (playerById.get(captainEntry.playerId) ?? "Unknown") : "None";
       const captainRawPoints = captainEarned?.pts ?? 0;
 
@@ -291,17 +504,30 @@ async function scoreAndPersistTeams(
       for (const player of squad) {
         const earned = playerEarned.get(player.playerId);
         const multiplier = player.isCaptain || (player.isViceCaptain && !captainPlayed) ? 2 : 1;
-        const awardedPoints = (earned?.pts ?? 0) * multiplier;
+        // A captain omitted from a partial payload is unknown, not a no-show.
+        // Preserve both multiplier-sensitive rows until their state is known.
+        const multiplierStateUnknown =
+          Boolean(options.preserveExistingScores) &&
+          !captainStateKnown &&
+          (player.isCaptain || player.isViceCaptain);
+        const hasFreshScore = earned !== undefined && !multiplierStateUnknown;
+        const awardedPoints = hasFreshScore
+          ? earned.pts * multiplier
+          : options.preserveExistingScores
+            ? player.points ?? 0
+            : 0;
         points += awardedPoints;
 
-        await tx
-          .update(gameweekTeamLineupPlayersTable)
-          .set({ points: awardedPoints })
-          .where(and(
-            eq(gameweekTeamLineupPlayersTable.gameweekId, gameweekId),
-            eq(gameweekTeamLineupPlayersTable.teamId, teamId),
-            eq(gameweekTeamLineupPlayersTable.playerId, player.playerId),
-          ));
+        if (hasFreshScore || !options.preserveExistingScores) {
+          await tx
+            .update(gameweekTeamLineupPlayersTable)
+            .set({ points: awardedPoints })
+            .where(and(
+              eq(gameweekTeamLineupPlayersTable.gameweekId, gameweekId),
+              eq(gameweekTeamLineupPlayersTable.teamId, teamId),
+              eq(gameweekTeamLineupPlayersTable.playerId, player.playerId),
+            ));
+        }
       }
 
       await tx
@@ -412,7 +638,7 @@ async function processApiSportsGameweekScoring(
     byNameLower.set(p.name.toLowerCase(), p);
   }
 
-  // 3. Fetch finished fixtures from API-Sports
+  // 3. Fetch authoritative finished fixtures from API-Sports.
   let fixtureUrl = `/fixtures?league=${config.leagueId}&season=${config.season}&status=FT`;
   if (gameweek.startDate && gameweek.endDate) {
     const from = new Date(gameweek.startDate).toISOString().slice(0, 10);
@@ -422,9 +648,9 @@ async function processApiSportsGameweekScoring(
     fixtureUrl += `&from=${from}&to=${to}`;
   }
 
-  let fixtures: ApiFixture[];
+  let finishedFixtures: ApiFixture[];
   try {
-    fixtures = await apiFetch<ApiFixture[]>(fixtureUrl);
+    finishedFixtures = await apiFetch<ApiFixture[]>(fixtureUrl);
   } catch (err) {
     logger.warn({ err }, "Failed to fetch fixtures from API-Sports");
     return {
@@ -436,13 +662,90 @@ async function processApiSportsGameweekScoring(
     };
   }
 
-  if (!fixtures?.length) {
+  if (
+    config.competitionKey === SERIE_A_COMPETITION_KEY &&
+    options.finalize
+  ) {
+    const allFixturesUrl = fixtureUrl.replace("&status=FT", "");
+    let allFixtures: ApiFixture[];
+    try {
+      allFixtures = await apiFetch<ApiFixture[]>(allFixturesUrl);
+    } catch (err) {
+      logger.warn({ err, gameweekId }, "Failed to verify Serie A fixtures before finalization");
+      throw new GameweekScoringConflictError(
+        "Serie A gameweek could not be finalized because fixture statuses could not be verified.",
+      );
+    }
+
+    const unfinishedFixtures = allFixtures.filter(
+      (fixture) => fixture.fixture.status.short !== "FT",
+    );
+    if (unfinishedFixtures.length > 0) {
+      throw new GameweekScoringConflictError(
+        `Serie A gameweek cannot be finalized while ${unfinishedFixtures.length} fixture(s) are still unfinished.`,
+      );
+    }
+
+    // Use the same post-verification snapshot for final scoring so a fixture
+    // cannot transition to FT between separate discovery calls and be omitted.
+    finishedFixtures = allFixtures;
+  }
+
+  // Live scoring is Serie A-only and provisional. Finalization deliberately
+  // ignores live fixtures so the finished-fixture calculation remains the
+  // sole authoritative result.
+  const isProvisionalSerieAScoring =
+    config.competitionKey === SERIE_A_COMPETITION_KEY && !options.finalize;
+  let liveFixtures: ApiFixture[] = [];
+  let liveDiscoveryFailed = false;
+
+  if (isProvisionalSerieAScoring) {
+    try {
+      const discoveredLiveFixtures = await apiFetch<ApiFixture[]>("/fixtures?live=all");
+      const finishedFixtureIds = new Set(
+        finishedFixtures.map((fixture) => fixture.fixture.id),
+      );
+      const windowStart = gameweek.startDate
+        ? new Date(gameweek.startDate).getTime()
+        : Number.NEGATIVE_INFINITY;
+      const windowEnd = gameweek.endDate
+        ? new Date(gameweek.endDate).getTime() + (2 * 24 * 60 * 60 * 1000) - 1
+        : Number.POSITIVE_INFINITY;
+
+      liveFixtures = discoveredLiveFixtures.filter((fixture) => {
+        if (
+          fixture.league?.id !== SERIE_A_LEAGUE_ID ||
+          fixture.league.season !== SERIE_A_SEASON ||
+          finishedFixtureIds.has(fixture.fixture.id)
+        ) {
+          return false;
+        }
+
+        if (!fixture.fixture.date) return true;
+        const fixtureTime = new Date(fixture.fixture.date).getTime();
+        return Number.isNaN(fixtureTime) ||
+          (fixtureTime >= windowStart && fixtureTime <= windowEnd);
+      });
+    } catch (err) {
+      liveDiscoveryFailed = true;
+      logger.warn(
+        { err, gameweekId },
+        "Failed to discover live Serie A fixtures; continuing with finished fixtures",
+      );
+    }
+  }
+
+  if (!finishedFixtures?.length && !liveFixtures.length) {
     return {
       fixturesProcessed: 0,
       playersUpdated: 0,
       teamsUpdated: 0,
       totalPointsAwarded: 0,
-      warning: "No finished fixtures found for this gameweek's date range in API-Sports.",
+      warning: liveDiscoveryFailed
+        ? "Live Serie A fixture discovery failed and no finished fixtures were available."
+        : isProvisionalSerieAScoring
+          ? "No finished or live Serie A fixtures found for this gameweek's date range in API-Sports."
+          : "No finished fixtures found for this gameweek's date range in API-Sports.",
     };
   }
 
@@ -450,39 +753,105 @@ async function processApiSportsGameweekScoring(
   const playerById = new Map<number, string>();
   for (const p of allPlayers) playerById.set(p.id, p.name);
 
-  // 4. Process each fixture — collect per-player earned points
-  const playerEarned: PlayerEarned = new Map();
-  let fixturesProcessed = 0;
+  const priorSerieAFixtureRows = config.competitionKey === SERIE_A_COMPETITION_KEY
+    ? await db
+        .select({
+          fixtureExternalId: gameweekPlayerFixtureScoresTable.fixtureExternalId,
+          playerId: gameweekPlayerFixtureScoresTable.playerId,
+        })
+        .from(gameweekPlayerFixtureScoresTable)
+        .where(eq(gameweekPlayerFixtureScoresTable.gameweekId, gameweekId))
+    : [];
+  const priorPlayersByFixture = new Map<number, Set<number>>();
+  for (const row of priorSerieAFixtureRows) {
+    const players = priorPlayersByFixture.get(row.fixtureExternalId) ?? new Set<number>();
+    players.add(row.playerId);
+    priorPlayersByFixture.set(row.fixtureExternalId, players);
+  }
 
-  for (const fix of fixtures) {
-    const homeGoals = fix.goals.home ?? 0;
-    const awayGoals = fix.goals.away ?? 0;
-    const homeCleanSheet = awayGoals === 0;
-    const awayCleanSheet = homeGoals === 0;
+  // 4. Process finished and live fixtures into one gameweek score. Missing
+  // live data is skipped so it cannot erase the last known-good score.
+  let playerEarned: PlayerEarned = new Map();
+  const fixtureScoreUpdates: FixtureScoreUpdate[] = [];
+  let finishedFixturesProcessed = 0;
+  let finishedFixturesSkipped = 0;
+  let liveFixturesProcessed = 0;
+  let liveFixturesSkipped = 0;
 
-    await new Promise(r => setTimeout(r, 250)); // stay within rate limits
+  const fetchAndAccumulateFixture = async (
+    fixture: ApiFixture,
+    source: "finished" | "live",
+  ): Promise<PlayerEarned | null> => {
+    if (fixture.goals.home === null || fixture.goals.away === null) {
+      logger.info(
+        { gameweekId, fixtureId: fixture.fixture.id, source },
+        "Fixture score is incomplete; preserving previous scores",
+      );
+      return null;
+    }
 
     let teamStats: FixtureTeamStats[];
     try {
       teamStats = await apiFetch<FixtureTeamStats[]>(
-        `/fixtures/players?fixture=${fix.fixture.id}`,
+        `/fixtures/players?fixture=${fixture.fixture.id}`,
       );
     } catch (err) {
-      logger.warn({ err, fixtureId: fix.fixture.id }, "Failed to fetch player stats, skipping fixture");
-      continue;
+      logger.warn(
+        { err, gameweekId, fixtureId: fixture.fixture.id },
+        `Failed to fetch ${source} player stats; preserving previous scores`,
+      );
+      return null;
     }
 
-    if (!teamStats?.length) continue;
+    if (!teamStats?.length) {
+      logger.info(
+        { gameweekId, fixtureId: fixture.fixture.id, source },
+        "No player stats available for fixture; preserving previous scores",
+      );
+      return null;
+    }
 
-    const homeApiTeamId = fix.teams.home.id;
+    let finishedLineups: FixtureLineup[] = [];
+    if (
+      source === "finished" &&
+      config.competitionKey === SERIE_A_COMPETITION_KEY
+    ) {
+      await new Promise(r => setTimeout(r, 250));
+      try {
+        finishedLineups = await apiFetch<FixtureLineup[]>(
+          `/fixtures/lineups?fixture=${fixture.fixture.id}`,
+        );
+      } catch (err) {
+        logger.warn(
+          { err, gameweekId, fixtureId: fixture.fixture.id },
+          "Failed to fetch finished Serie A lineups; preserving previous scores",
+        );
+        return null;
+      }
+    }
+
+    const homeCleanSheet = fixture.goals.away === 0;
+    const awayCleanSheet = fixture.goals.home === 0;
+    const homeApiTeamId = fixture.teams.home.id;
+    const fixturePlayerEarned: PlayerEarned = new Map();
+    const completeProviderPlayersByTeam = new Map<number, Set<number>>();
 
     for (const teamData of teamStats) {
       const isHome = teamData.team.id === homeApiTeamId;
       const cleanSheet = isHome ? homeCleanSheet : awayCleanSheet;
+      const completeProviderPlayers = new Set<number>();
 
       for (const p of teamData.players) {
         const stat = p.statistics[0];
-        if (!stat) continue;
+        if (
+          !stat ||
+          !stat.games ||
+          !stat.goals ||
+          !stat.cards
+        ) {
+          continue;
+        }
+        completeProviderPlayers.add(p.player.id);
 
         const dbPlayer =
           byExternalId.get(p.player.id) ??
@@ -491,21 +860,160 @@ async function processApiSportsGameweekScoring(
         if (!dbPlayer) continue;
 
         const pts = scorePlayer(stat, dbPlayer.position, cleanSheet);
-        if (pts === 0 && (stat.games.minutes ?? 0) === 0) continue;
+        const minutes = stat.games.minutes ?? 0;
 
-        const prev = playerEarned.get(dbPlayer.id) ?? {
+        const prev = fixturePlayerEarned.get(dbPlayer.id) ?? {
           pts: 0, minutes: 0, goals: 0, assists: 0, cleanSheets: 0,
         };
-        playerEarned.set(dbPlayer.id, {
+        fixturePlayerEarned.set(dbPlayer.id, {
           pts: prev.pts + pts,
-          minutes: prev.minutes + (stat.games.minutes ?? 0),
+          minutes: prev.minutes + minutes,
           goals: prev.goals + (stat.goals.total ?? 0),
           assists: prev.assists + (stat.goals.assists ?? 0),
           cleanSheets: prev.cleanSheets + (cleanSheet && (dbPlayer.position === "GK" || dbPlayer.position === "DEF") ? 1 : 0),
         });
       }
+      completeProviderPlayersByTeam.set(teamData.team.id, completeProviderPlayers);
     }
-    fixturesProcessed++;
+
+    if (fixturePlayerEarned.size === 0) {
+      logger.info(
+        { gameweekId, fixtureId: fixture.fixture.id, source },
+        "Fixture returned no usable player stats; preserving previous scores",
+      );
+      return null;
+    }
+
+    if (
+      source === "finished" &&
+      config.competitionKey === SERIE_A_COMPETITION_KEY
+    ) {
+      const expectedPlayersByTeam = new Map<number, Set<number>>();
+      for (const lineup of finishedLineups) {
+        expectedPlayersByTeam.set(
+          lineup.team.id,
+          new Set([
+            ...lineup.startXI.map(({ player }) => player.id),
+            ...lineup.substitutes.map(({ player }) => player.id),
+          ]),
+        );
+      }
+
+      const homeExpectedPlayers = expectedPlayersByTeam.get(fixture.teams.home.id);
+      const awayExpectedPlayers = expectedPlayersByTeam.get(fixture.teams.away.id);
+      const homeCompletePlayers = completeProviderPlayersByTeam.get(fixture.teams.home.id);
+      const awayCompletePlayers = completeProviderPlayersByTeam.get(fixture.teams.away.id);
+      const missingProviderPlayers = [
+        ...[...(homeExpectedPlayers ?? [])].filter(
+          (playerId) => !homeCompletePlayers?.has(playerId),
+        ),
+        ...[...(awayExpectedPlayers ?? [])].filter(
+          (playerId) => !awayCompletePlayers?.has(playerId),
+        ),
+      ];
+      const priorPlayers = priorPlayersByFixture.get(fixture.fixture.id) ?? new Set<number>();
+      const omittedPriorPlayers = [...priorPlayers].filter(
+        (playerId) => !fixturePlayerEarned.has(playerId),
+      );
+
+      if (
+        !homeExpectedPlayers ||
+        !awayExpectedPlayers ||
+        homeExpectedPlayers.size < 11 ||
+        awayExpectedPlayers.size < 11 ||
+        missingProviderPlayers.length > 0 ||
+        omittedPriorPlayers.length > 0
+      ) {
+        logger.warn(
+          {
+            gameweekId,
+            fixtureId: fixture.fixture.id,
+            homeExpectedPlayers: homeExpectedPlayers?.size ?? 0,
+            awayExpectedPlayers: awayExpectedPlayers?.size ?? 0,
+            missingProviderPlayers: missingProviderPlayers.length,
+            omittedPriorPlayers: omittedPriorPlayers.length,
+          },
+          "Finished fixture player stats are incomplete; preserving previous snapshot",
+        );
+        return null;
+      }
+    }
+
+    return fixturePlayerEarned;
+  };
+
+  for (const fixture of finishedFixtures) {
+    await new Promise(r => setTimeout(r, 250)); // stay within rate limits
+    const fixturePlayerEarned = await fetchAndAccumulateFixture(fixture, "finished");
+    if (fixturePlayerEarned) {
+      if (config.competitionKey === SERIE_A_COMPETITION_KEY) {
+        fixtureScoreUpdates.push({
+          fixtureExternalId: fixture.fixture.id,
+          source: "finished",
+          playerEarned: fixturePlayerEarned,
+        });
+      } else {
+        mergePlayerEarned(playerEarned, fixturePlayerEarned);
+      }
+      finishedFixturesProcessed++;
+    } else {
+      finishedFixturesSkipped++;
+    }
+  }
+
+  for (const fixture of liveFixtures) {
+    await new Promise(r => setTimeout(r, 250)); // stay within rate limits
+    const fixturePlayerEarned = await fetchAndAccumulateFixture(fixture, "live");
+    if (fixturePlayerEarned) {
+      fixtureScoreUpdates.push({
+        fixtureExternalId: fixture.fixture.id,
+        source: "live",
+        playerEarned: fixturePlayerEarned,
+      });
+      liveFixturesProcessed++;
+    } else {
+      liveFixturesSkipped++;
+    }
+  }
+
+  const fixturesProcessed = finishedFixturesProcessed + liveFixturesProcessed;
+  let serieASeasonTotals = new Map<number, number>();
+
+  if (
+    config.competitionKey === SERIE_A_COMPETITION_KEY &&
+    options.finalize &&
+    finishedFixturesSkipped > 0
+  ) {
+    throw new GameweekScoringConflictError(
+      `Serie A gameweek cannot be finalized because ${finishedFixturesSkipped} finished fixture(s) lack usable player statistics.`,
+    );
+  }
+
+  if (
+    config.competitionKey === SERIE_A_COMPETITION_KEY &&
+    fixtureScoreUpdates.length > 0
+  ) {
+    playerEarned = await persistSerieAFixtureScores(
+      gameweekId,
+      fixtureScoreUpdates,
+      Boolean(options.finalize),
+    );
+    serieASeasonTotals = await updateSerieAPlayerScoringState(
+      gameweekId,
+      playerEarned,
+    );
+  }
+
+  if (playerEarned.size === 0) {
+    return {
+      fixturesProcessed,
+      playersUpdated: 0,
+      teamsUpdated: 0,
+      totalPointsAwarded: 0,
+      warning: liveFixtures.length > 0
+        ? "Live Serie A fixtures were found, but no usable player statistics were available; previous scores were preserved."
+        : "No usable player statistics were available for the finished fixtures.",
+    };
   }
 
   // 5. Freeze/persist the team scores before touching current player displays.
@@ -516,16 +1024,21 @@ async function processApiSportsGameweekScoring(
     config.competitionKey,
     playerEarned,
     playerById,
-    options,
+    {
+      ...options,
+      preserveExistingScores: isProvisionalSerieAScoring,
+    },
   );
 
   // 6. Update current player rows for the dashboard and squad views.
   const competitionPlayerIds = allPlayers.map((player) => player.id);
   if (competitionPlayerIds.length > 0) {
-    await db
-      .update(playersTable)
-      .set({ totalPoints: 0 })
-      .where(inArray(playersTable.id, competitionPlayerIds));
+    if (config.competitionKey !== SERIE_A_COMPETITION_KEY) {
+      await db
+        .update(playersTable)
+        .set({ totalPoints: 0 })
+        .where(inArray(playersTable.id, competitionPlayerIds));
+    }
     await db
       .update(teamPlayersTable)
       .set({ points: 0 })
@@ -536,14 +1049,27 @@ async function processApiSportsGameweekScoring(
   let totalPointsAwarded = 0;
 
   for (const [playerId, earned] of playerEarned) {
+    const playerUpdate = config.competitionKey === SERIE_A_COMPETITION_KEY
+      ? options.finalize
+        ? {
+            totalPoints: serieASeasonTotals.get(playerId) ?? earned.pts,
+            goalsScored: sql`${playersTable.goalsScored} + ${earned.goals}`,
+            assists: sql`${playersTable.assists} + ${earned.assists}`,
+            cleanSheets: sql`${playersTable.cleanSheets} + ${earned.cleanSheets}`,
+          }
+        : {
+            totalPoints: serieASeasonTotals.get(playerId) ?? earned.pts,
+          }
+      : {
+          totalPoints: sql`${playersTable.totalPoints} + ${earned.pts}`,
+          goalsScored: sql`${playersTable.goalsScored} + ${earned.goals}`,
+          assists: sql`${playersTable.assists} + ${earned.assists}`,
+          cleanSheets: sql`${playersTable.cleanSheets} + ${earned.cleanSheets}`,
+        };
+
     await db
       .update(playersTable)
-      .set({
-        totalPoints:  sql`${playersTable.totalPoints}  + ${earned.pts}`,
-        goalsScored:  sql`${playersTable.goalsScored}  + ${earned.goals}`,
-        assists:      sql`${playersTable.assists}       + ${earned.assists}`,
-        cleanSheets:  sql`${playersTable.cleanSheets}  + ${earned.cleanSheets}`,
-      })
+      .set(playerUpdate)
       .where(eq(playersTable.id, playerId));
 
     await db
@@ -556,11 +1082,35 @@ async function processApiSportsGameweekScoring(
   }
 
   logger.info(
-    { gameweekId, fixturesProcessed, playersUpdated, teamsUpdated, totalPointsAwarded },
-    "Gameweek scoring complete",
+    {
+      gameweekId,
+      fixturesProcessed,
+      finishedFixturesProcessed,
+      finishedFixturesSkipped,
+      liveFixturesProcessed,
+      liveFixturesSkipped,
+      playersUpdated,
+      teamsUpdated,
+      totalPointsAwarded,
+    },
+    `${config.competitionName} gameweek scoring complete`,
   );
 
-  return { fixturesProcessed, playersUpdated, teamsUpdated, totalPointsAwarded };
+  return {
+    fixturesProcessed,
+    playersUpdated,
+    teamsUpdated,
+    totalPointsAwarded,
+    ...(liveDiscoveryFailed
+      ? { warning: "Live Serie A fixture discovery failed; finished fixtures were still processed." }
+      : finishedFixturesSkipped > 0 || liveFixturesSkipped > 0
+        ? {
+            warning:
+              `${finishedFixturesSkipped} finished and ${liveFixturesSkipped} live fixture(s) ` +
+              "had no usable player statistics; previous fixture snapshots were preserved.",
+          }
+        : {}),
+  };
 }
 
 export async function processGameweekScoring(

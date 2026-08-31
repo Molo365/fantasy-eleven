@@ -60,6 +60,35 @@ export const gameweekTeamLineupPlayersTable = pgTable("gameweek_team_lineup_play
   unique().on(t.gameweekId, t.teamId, t.playerId),
 ]);
 
+// Provider fixture-level contributions are mutable while a match is live and
+// become authoritative when the same fixture is processed as finished.
+export const gameweekPlayerFixtureScoresTable = pgTable("gameweek_player_fixture_scores", {
+  id: serial("id").primaryKey(),
+  gameweekId: integer("gameweek_id").notNull().references(() => gameweeksTable.id, { onDelete: "cascade" }),
+  playerId: integer("player_id").notNull(),
+  fixtureExternalId: integer("fixture_external_id").notNull(),
+  source: text("source").notNull(), // live | finished
+  points: integer("points").notNull().default(0),
+  minutes: integer("minutes").notNull().default(0),
+  goals: integer("goals").notNull().default(0),
+  assists: integer("assists").notNull().default(0),
+  cleanSheets: integer("clean_sheets").notNull().default(0),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  unique().on(t.gameweekId, t.playerId, t.fixtureExternalId),
+]);
+
+export const gameweekPlayerScoringStateTable = pgTable("gameweek_player_scoring_state", {
+  id: serial("id").primaryKey(),
+  gameweekId: integer("gameweek_id").notNull().references(() => gameweeksTable.id, { onDelete: "cascade" }),
+  playerId: integer("player_id").notNull(),
+  baselineTotalPoints: integer("baseline_total_points").notNull().default(0),
+  currentPoints: integer("current_points").notNull().default(0),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  unique().on(t.gameweekId, t.playerId),
+]);
+
 export const insertGameweekSchema = createInsertSchema(gameweeksTable).omit({
   id: true,
   createdAt: true,
@@ -71,3 +100,5 @@ export type InsertGameweek = z.infer<typeof insertGameweekSchema>;
 export type Gameweek = typeof gameweeksTable.$inferSelect;
 export type Fixture = typeof fixturesTable.$inferSelect;
 export type GameweekTeamLineupPlayer = typeof gameweekTeamLineupPlayersTable.$inferSelect;
+export type GameweekPlayerFixtureScore = typeof gameweekPlayerFixtureScoresTable.$inferSelect;
+export type GameweekPlayerScoringState = typeof gameweekPlayerScoringStateTable.$inferSelect;

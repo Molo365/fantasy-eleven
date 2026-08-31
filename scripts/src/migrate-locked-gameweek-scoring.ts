@@ -14,6 +14,8 @@ const migrations = [
   // Keep gameweek competition scoping gated until its production preflight and
   // deployment have been explicitly approved.
   { name: "0008_gameweek_competition", developmentOnly: true },
+  { name: "0009_gameweek_player_fixture_scores" },
+  { name: "0010_gameweek_player_scoring_state" },
 ].map(({ name, developmentOnly = false }) => ({
   name,
   developmentOnly,

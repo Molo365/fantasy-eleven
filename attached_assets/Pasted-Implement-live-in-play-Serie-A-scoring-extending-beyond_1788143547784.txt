@@ -1,0 +1,57 @@
+Implement live in-play Serie A scoring, extending beyond the existing finished-match-only scoring. This is a real, different pipeline — not a simple status-value change.
+
+CONTEXT (confirmed by prior investigation, do not re-investigate):
+- Current Serie A scoring only processes FINISHED fixtures via GET /fixtures?league=135&
+  season=2026&status=FT&from=...&to=..., then GET /fixtures/players?fixture={id} for stats.
+- Live scoring requires a different discovery endpoint: GET /fixtures?live=all, filtered to
+  league 135. The same /fixtures/players endpoint is reused for per-player stats on live
+  fixtures — this part isn't new.
+- CONFIRMED: current API-Football Pro plan (7,500 req/day) supports both /fixtures?live=all
+  and /fixtures/players with no upgrade needed. Verified via live test call.
+- CRITICAL CAVEAT, confirmed via live test: /fixtures/players did NOT return player-stat
+  rows for one currently in-progress fixture, while it returned complete data for a finished
+  one. Mid-match player statistics are not guaranteed to be populated consistently — may be
+  empty, partial, or delayed. This is NOT a bug to "fix" — it's an inherent characteristic of
+  the data source that the implementation must tolerate gracefully.
+- Quota math at the existing 15-minute scheduler interval: roughly 11 requests per poll for
+  ~10 Serie A fixtures (1 live-discovery call + 1 player-stats call per active fixture),
+  ~1,056 requests/day — comfortably within budget. Do NOT poll more frequently than the
+  existing 15-minute interval without re-checking quota headroom.
+- The existing scorer/persistence pipeline (scorePlayer, scoreAndPersistTeams,
+  processSerieAGameweekScoring) already handles finished-match scoring correctly and should
+  not be broken by this addition — live scoring should be additive, not a replacement.
+
+TASKS:
+1. Add a live fixture discovery step: query GET /fixtures?live=all, filter to Serie A
+   (league 135), for use alongside (not instead of) the existing finished-fixture discovery.
+2. For each live Serie A fixture found, fetch /fixtures/players?fixture={id} and score
+   whatever player stats ARE available — using the same scorePlayer logic already in use.
+3. Handle partial/missing data gracefully: if a live fixture returns no player stats yet, or
+   incomplete stats for some players, do NOT error out or zero out existing scores — either
+   skip that player/fixture for this poll (leave prior known-good score in place) or apply
+   whatever partial data exists without penalizing players for missing categories. Your call
+   on the cleanest approach, but the key requirement is: a mid-match gap in API data should
+   never cause a player's displayed score to incorrectly drop to zero or throw an error.
+4. When a fixture transitions from live to finished (FT), the existing finished-match scoring
+   path should take over and produce the authoritative final score for that fixture — treat
+   live scoring as provisional/in-progress data that gets superseded by the final calculation
+   once the match ends, not as two competing permanent sources of truth.
+5. Make sure this doesn't interfere with Premier League or World Cup scoring — Serie A live
+   discovery should only ever touch Serie A fixtures/teams, consistent with the competition-
+   scoping work done earlier tonight (migration 0008).
+6. Consider whether the frontend should show any indicator that a score is "live/provisional"
+   vs "final" (e.g. matching the existing LIVE badge already used on the Fixtures page) — if
+   this is a small addition, include it; if it requires significant new UI work, note it as
+   a follow-up instead of scope-creeping this task.
+
+After the change:
+- Confirm typecheck and build pass.
+- Run an isolated verification against a REAL currently-live or soon-to-be-live Serie A
+  fixture if one is available at test time, confirming: partial data doesn't break scoring,
+  scores update sensibly during the match, and the fixture's final score after FT matches
+  what the existing finished-match scorer would produce (no discrepancy between live-computed
+  and finished-computed totals for the same fixture).
+- If no live fixture is available to test against at this exact moment, clearly state that
+  limitation and describe what was verified through other means (e.g. simulated/partial data
+  handling, dry-run against a recently-finished fixture treated as if still live).
+- Report exactly what changed and the verification results.
